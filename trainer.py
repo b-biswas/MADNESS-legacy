@@ -1,23 +1,19 @@
 import tensorflow as tf
 from scripts.BatchGenerator import BatchGenerator
-from scripts.model import flow, build_encoder
-from scripts.GalaxyPrior import GalaxyPrior
+from scripts.FlowVAEnet import FlowVAEnet
 from scripts.utils import listdir_fullpath
 import os
 
 bands = [4,5,6,7,8,9]
 batch_size = 200
 
-encoder = build_encoder()
-td = flow()
-fd = GalaxyPrior()
-
+f_net = FlowVAEnet()
 
 # Keras Callbacks
-path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'trial_run'
+path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'trial_run/'
 
 #checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'mse/weights_noisy_v4.{epoch:02d}-{val_mean_squared_error:.2f}.ckpt', monitor='val_mean_squared_error', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
-checkpointer_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'loss/weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+checkpointer_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 
 ######## Define all used callbacks
 callbacks = [checkpointer_loss]
@@ -47,4 +43,4 @@ validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_s
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None)
 
-fd.train_model(training_generator, validation_generator, callbacks)
+f_net.train_model(training_generator, validation_generator, callbacks)

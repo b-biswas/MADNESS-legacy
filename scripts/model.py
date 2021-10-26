@@ -40,12 +40,12 @@ def build_encoder(latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], ker
     sigma = Dense(latent_dim, activation='softplus')(h)
     return Model(input_layer, [mu, sigma])
 
-def flow():
-    num_layers = 5
+def flow(latent_dim=32, num_nf_layers=5):
+    
     my_bijects = []
-    zdist = tfd.MultivariateNormalDiag(loc=[0.0] * 32)
+    zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
     # loop over desired bijectors and put into list
-    for i in range(num_layers):
+    for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2, hidden_units=[16, 16], activation="relu"
@@ -54,7 +54,7 @@ def flow():
         # Add bijector to list
         my_bijects.append(ab)
         # Now permuate (!important!)
-        permutation=np.random.permutation(32)
+        permutation=np.random.permutation(latent_dim)
         permute = tfb.Permute(permutation)
         my_bijects.append(permute)
     # put all bijectors into one "chain bijector"
@@ -63,17 +63,3 @@ def flow():
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=big_bijector)
     return td
-
-def build_flow(encoder, td):
-
-    input_vae = Input(shape=encoder.input.shape[1:])
-    mu, sig = encoder(input_vae)
-    
-    latent_dist = tfd.MultivariateNormalDiag(mu, sig)
-    x = latent_dist.sample()
-
-    log_prob = td.log_prob(x)
-    
-    model = tf.keras.Model(input_vae, log_prob)
-    
-    return model  

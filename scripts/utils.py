@@ -94,3 +94,4 @@ def denorm(x, bands, path, channel_last=False, inplace=True, linear_norm=False):
             for ib, b in enumerate(bands):
                 y[i,ib] = np.sinh(np.arctanh(x[i,ib]))*(I[b]/beta)
     return y
+    
