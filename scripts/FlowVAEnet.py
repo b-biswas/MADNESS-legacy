@@ -55,3 +55,10 @@ class FlowVAEnet:
                   callbacks=callbacks,
                   workers=0, 
                   use_multiprocessing = True)
+
+    def load_weights(self, weights_path, Folder=True):
+        if Folder:
+            weights_path = tf.train.latest_checkpoint(weights_path)
+        self.model.load_weights(weights_path)
+    
+        self.model.trainable=False
