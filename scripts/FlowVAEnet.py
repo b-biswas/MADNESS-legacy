@@ -8,7 +8,7 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 
 class FlowVAEnet:
-    def __init__(self, latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5):
+    def __init__(self, latent_dim=64, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5):
 
         self.latent_dim = latent_dim
         self.hidden_dim = hidden_dim
@@ -30,12 +30,9 @@ class FlowVAEnet:
 
         input_vae = Input(shape=encoder.input.shape[1:])
 
-        mu, sig = encoder(input_vae)
-        
-        latent_dist = tfd.MultivariateNormalDiag(mu, sig)
-        x = latent_dist.sample()
+        latent_space = encoder(input_vae)
 
-        log_prob = td.log_prob(x)
+        log_prob = td.log_prob(latent_space)
         
         model = tf.keras.Model(input_vae, log_prob)
         

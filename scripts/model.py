@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Conv2D, Input, Dense, Dropout, MaxPool2D, Fl
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
-def build_encoder(latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None):#'sofplus'
+def build_encoder(latent_dim=64, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None):#'sofplus'
     """
     Return encoder as model
     latent_dim : dimension of the latent variable
@@ -36,11 +36,10 @@ def build_encoder(latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], ker
     h = Flatten()(h)
     h = Dense(hidden_dim, activation=dense_activation)(h)
     h = PReLU()(h)
-    mu = Dense(latent_dim)(h)
-    sigma = Dense(latent_dim, activation='softplus')(h)
-    return Model(input_layer, [mu, sigma])
+    latent_space = Dense(latent_dim)(h)
+    return Model(input_layer, latent_space)
 
-def flow(latent_dim=32, num_nf_layers=5):
+def flow(latent_dim=64, num_nf_layers=5):
     
     my_bijects = []
     zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
