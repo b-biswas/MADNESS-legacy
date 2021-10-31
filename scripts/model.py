@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Conv2D, Input, Dense, Dropout, MaxPool2D, Fl
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
-def build_encoder(latent_dim=64, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None):#'sofplus'
+def build_encoder(latent_dim=8, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None):#'sofplus'
     """
     Return encoder as model
     latent_dim : dimension of the latent variable
@@ -36,14 +36,20 @@ def build_encoder(latent_dim=64, hidden_dim=256, filters=[32, 64, 128, 256], ker
     h = Flatten()(h)
     h = Dense(hidden_dim, activation=dense_activation)(h)
     h = PReLU()(h)
-    latent_space = Dense(latent_dim)(h)
-    return Model(input_layer, latent_space)
+    mu = Dense(latent_dim)(h)
+    sig = Dense(latent_dim, activation='softplus')(h)
+    return Model(input_layer, [mu, sig])
 
-def flow(latent_dim=64, num_nf_layers=5):
+def init_permutation_once(x, name):
+    return tf.Variable(name=name, initial_value=x, trainable=False)
+
+def flow(latent_dim=8, num_nf_layers=5):
     
     my_bijects = []
     zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
     # loop over desired bijectors and put into list
+
+
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
@@ -53,8 +59,7 @@ def flow(latent_dim=64, num_nf_layers=5):
         # Add bijector to list
         my_bijects.append(ab)
         # Now permuate (!important!)
-        permutation=np.random.permutation(latent_dim)
-        permute = tfb.Permute(permutation)
+        permute = tfb.Permute(permutation=init_permutation_once(np.random.permutation(latent_dim).astype('int32'), name='permutation'+str(i)))
         my_bijects.append(permute)
     # put all bijectors into one "chain bijector"
     # that looks like one
