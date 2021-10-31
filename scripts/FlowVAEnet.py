@@ -8,7 +8,7 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 
 class FlowVAEnet:
-    def __init__(self, latent_dim=64, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5):
+    def __init__(self, latent_dim=8, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5):
 
         self.latent_dim = latent_dim
         self.hidden_dim = hidden_dim
@@ -30,9 +30,12 @@ class FlowVAEnet:
 
         input_vae = Input(shape=encoder.input.shape[1:])
 
-        latent_space = encoder(input_vae)
+        mu, sig = encoder(input_vae)
 
-        log_prob = td.log_prob(latent_space)
+        latent_dist = tfd.MultivariateNormalDiag(mu, sig)
+        x = latent_dist.sample()
+
+        log_prob = td.log_prob(x)
         
         model = tf.keras.Model(input_vae, log_prob)
         
@@ -42,7 +45,7 @@ class FlowVAEnet:
         return -log_prob
     
 
-    def train_model(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-3), epochs = 100, verbose=1):
+    def train_model(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(5e-5, clipvalue=1.0), epochs = 100, verbose=1):
 
         self.model.compile(optimizer=optimizer, loss = self.loss_fn)
         self.model.fit_generator(generator=train_generator, epochs=epochs,
