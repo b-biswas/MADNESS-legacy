@@ -54,7 +54,6 @@ class BatchGenerator(tf.keras.utils.Sequence):
         """
         return int(float(self.total_sample_size) / float(self.batch_size))      
 
-
     def on_epoch_end(self):
         """
         Function executed at the end of each epoch
