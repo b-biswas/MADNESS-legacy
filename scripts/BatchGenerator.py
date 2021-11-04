@@ -7,7 +7,7 @@ class BatchGenerator(tf.keras.utils.Sequence):
     """
     Class to create batch generator for VAEs.
     """
-    def __init__(self, bands, list_of_samples, total_sample_size, batch_size, trainval_or_test, do_norm, denorm, path, list_of_weights_e=None, linear_norm = False):
+    def __init__(self, bands, list_of_samples, total_sample_size, batch_size, trainval_or_test, do_norm, denorm, path, num_iter_per_epoch=None, list_of_weights_e=None, linear_norm = False):
         """
         Initialization function
         bands: filters to use for the input and target images
@@ -33,6 +33,8 @@ class BatchGenerator(tf.keras.utils.Sequence):
         self.denorm = denorm
         self.linear_norm = linear_norm
 
+        self.num_iter_per_epoch = num_iter_per_epoch
+
         # Weights computed from the lengths of lists
         self.p = []
         for sample in self.list_of_samples:
@@ -52,7 +54,10 @@ class BatchGenerator(tf.keras.utils.Sequence):
         """
         Function to define the length of an epoch
         """
-        return int(float(self.total_sample_size) / float(self.batch_size))      
+        #return int(float(self.total_sample_size) / float(self.batch_size))      
+        if self.num_iter_per_epoch is None:
+            self.num_iter_per_epoch = int(float(self.total_sample_size) / float(self.batch_size))
+        return self.num_iter_per_epoch
 
     def on_epoch_end(self):
         """
@@ -112,8 +117,5 @@ class BatchGenerator(tf.keras.utils.Sequence):
         y = np.transpose(y, axes = (0,2,3,1))
         
         if self.trainval_or_test == 'training' or self.trainval_or_test == 'validation':
-            return x, y
-
-        elif self.trainval_or_test == 'test':
-            data = pd.read_csv(sample_filename.replace('images.npy','data.csv'))
-            return x, y, data.loc[indices], indices
+            return y, y
+            
