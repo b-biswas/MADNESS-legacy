@@ -7,8 +7,7 @@ import os
 bands = [4,5,6,7,8,9]
 batch_size = 50
 linear_norm = True
-vae_epochs = 5
-flow_epochs = 20
+vae_epochs = 10
 
 f_net = FlowVAEnet(linear_norm=linear_norm)
 
@@ -16,8 +15,8 @@ f_net = FlowVAEnet(linear_norm=linear_norm)
 path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'trial_run/'
 
 #checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'mse/weights_noisy_v4.{epoch:02d}-{val_mean_squared_error:.2f}.ckpt', monitor='val_mean_squared_error', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
-checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_noisy_v4.{epoch:02d}-{val_decoder_loss:.2f}.ckpt', monitor='val_decoder_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
-checkpointer_flow_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+"full_model/"+'weights_noisy_v4.{epoch:02d}-{val_flow_loss:.2f}.ckpt', monitor='val_flow_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+checkpointer_fvae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+#checkpointer_flow_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+"full_model/"+'weights_noisy_v4.{epoch:02d}-{val_flow_loss:.2f}.ckpt', monitor='val_flow_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 
 terminate_on_nan = tf.keras.callbacks.TerminateOnNaN()
 
@@ -39,7 +38,7 @@ training_generator = BatchGenerator(bands, list_of_samples, total_sample_size=No
                                     linear_norm = linear_norm,
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
-                                    num_iter_per_epoch=200)
+                                    num_iter_per_epoch=None)
 
 validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_size=None,
                                     batch_size=batch_size,
@@ -49,8 +48,8 @@ validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_s
                                     linear_norm = linear_norm,
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
-                                    num_iter_per_epoch=200)
+                                    num_iter_per_epoch=None)
 
-f_net.train_vae(training_generator, validation_generator, callbacks=[checkpointer_vae_loss, terminate_on_nan], epochs=vae_epochs)
+f_net.train_fvae(training_generator, validation_generator, callbacks=[checkpointer_fvae_loss, terminate_on_nan], epochs=vae_epochs)
 #f_net.load_weights(weights_path='/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/trial_run')
-f_net.train_flow_model(training_generator, validation_generator, optimizer=tf.keras.optimizers.Adam(1e-5), callbacks=[checkpointer_flow_loss, terminate_on_nan], epochs=flow_epochs)
+#f_net.train_flow_model(training_generator, validation_generator, optimizer=tf.keras.optimizers.Adam(1e-5), callbacks=[checkpointer_flow_loss, terminate_on_nan], epochs=flow_epochs)

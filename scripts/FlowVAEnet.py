@@ -9,9 +9,9 @@ tfb = tfp.bijectors
 
 def vae_loss_fn(x, output):
     x_decoded_mean = output[1]
-    tf.print(x_decoded_mean.shape)
-    mse_loss = tf.reduce_sum(tf.keras.metrics.mean_squared_error(x, x_decoded_mean), axis=[1,2])
-    return mse_loss 
+    tf.print(tf.keras.metrics.mean_squared_error(x, x_decoded_mean).shape)
+    mse_loss = tf.reduce_sum(tf.keras.metrics.mean_squared_error(x, x_decoded_mean), axis=[1,2]) # TODO: prevent avg over the last dimension multiply suitably
+    return mse_loss*80000*6*80000
 
 def flow_loss_fn(x, output):
     return -output[0]
@@ -55,10 +55,10 @@ class FlowVAEnet:
         
         return encoder, decoder, td, model
        
-    def train_vae(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-2, clipvalue=1.0), epochs = 35, verbose=1):
-        self.td.trainable=False
+    def train_fvae(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1), epochs = 35, verbose=1):
+        #self.td.trainable=False
         self.model.summary()
-        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
