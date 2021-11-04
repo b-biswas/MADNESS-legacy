@@ -38,7 +38,7 @@ def build_encoder(latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], ker
     h = PReLU()(h)
     mu = Dense(latent_dim)(h)
     sig = Dense(latent_dim, activation='softplus')(h)
-    return Model(input_layer, [mu, sig])
+    return Model(input_layer, [mu, sig], name ='encoder')
 
 #### Create encooder
 def build_decoder(input_shape, latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3], conv_activation=None, dense_activation=None, linear_norm=False):
@@ -76,7 +76,7 @@ def build_decoder(input_shape, latent_dim=32, hidden_dim=256, filters=[32, 64, 1
         else:
             h = Cropping2D(((cropping//2,cropping//2+1),(cropping//2,cropping//2+1)))(h)
 
-    return Model(input_layer, h)
+    return Model(input_layer, h, name='decoder')
 
 
 # Function to define model
@@ -112,11 +112,10 @@ def flow(latent_dim=32, num_nf_layers=5):
     zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
     # loop over desired bijectors and put into list
 
-
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[16, 16], activation="relu"
+            params=2, hidden_units=[256, 256], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
         # Add bijector to list
@@ -124,6 +123,8 @@ def flow(latent_dim=32, num_nf_layers=5):
         # Now permuate (!important!)
         permute = tfb.Permute(permutation=init_permutation_once(np.random.permutation(latent_dim).astype('int32'), name='permutation'+str(i)))
         my_bijects.append(permute)
+        if i % 2 == 1:
+            my_bijects.append(tfb.BatchNormalization())
     # put all bijectors into one "chain bijector"
     # that looks like one
     big_bijector = tfb.Chain(my_bijects)
@@ -131,4 +132,4 @@ def flow(latent_dim=32, num_nf_layers=5):
     td = tfd.TransformedDistribution(zdist, bijector=big_bijector)
 
     input_layer = Input(shape=(latent_dim))
-    return Model(input_layer, td.log_prob(input_layer))
+    return Model(input_layer, td.log_prob(input_layer), name='flow')
