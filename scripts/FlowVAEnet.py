@@ -47,7 +47,6 @@ class FlowVAEnet:
         x = latent_dist.sample()
 
         reconstruction = decoder(x)
-        tf.print(reconstruction.shape)
         td = flow(latent_dim=self.latent_dim, num_nf_layers=self.num_nf_layers)
         log_prob = td(x)
         tf.print(log_prob.shape)
@@ -59,7 +58,7 @@ class FlowVAEnet:
     def train_vae(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-2, clipvalue=1.0), epochs = 35, verbose=1):
         self.td.trainable=False
         self.model.summary()
-        self.model.compile(optimizer=optimizer, loss = {'functional_3': vae_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
@@ -68,13 +67,14 @@ class FlowVAEnet:
                   workers=0, 
                   use_multiprocessing = True)
 
-    def train_flow_model(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-8, clipvalue=.01), epochs = 35, verbose=1):
+    def train_flow_model(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-2), epochs = 35, verbose=1):
 
         self.encoder.trainable = False
         self.decoder.trainable = False
         self.td.trainable = True
         self.model.summary()
-        self.model.compile(optimizer=optimizer, loss = {'functional_5': flow_loss_fn})
+        self.td.summary()
+        self.model.compile(optimizer=optimizer, loss = {'flow': flow_loss_fn})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
