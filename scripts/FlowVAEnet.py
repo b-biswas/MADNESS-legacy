@@ -30,7 +30,7 @@ class FlowVAEnet:
         self.linear_norm = linear_norm
 
         self.encoder, self.decoder, self.td, self.model = self.build_vae_model()
-        self.model.summary()
+
         self.optimizer = None
         self.callbacks = None
 
@@ -59,22 +59,6 @@ class FlowVAEnet:
         #self.td.trainable=False
         self.model.summary()
         self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
-        self.model.fit_generator(generator=train_generator, epochs=epochs,
-                  verbose=verbose,
-                  shuffle=True,
-                  validation_data=validation_generator,
-                  callbacks=callbacks,
-                  workers=0, 
-                  use_multiprocessing = True)
-
-    def train_flow_model(self, train_generator, validation_generator, callbacks, optimizer=tf.keras.optimizers.Adam(1e-2), epochs = 35, verbose=1):
-
-        self.encoder.trainable = False
-        self.decoder.trainable = False
-        self.td.trainable = True
-        self.model.summary()
-        self.td.summary()
-        self.model.compile(optimizer=optimizer, loss = {'flow': flow_loss_fn})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,

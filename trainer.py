@@ -7,7 +7,7 @@ import os
 bands = [4,5,6,7,8,9]
 batch_size = 50
 linear_norm = True
-vae_epochs = 10
+vae_epochs = 100
 
 f_net = FlowVAEnet(linear_norm=linear_norm)
 
@@ -52,4 +52,3 @@ validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_s
 
 f_net.train_fvae(training_generator, validation_generator, callbacks=[checkpointer_fvae_loss, terminate_on_nan], epochs=vae_epochs)
 #f_net.load_weights(weights_path='/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/trial_run')
-#f_net.train_flow_model(training_generator, validation_generator, optimizer=tf.keras.optimizers.Adam(1e-5), callbacks=[checkpointer_flow_loss, terminate_on_nan], epochs=flow_epochs)
