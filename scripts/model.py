@@ -115,7 +115,7 @@ def flow(latent_dim=32, num_nf_layers=5):
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[256, 256], activation="relu"
+            params=2, hidden_units=[256, 256], activation="tanh"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
         # Add bijector to list
@@ -123,8 +123,7 @@ def flow(latent_dim=32, num_nf_layers=5):
         # Now permuate (!important!)
         permute = tfb.Permute(permutation=init_permutation_once(np.random.permutation(latent_dim).astype('int32'), name='permutation'+str(i)))
         my_bijects.append(permute)
-        if i % 2 == 1:
-            my_bijects.append(tfb.BatchNormalization())
+        #TODO: include batchnorm?
     # put all bijectors into one "chain bijector"
     # that looks like one
     big_bijector = tfb.Chain(my_bijects)
