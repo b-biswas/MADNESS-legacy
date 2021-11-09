@@ -112,6 +112,8 @@ def flow(latent_dim=32, num_nf_layers=5):
     zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
     # loop over desired bijectors and put into list
 
+    np.random.seed(43)
+
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
