@@ -49,9 +49,8 @@ class FlowVAEnet:
         reconstruction = decoder(x)
         td = flow(latent_dim=self.latent_dim, num_nf_layers=self.num_nf_layers)
         log_prob = td(x)
-        tf.print(log_prob.shape)
         
-        model = tf.keras.Model(input_vae, outputs=[log_prob, decoder(x)])
+        model = tf.keras.Model(input_vae, outputs=[log_prob, decoder(x), mu, sig])
         
         return encoder, decoder, td, model
        
@@ -71,5 +70,5 @@ class FlowVAEnet:
         if Folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.model.load_weights(weights_path)
-    
+
         self.model.trainable=False
