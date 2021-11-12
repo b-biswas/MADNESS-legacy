@@ -8,13 +8,14 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 
 def vae_loss_fn(x, output):
-    x_decoded_mean = output[1]
-    tf.print(tf.keras.metrics.mean_squared_error(x, x_decoded_mean).shape)
+    x_decoded_mean = output
     mse_loss = tf.reduce_sum(tf.keras.metrics.mean_squared_error(x, x_decoded_mean), axis=[1,2]) # TODO: prevent avg over the last dimension multiply suitably
-    return mse_loss*80000*6*80000
+    tf.print(mse_loss.shape)
+    return mse_loss*6
 
 def flow_loss_fn(x, output):
-    return -output[0]
+    tf.print(tf.shape(output))
+    return -output
 
 class FlowVAEnet:
     def __init__(self, latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5, linear_norm=True):
@@ -61,7 +62,7 @@ class FlowVAEnet:
         checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
         terminate_on_nan = tf.keras.callbacks.TerminateOnNaN()
         self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn})
-        self.model.fit_generator(generator=train_generator, epochs=int(epochs/4),
+        self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
                   validation_data=validation_generator,
