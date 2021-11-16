@@ -5,15 +5,17 @@ from scripts.utils import listdir_fullpath
 import os
 
 bands = [4,5,6,7,8,9]
-batch_size = 50
+batch_size = 100
 linear_norm = False
-vae_epochs = 20
+vae_epochs = 50
+flow_epochs = 200
 latent_dim = 32
+num_iter_per_epoch = None
 
 f_net = FlowVAEnet(latent_dim=latent_dim, linear_norm=linear_norm)
 
 # Keras Callbacks
-path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'latent_32_vars/'
+path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'train_separately_100_epochs/'
 
 #checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'mse/weights_noisy_v4.{epoch:02d}-{val_mean_squared_error:.2f}.ckpt', monitor='val_mean_squared_error', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 #checkpointer_fvae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
@@ -31,7 +33,7 @@ list_of_samples_val = [x for x in listdir_fullpath(os.path.join(images_dir,'vali
 
 
 ######## Define the generators
-training_generator = BatchGenerator(bands, list_of_samples, total_sample_size=None,
+training_generator_vae = BatchGenerator(bands, list_of_samples, total_sample_size=None,
                                     batch_size=batch_size,
                                     trainval_or_test='training',
                                     do_norm=False,
@@ -39,9 +41,10 @@ training_generator = BatchGenerator(bands, list_of_samples, total_sample_size=No
                                     linear_norm = linear_norm,
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
-                                    num_iter_per_epoch=None)
+                                    num_iter_per_epoch=num_iter_per_epoch,
+                                    blended_and_isolated=True)
 
-validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_size=None,
+validation_generator_vae = BatchGenerator(bands, list_of_samples_val, total_sample_size=None,
                                     batch_size=batch_size,
                                     trainval_or_test='validation',
                                     do_norm=False,
@@ -49,7 +52,35 @@ validation_generator = BatchGenerator(bands, list_of_samples_val, total_sample_s
                                     linear_norm = linear_norm,
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
-                                    num_iter_per_epoch=None)
+                                    num_iter_per_epoch=num_iter_per_epoch,
+                                    blended_and_isolated=True)
 
-f_net.train_fvae(training_generator, validation_generator, epochs=vae_epochs, path_weights=path_weights)
+checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+f_net.train_vae(training_generator_vae, validation_generator_vae, callbacks=[checkpointer_vae_loss], epochs=vae_epochs, path_weights=path_weights)
 #f_net.load_weights(weights_path='/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/trial_run')
+
+######## Define the generators
+training_generator_flow = BatchGenerator(bands, list_of_samples, total_sample_size=None,
+                                    batch_size=batch_size,
+                                    trainval_or_test='training',
+                                    do_norm=False,
+                                    denorm=False,
+                                    linear_norm=linear_norm,
+                                    path=os.path.join(images_dir, "test/"),
+                                    list_of_weights_e=None,
+                                    num_iter_per_epoch=num_iter_per_epoch,
+                                    blended_and_isolated=False)
+
+validation_generator_flow = BatchGenerator(bands, list_of_samples_val, total_sample_size=None,
+                                    batch_size=batch_size,
+                                    trainval_or_test='validation',
+                                    do_norm=False,
+                                    denorm=False,
+                                    linear_norm=linear_norm,
+                                    path=os.path.join(images_dir, "test/"),
+                                    list_of_weights_e=None,
+                                    num_iter_per_epoch=num_iter_per_epoch,
+                                    blended_and_isolated=False)
+
+checkpointer_flow_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+f_net.train_flow(training_generator_flow, validation_generator_flow, callbacks= [checkpointer_flow_loss], epochs=flow_epochs, path_weights=path_weights)
