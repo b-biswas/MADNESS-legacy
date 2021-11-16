@@ -7,7 +7,7 @@ class BatchGenerator(tf.keras.utils.Sequence):
     """
     Class to create batch generator for VAEs.
     """
-    def __init__(self, bands, list_of_samples, total_sample_size, batch_size, trainval_or_test, do_norm, denorm, path, num_iter_per_epoch=None, list_of_weights_e=None, linear_norm = False):
+    def __init__(self, bands, list_of_samples, total_sample_size, batch_size, trainval_or_test, do_norm, denorm, path, blended_and_isolated, num_iter_per_epoch=None, list_of_weights_e=None, linear_norm = False):
         """
         Initialization function
         bands: filters to use for the input and target images
@@ -34,6 +34,7 @@ class BatchGenerator(tf.keras.utils.Sequence):
         self.linear_norm = linear_norm
 
         self.num_iter_per_epoch = num_iter_per_epoch
+        self.blended_and_isolated = blended_and_isolated
 
         # Weights computed from the lengths of lists
         self.p = []
@@ -117,5 +118,11 @@ class BatchGenerator(tf.keras.utils.Sequence):
         y = np.transpose(y, axes = (0,2,3,1))
         
         if self.trainval_or_test == 'training' or self.trainval_or_test == 'validation':
-            return y, y
+            if self.blended_and_isolated:
+                print("the shape is ")
+                print(np.concatenate((x,y)).shape)
+                return np.concatenate((x,y)), np.concatenate((x,y))
+            else:
+                return y,y
+
             

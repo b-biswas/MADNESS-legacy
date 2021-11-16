@@ -55,32 +55,36 @@ class FlowVAEnet:
         
         return encoder, decoder, td, model
        
-    def train_fvae(self, train_generator, validation_generator, path_weights, optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=0.1), epochs = 35, verbose=1):
+    def train_vae(self, train_generator, validation_generator, path_weights, callbacks, optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=1), epochs = 35, verbose=1):
         self.td.trainable=False
+        self.encoder.trainable=True
+        self.decoder.trainable=True
         self.model.summary()
         print("Training only VAE network")
-        checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
-        terminate_on_nan = tf.keras.callbacks.TerminateOnNaN()
+        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
                   validation_data=validation_generator,
-                  callbacks=[checkpointer_vae_loss, terminate_on_nan],
+                  callbacks= callbacks + terminate_on_nan,
                   workers=0, 
                   use_multiprocessing = True)
 
-        print("Training entire Flow VAE")
-        checkpointer_fvae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
+    def train_flow(self, train_generator, validation_generator, path_weights, callbacks, optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=1), epochs = 35, verbose=1):
+        print("Training only Flow net")
         self.td.trainable = True
+        self.encoder.trainable=False
+        self.decoder.trainable=False
         self.model.summary()
-        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
-        terminate_on_nan = tf.keras.callbacks.TerminateOnNaN()
+        #self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
+        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
                   validation_data=validation_generator,
-                  callbacks=[checkpointer_fvae_loss, terminate_on_nan],
+                  callbacks=callbacks + terminate_on_nan,
                   workers=0, 
                   use_multiprocessing = True)
 
