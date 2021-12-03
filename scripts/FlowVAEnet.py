@@ -74,11 +74,11 @@ class FlowVAEnet:
     def train_flow(self, train_generator, validation_generator, path_weights, callbacks, optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=1), epochs = 35, verbose=1):
         print("Training only Flow net")
         self.td.trainable = True
-        self.encoder.trainable=False
-        self.decoder.trainable=False
+        self.encoder.trainable=True
+        self.decoder.trainable=True
         self.model.summary()
-        #self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
-        self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
+        #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
