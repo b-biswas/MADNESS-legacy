@@ -17,6 +17,15 @@ def flow_loss_fn(x, output):
     tf.print(tf.shape(output))
     return -output
 
+def kl_loss(x, encoder_output):
+    z_mu = encoder_output[1]
+    z_sig = encoder_output[2]
+    dist_z = tfp.distributions.MultivariateNormalDiag(z_mu, z_sig)
+    dist_0 = tfp.distributions.MultivariateNormalDiag(tf.zeros_like(z_mu), tf.ones_like(z_sig))
+    kl_divergence = tfp.distributions.kl_divergence(dist_z, dist_0, name='KL_divergence_full_cov')
+
+    return kl_divergence
+
 class FlowVAEnet:
     def __init__(self, latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3],nb_of_bands=6, conv_activation=None, dense_activation=None, num_nf_layers=5, linear_norm=True):
 
@@ -42,16 +51,12 @@ class FlowVAEnet:
         
         input_vae = Input(shape=encoder.input.shape[1:])
 
-        mu, sig = encoder(input_vae)
-        
-        latent_dist = tfd.MultivariateNormalDiag(mu, sig)
-        x = latent_dist.sample()
+        z, mu, sig = encoder(input_vae)
 
-        reconstruction = decoder(x)
         td = flow(latent_dim=self.latent_dim, num_nf_layers=self.num_nf_layers)
-        log_prob = td(x)
+        log_prob = td(z)
         
-        model = tf.keras.Model(input_vae, outputs=[log_prob, decoder(x), mu, sig])
+        model = tf.keras.Model(input_vae, outputs=[log_prob, decoder(z), mu, sig])
         
         return encoder, decoder, td, model
        
@@ -62,7 +67,7 @@ class FlowVAEnet:
         self.model.summary()
         print("Training only VAE network")
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
-        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'encoder': kl_loss})
         self.model.fit_generator(generator=train_generator, epochs=epochs,
                   verbose=verbose,
                   shuffle=True,
@@ -77,7 +82,7 @@ class FlowVAEnet:
         self.encoder.trainable=True
         self.decoder.trainable=True
         self.model.summary()
-        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn})
+        self.model.compile(optimizer=optimizer, loss={'decoder': vae_loss_fn, 'flow': flow_loss_fn, 'encoder': kl_loss})
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.model.fit_generator(generator=train_generator, epochs=epochs,
