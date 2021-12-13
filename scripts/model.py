@@ -38,7 +38,11 @@ def build_encoder(latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], ker
     h = PReLU()(h)
     mu = Dense(latent_dim)(h)
     sig = Dense(latent_dim, activation='softplus')(h)
-    return Model(input_layer, [mu, sig], name ='encoder')
+
+    latent_dist = tfd.MultivariateNormalDiag(mu, sig)
+
+    z = latent_dist.sample()
+    return Model(input_layer, [z, mu, sig], name ='encoder')
 
 #### Create encooder
 def build_decoder(input_shape, latent_dim=32, hidden_dim=256, filters=[32, 64, 128, 256], kernels=[3,3,3,3], conv_activation=None, dense_activation=None, linear_norm=False):
