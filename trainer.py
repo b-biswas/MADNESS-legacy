@@ -5,17 +5,17 @@ from scripts.utils import listdir_fullpath
 import os
 
 bands = [4,5,6,7,8,9]
-batch_size = 100
-linear_norm = False
-vae_epochs = 50
-flow_epochs = 200
+batch_size = 200
+linear_norm = True
+vae_epochs = 20
+flow_epochs = 30
 latent_dim = 32
 num_iter_per_epoch = None
 
 f_net = FlowVAEnet(latent_dim=latent_dim, linear_norm=linear_norm)
 
 # Keras Callbacks
-path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'train_separately_100_epochs/'
+path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'train_in_steps/'
 
 #checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'mse/weights_noisy_v4.{epoch:02d}-{val_mean_squared_error:.2f}.ckpt', monitor='val_mean_squared_error', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 #checkpointer_fvae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
@@ -42,7 +42,7 @@ training_generator_vae = BatchGenerator(bands, list_of_samples, total_sample_siz
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
                                     num_iter_per_epoch=num_iter_per_epoch,
-                                    blended_and_isolated=True)
+                                    blended_and_isolated=False)
 
 validation_generator_vae = BatchGenerator(bands, list_of_samples_val, total_sample_size=None,
                                     batch_size=batch_size,
@@ -53,7 +53,9 @@ validation_generator_vae = BatchGenerator(bands, list_of_samples_val, total_samp
                                     path = os.path.join(images_dir, "test/"),
                                     list_of_weights_e = None,
                                     num_iter_per_epoch=num_iter_per_epoch,
-                                    blended_and_isolated=True)
+                                    blended_and_isolated=False)
+print("This is from the code.........")
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 f_net.train_vae(training_generator_vae, validation_generator_vae, callbacks=[checkpointer_vae_loss], epochs=vae_epochs, path_weights=path_weights)
