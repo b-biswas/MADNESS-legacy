@@ -7,15 +7,15 @@ import os
 bands = [4,5,6,7,8,9]
 batch_size = 200
 linear_norm = True
-vae_epochs = 20
-flow_epochs = 30
+vae_epochs = 50
+flow_epochs = 50
 latent_dim = 32
 num_iter_per_epoch = None
 
 f_net = FlowVAEnet(latent_dim=latent_dim, linear_norm=linear_norm)
 
 # Keras Callbacks
-path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'train_in_steps/'
+path_weights = '/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/' + 'main_run_50_50_in_steps/'
 
 #checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights+'mse/weights_noisy_v4.{epoch:02d}-{val_mean_squared_error:.2f}.ckpt', monitor='val_mean_squared_error', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 #checkpointer_fvae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "fvae/" + 'weights_noisy_v4.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
