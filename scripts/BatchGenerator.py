@@ -92,13 +92,14 @@ class BatchGenerator(tf.keras.utils.Sequence):
         if self.do_norm:
             x = utils.norm(x, self.bands, self.path)
             y = utils.norm(y, self.bands, self.path)
+
         if self.denorm or self.linear_norm:
             x = utils.denorm(x, self.bands, self.path)
             y = utils.denorm(y, self.bands, self.path)
 
             if self.linear_norm:
                 x = utils.norm(x, [], None, linear_norm=True)
-                y = utils.norm(x, [], None, linear_norm=True)
+                y = utils.norm(y, [], None, linear_norm=True)
 
 
         #  flip : flipping the image array
