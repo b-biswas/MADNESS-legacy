@@ -31,7 +31,7 @@ def norm(x, bands, path, channel_last=False, inplace=True, linear_norm=False):
     else:
         y = x
     if linear_norm:
-        return y/80000
+        return y/80000.0
 
     while bands[0]>9:
         bands = np.array(bands)-10

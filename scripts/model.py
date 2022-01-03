@@ -51,17 +51,7 @@ def create_encoder(
         tfp.layers.MultivariateNormalTriL.params_size(latent_dim), activation=None
     )(h)
 
-    # Define the prior for the latent space
-    prior = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
-    )
-
-    h = tfp.layers.MultivariateNormalTriL(
-        latent_dim,
-        activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=0.01),
-        )(h)
-
-    return Model(input_layer, [h.sample(), h], name='encoder')
+    return Model(input_layer, h, name='encoder')
 
 
 def create_decoder(
@@ -71,11 +61,12 @@ def create_decoder(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    linear_norm=False,
 ):
 
     input_layer = Input(shape=(latent_dim,))
     h = PReLU()(input_layer)
+    h = Dense(tfp.layers.MultivariateNormalTriL.params_size(32))(h)
+    h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
     h = Dense(w * w * filters[-1], activation=dense_activation)(tf.cast(h, tf.float32))
     h = PReLU()(h)
@@ -96,11 +87,8 @@ def create_decoder(
             padding="same",
         )(h)
         h = PReLU()(h)
-    
-    if linear_norm:
-        h = Conv2D(input_shape[-1]*2, (3, 3), activation="relu", padding="same")(h)
-    else:
-        h = Conv2D(input_shape[-1]*2, (3, 3), activation="sigmoid", padding="same")(h)
+        
+    h = Conv2D(input_shape[-1]*2, (3, 3), activation="relu", padding="same")(h)
 
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
     cropping = int(h.get_shape()[1] - input_shape[0])
@@ -118,16 +106,18 @@ def create_decoder(
                                           ,convert_to_tensor_fn=tfp.distributions.Distribution.sample)(h)
     
     
-    
-    return Model(input_layer, h, name='decoder')
+    decoder = Model(input_layer,h, name='decoder')
+    return Model(input_layer,h, name='decoder')
 
 def init_permutation_once(x, name):
     return tf.Variable(name=name, initial_value=x, trainable=False)
 
 def create_flow(latent_dim=32, num_nf_layers=5):
-    
+
     my_bijects = []
     zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
+    # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
+
     # loop over desired bijectors and put into list
 
     np.random.seed(43)
@@ -150,7 +140,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=big_bijector)
 
-    input_layer = Input(shape=(latent_dim))
+    input_layer = Input(shape=(latent_dim,))
     return Model(input_layer, td.log_prob(input_layer), name='flow')
 
 # Function to define model
@@ -189,16 +179,22 @@ def create_model_fvae(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    linear_norm=linear_norm,
 )
 
     flow = create_flow(latent_dim=latent_dim, num_nf_layers=5)
-    
+
+    # Define the prior for the latent space
+    prior = tfd.Independent(
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+    )
 
     # Build the model
-    x_input = Input(shape=(input_shape), name='input_galaxies')
-    z = encoder(x_input)
-
-    net = Model(inputs = x_input, outputs = [decoder(z[0]), flow(z[0])])
+    x_input = Input(shape=(input_shape))
+    z = tfp.layers.MultivariateNormalTriL(
+        latent_dim,
+        activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=0.01),
+    )(encoder(x_input))
     
+    net = Model(inputs = x_input, outputs=[decoder(z), flow(z.sample())])
+
     return net, encoder, decoder, flow
