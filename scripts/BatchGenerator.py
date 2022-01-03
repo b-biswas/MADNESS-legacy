@@ -7,7 +7,19 @@ class BatchGenerator(tf.keras.utils.Sequence):
     """
     Class to create batch generator for VAEs.
     """
-    def __init__(self, bands, list_of_samples, total_sample_size, batch_size, trainval_or_test, do_norm, denorm, path, blended_and_isolated, num_iter_per_epoch=None, list_of_weights_e=None, linear_norm = False):
+    def __init__(self, 
+                    bands,
+                    list_of_samples,
+                    total_sample_size,
+                    batch_size,
+                    trainval_or_test,
+                    do_norm,
+                    denorm,
+                    path,
+                    blended_and_isolated,
+                    num_iter_per_epoch=None,
+                    list_of_weights_e=None,
+                    linear_norm=False):
         """
         Initialization function
         bands: filters to use for the input and target images
@@ -66,7 +78,7 @@ class BatchGenerator(tf.keras.utils.Sequence):
         """
         print("Produced samples", self.produced_samples)
         self.produced_samples = 0
-        
+
     def __getitem__(self, idx):
         """
         Function which returns the input and target batches for the network
@@ -101,7 +113,6 @@ class BatchGenerator(tf.keras.utils.Sequence):
                 x = utils.norm(x, [], None, linear_norm=True)
                 y = utils.norm(y, [], None, linear_norm=True)
 
-
         #  flip : flipping the image array
         rand = np.random.randint(4)
         if rand == 1: 
@@ -113,17 +124,15 @@ class BatchGenerator(tf.keras.utils.Sequence):
         elif rand == 3:
             x = np.swapaxes(np.flip(x, axis=-1), -1, -2)
             y = np.swapaxes(np.flip(y, axis=-1), -1, -2)
-        
+
         # Change the shape of inputs and targets to feed the network
         x = np.transpose(x, axes = (0,2,3,1))
         y = np.transpose(y, axes = (0,2,3,1))
-        
+
         if self.trainval_or_test == 'training' or self.trainval_or_test == 'validation':
             if self.blended_and_isolated:
                 print("the shape is ")
                 print(np.concatenate((x,y)).shape)
                 return np.concatenate((x,y)), np.concatenate((x,y))
             else:
-                return y,y
-
-            
+                return y, y
