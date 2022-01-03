@@ -115,30 +115,30 @@ def init_permutation_once(x, name):
 def create_flow(latent_dim=32, num_nf_layers=5):
 
     my_bijects = []
-    zdist = tfd.MultivariateNormalDiag(loc=[0.0] * latent_dim)
+    zdist = tfd.MultivariateNormalDiag(tf.zeros(latent_dim))
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # loop over desired bijectors and put into list
 
-    np.random.seed(43)
+    permute_arr = np.arange(latent_dim)[::-1]
 
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[256, 256], activation="tanh"
+            params=2, hidden_units=[256, 256], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
         # Add bijector to list
         my_bijects.append(ab)
         # Now permuate (!important!)
-        permute = tfb.Permute(permutation=init_permutation_once(np.random.permutation(latent_dim).astype('int32'), name='permutation'+str(i)))
+        permute = tfb.Permute(permute_arr)
         my_bijects.append(permute)
         #TODO: include batchnorm?
     # put all bijectors into one "chain bijector"
     # that looks like one
-    big_bijector = tfb.Chain(my_bijects)
+    bijector_chain = tfb.Chain(my_bijects)
     # make transformed dist
-    td = tfd.TransformedDistribution(zdist, bijector=big_bijector)
+    td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
 
     input_layer = Input(shape=(latent_dim,))
     return Model(input_layer, td.log_prob(input_layer), name='flow')
@@ -195,6 +195,6 @@ def create_model_fvae(
         activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=0.01),
     )(encoder(x_input))
     
-    net = Model(inputs = x_input, outputs=[decoder(z), flow(z.sample())])
+    net = Model(inputs = x_input, outputs=[decoder(z), flow(z.sample()), z])
 
     return net, encoder, decoder, flow

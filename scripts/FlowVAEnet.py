@@ -83,7 +83,7 @@ class FlowVAEnet:
                     validation_generator, 
                     path_weights, 
                     callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=1), 
+                    optimizer=tf.keras.optimizers.Adam(1e-20, clipvalue=1), 
                     epochs = 35, 
                     verbose=1):
 
@@ -107,6 +107,4 @@ class FlowVAEnet:
     def load_weights(self, weights_path, Folder=True):
         if Folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
-        checkpoint = tf.train.Checkpoint(self.model)
-        checkpoint.restore(weights_path)
-        #self.model.load_weights(weights_path)
+        self.model.load_weights(weights_path)
