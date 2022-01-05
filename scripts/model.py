@@ -104,9 +104,7 @@ def create_decoder(
     # Build the encoder only
     h = tfp.layers.DistributionLambda(make_distribution_fn=lambda t: tfd.Normal(loc=t[...,:input_shape[-1]], scale=1e-4 +t[...,input_shape[-1]:])
                                           ,convert_to_tensor_fn=tfp.distributions.Distribution.sample)(h)
-    
-    
-    decoder = Model(input_layer,h, name='decoder')
+
     return Model(input_layer,h, name='decoder')
 
 def init_permutation_once(x, name):
@@ -115,7 +113,9 @@ def init_permutation_once(x, name):
 def create_flow(latent_dim=32, num_nf_layers=5):
 
     my_bijects = []
-    zdist = tfd.MultivariateNormalDiag(tf.zeros(latent_dim))
+    zdist = tfd.Independent(
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+    )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # loop over desired bijectors and put into list
@@ -125,7 +125,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[256, 256], activation="relu"
+            params=2, hidden_units=[32, 32], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
         # Add bijector to list
@@ -133,18 +133,17 @@ def create_flow(latent_dim=32, num_nf_layers=5):
         # Now permuate (!important!)
         permute = tfb.Permute(permute_arr)
         my_bijects.append(permute)
+        my_bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
         #TODO: include batchnorm?
     # put all bijectors into one "chain bijector"
     # that looks like one
     bijector_chain = tfb.Chain(my_bijects)
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
-
     input_layer = Input(shape=(latent_dim,))
     return Model(input_layer, td.log_prob(input_layer), name='flow')
 
 # Function to define model
-
 def create_model_fvae(
     input_shape,
     latent_dim,
@@ -153,6 +152,7 @@ def create_model_fvae(
     conv_activation=None,
     dense_activation=None,
     linear_norm=False,
+    num_nf_layers=5,
 ):
     """
     Create the VAE model
@@ -181,12 +181,11 @@ def create_model_fvae(
     dense_activation=None,
 )
 
-    flow = create_flow(latent_dim=latent_dim, num_nf_layers=5)
+    flow = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
-    )
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # Build the model
     x_input = Input(shape=(input_shape))
@@ -194,7 +193,8 @@ def create_model_fvae(
         latent_dim,
         activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=0.01),
     )(encoder(x_input))
-    
-    net = Model(inputs = x_input, outputs=[decoder(z), flow(z.sample()), z])
 
-    return net, encoder, decoder, flow
+    vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
+    flow_model = Model(inputs=x_input, outputs=flow(z.sample()))
+
+    return vae_model, flow_model, encoder, decoder, flow
