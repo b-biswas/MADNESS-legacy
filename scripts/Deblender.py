@@ -44,10 +44,13 @@ class Deblend:
         
         if initZ is not None: 
             # check constraint parameter over here
-            z = tf.Variable(initial_val = initZ, shape= tf.reshape(z,(1, 32)), name ='z')
+            z = tf.Variable(initial_value = initZ, name ='z')
 
         else:
-            z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0.5, stddev=.5)(shape=[32], dtype=tf.float32))
+
+            z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=.01)(shape=[32], dtype=tf.float32))
+            #_, initZ = self.flow_vae_net.vae_model(np.expand_dims(X, 0))
+            #z = tf.Variable(initial_value = initZ, shape=tf.TensorShape((1,32)), name ='z')
 
         zdist = tfd.MultivariateNormalDiag(loc=[0.0] * 32)
 
