@@ -253,6 +253,7 @@ def create_model_fvae(
         model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
     """
 
+    # create the encoder
     encoder = create_encoder(
     input_shape,
     latent_dim,
@@ -262,6 +263,7 @@ def create_model_fvae(
     dense_activation=None,
 )
     
+    # create the decoder
     decoder = create_decoder(
     input_shape,
     latent_dim,
@@ -271,6 +273,7 @@ def create_model_fvae(
     dense_activation=None,
 )
 
+    # create the flow transformation
     flow = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space

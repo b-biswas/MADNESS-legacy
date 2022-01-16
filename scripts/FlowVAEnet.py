@@ -18,10 +18,10 @@ def flow_loss_fn(x, output):
 class FlowVAEnet:
 
     def __init__(self,
-        input_shape = [64, 64, 6],
-        latent_dim = 32,
-        filters = [32,64,128,256],
-        kernels = [3,3,3,3],
+        input_shape=[64, 64, 6],
+        latent_dim=32,
+        filters=[32,64,128,256],
+        kernels=[3,3,3,3],
         conv_activation=None,
         dense_activation=None,
         linear_norm=True,
@@ -78,7 +78,7 @@ class FlowVAEnet:
                     validation_generator, 
                     callbacks, 
                     optimizer=tf.keras.optimizers.Adam(1e-4), 
-                    epochs = 35, 
+                    epochs=35, 
                     verbose=1):
         """
         trains only the vae model. (both the encoder and the decoder)
@@ -86,13 +86,17 @@ class FlowVAEnet:
         Parameters
         ----------
         train_generator:
-            generator to be used for training the network
+            generator to be used for training the network.
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         validation_generator:
             generator to be used for validation
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         callbacks: list
-            list of tf.keras.callbacks for training the model
-        optimizer: tf.keras.optimizers
-            optimizer to be used for training
+            List of keras.callbacks.Callback instances. 
+            List of callbacks to apply during training. 
+            See tf.keras.callbacks
+        optimizer: str or tf.keras.optimizers
+            String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
         epochs: int
             number of epochs for which the model is going to be trained
         verbose: int
@@ -122,7 +126,7 @@ class FlowVAEnet:
                     validation_generator, 
                     callbacks, 
                     optimizer=tf.keras.optimizers.Adam(5e-4), 
-                    epochs = 35, 
+                    epochs=35, 
                     verbose=1):
         """
         Trains onlt the flow part of the flow_model while keeping the encoder constant.
@@ -130,13 +134,17 @@ class FlowVAEnet:
         Parameters
         ----------
         train_generator:
-            generator to be used for training the network
+            generator to be used for training the network.
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         validation_generator:
             generator to be used for validation
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         callbacks: list
-            list of tf.keras.callbacks for training the model
-        optimizer: tf.keras.optimizers
-            optimizer to be used for training
+            List of keras.callbacks.Callback instances. 
+            List of callbacks to apply during training. 
+            See tf.keras.callbacks
+        optimizer: str or tf.keras.optimizers
+            String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
         epochs: int
             number of epochs for which the model is going to be trained
         verbose: int

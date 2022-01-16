@@ -7,12 +7,10 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, num_components = 1, max_iter = 100, lr = .15, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, num_components=1, max_iter=100, lr= .15, initZ=None, use_likelihood=True, channel_last=False):
         """
-        
         Parameters
         __________
-
         postage_stamp: np.ndarray
             input stamp/field that is to be deblended
         num_components: int
@@ -51,7 +49,7 @@ class Deblend:
 
     def gradient_decent(self, optimizer=None, initZ=None):
         """
-        perform the gradient descent step
+        perform the gradient descent step to separate components (galaxies)
 
         Parameters
         ----------
