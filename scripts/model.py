@@ -21,6 +21,29 @@ def create_encoder(
     conv_activation=None,
     dense_activation=None,
 ):
+    """
+    function to create the encoder
+
+    Parameters
+    ----------
+    input_shape: list
+        shape of input tensor
+    latent_dim: int
+        size of the latent space
+    filters: list
+        filters used for the convolutional layers
+    kernels: list
+        kernels used for the convolutional layers
+    conv_activation: str
+        activation for conv layers
+    dense_activation: str
+        activation for dense layers
+
+    Returns
+    -------
+    encoder: tf.keras.Model
+       model that takes as input the image of a galaxy and projects it to the latent space
+    """
     # Define the prior for the latent space
     prior = tfd.Independent(
         tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
@@ -62,6 +85,29 @@ def create_decoder(
     conv_activation=None,
     dense_activation=None,
 ):
+    """
+    function to create the decoder 
+
+    Parameters
+    ----------
+    input_shape: list
+        shape of input tensor
+    latent_dim: int
+        size of the latent space
+    filters: list
+        filters used for the convolutional layers
+    kernels: list
+        kernels used for the convolutional layers
+    conv_activation: str
+        activation for conv layers
+    dense_activation: str
+        activation for dense layers
+
+    Returns
+    -------
+    decoder: tf.keras.Model
+        model that takes as input a point in the latent space and decodes it to reconstruct a noiseless galaxy.
+    """
 
     input_layer = Input(shape=(latent_dim,))
     h = PReLU()(input_layer)
@@ -107,10 +153,23 @@ def create_decoder(
 
     return Model(input_layer,h, name='decoder')
 
-def init_permutation_once(x, name):
-    return tf.Variable(name=name, initial_value=x, trainable=False)
 
 def create_flow(latent_dim=32, num_nf_layers=5):
+    """
+    Create the Flow model that takes as input a point in latent space and returns the log_prob
+
+    Parameters
+    __________
+    latent_dim: int
+        size of the latent space
+    num_nf_layers: int
+        number of layers in the normalizing flow
+
+    Returns
+    _______
+    model: tf.keras.Model
+        model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
+    """
 
     my_bijects = []
     zdist = tfd.Independent(
@@ -125,7 +184,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     for i in range(num_nf_layers):
         # Syntax to make a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[32, 32], activation="relu"
+            params=2, hidden_units=[64, 64], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
         # Add bijector to list
@@ -134,7 +193,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
         permute = tfb.Permute(permute_arr)
         my_bijects.append(permute)
         my_bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
-        #TODO: include batchnorm?
+        #TODO: make batchnorms every 2 layers
     # put all bijectors into one "chain bijector"
     # that looks like one
     bijector_chain = tfb.Chain(my_bijects)
@@ -142,6 +201,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
     input_layer = Input(shape=(latent_dim,))
     return Model(input_layer, td.log_prob(input_layer), name='flow')
+
 
 # Function to define model
 def create_model_fvae(
@@ -155,14 +215,44 @@ def create_model_fvae(
     num_nf_layers=5,
 ):
     """
-    Create the VAE model
-    parameters:
-        input_shape: shape of input tensor
-        latent_dim: size of the latent space
-        filters: filters used for the convolutional layers
-        kernels: kernels used for the convolutional layers
+    Create the sinmultaneously create the VAE and the flow model.
+
+    Parameters
+    ----------
+    input_shape: list
+        shape of input tensor
+    latent_dim: int
+        size of the latent space
+    filters: list
+        filters used for the convolutional layers
+    kernels: list
+        kernels used for the convolutional layers
+    conv_activation: str
+        activation for conv layers
+    dense_activation: str
+        activation for dense layers
+    linear_norm: bool
+        to specify by normalization is linear or not
+    num_nf_layers: int
+        number of layers in the flow network
+
+    Returns
+    -------
+    vae_model: tf.keras.Model
+        vae model which consists of the encoder and decoder. 
+    flow_model: tf.keras.Model
+        flow model which consists of the encoder and flow transormation layers
+    encoder: tf.keras.Model
+        encoder which is common to both the vae_model and the flow_model
+        model that takes as input the image of a galaxy and projects it to the latent space
+    decoder: tf.keras.Model
+        decoder which is present in the vae_model
+        model that takes as input a point in the latent space and decodes it to reconstruct a noiseless galaxy.
+    flow: tf.keras.Model
+        flow network which is present in the flow_model
+        model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
     """
-    
+
     encoder = create_encoder(
     input_shape,
     latent_dim,
