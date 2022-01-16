@@ -61,13 +61,12 @@ class FlowVAEnet:
         self.num_nf_layers = num_nf_layers
         self.linear_norm = linear_norm
 
-        self.vae_model, self.flow_model, self.encoder, self.decoder, self.td = create_model_fvae(input_shape=self.input_shape, 
+        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.bijector = create_model_fvae(input_shape=self.input_shape, 
                                                                                 latent_dim=self.latent_dim, 
                                                                                 filters=self.filters, 
                                                                                 kernels=self.kernels, 
                                                                                 conv_activation=self.conv_activation, 
-                                                                                dense_activation=self.dense_activation, 
-                                                                                linear_norm=self.linear_norm, 
+                                                                                dense_activation=self.dense_activation,
                                                                                 num_nf_layers=self.num_nf_layers)
 
         self.optimizer = None
@@ -155,7 +154,7 @@ class FlowVAEnet:
         """
         print("Training only Flow net")
         
-        self.td.trainable = True
+        self.flow.trainable = True
         self.encoder.trainable = False
         self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
         self.flow_model.summary()
