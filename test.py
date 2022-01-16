@@ -23,9 +23,9 @@ print(np.shape(images[:, 1, 4:]))
 
 def convert_to_linear_norm(images, channel_last=False):
 
-    weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test'
+    normalization_weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test'
 
-    images_denormed = denorm(images, bands=bands, path = weights_path, channel_last=False)
+    images_denormed = denorm(images, bands=bands, path=normalization_weights_path, channel_last=False)
     images_linear_normed = norm(images_denormed, bands=bands, path=weights_path, linear_norm=True)
     if channel_last:
         return images_linear_normed
