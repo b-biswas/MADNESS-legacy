@@ -178,27 +178,33 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # loop over desired bijectors and put into list
-
     permute_arr = np.arange(latent_dim)[::-1]
 
     for i in range(num_nf_layers):
-        # Syntax to make a MAF
+        # create a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2, hidden_units=[64, 64], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
-        # Add bijector to list
+
+        # Add bijectors to a list
         my_bijects.append(ab)
-        # Now permuate (!important!)
+
+        # Add permutation layers
         permute = tfb.Permute(permute_arr)
         my_bijects.append(permute)
+
+        # add batchnorm layers
         my_bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
         #TODO: make batchnorms every 2 layers
-    # put all bijectors into one "chain bijector"
-    # that looks like one
+
+    # combine the bijectors into a chain
     bijector_chain = tfb.Chain(my_bijects)
+
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
+
+    # create and return model
     input_layer = Input(shape=(latent_dim,))
     return Model(input_layer, td.log_prob(input_layer), name='flow')
 
@@ -211,7 +217,6 @@ def create_model_fvae(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    linear_norm=False,
     num_nf_layers=5,
 ):
     """
@@ -231,8 +236,6 @@ def create_model_fvae(
         activation for conv layers
     dense_activation: str
         activation for dense layers
-    linear_norm: bool
-        to specify by normalization is linear or not
     num_nf_layers: int
         number of layers in the flow network
 

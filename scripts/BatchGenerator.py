@@ -22,15 +22,29 @@ class BatchGenerator(tf.keras.utils.Sequence):
                     linear_norm=False):
         """
         Initialization function
-        bands: filters to use for the input and target images
-        list_of_samples: list of the numpy arrays which correspond to the whole training (or validation) sample
-        total_sample_size: size of the whole training (or validation) sample
-        batch_size: size of the batches to provide
-        trainval_or_test: choice between training, validation or test generator
-        denorm: boolean to denormalize images
-        path: path to the normalization values
-        list_of_weights_e: numpy array of the weights to use to weight inputs
-        linear_norm: option to do linear nromalization of input data
+
+        Parameters
+        ----------
+        bands: list
+            filters to use for the input and target images. Note that the first 4 represent Euclid simulation
+            [0, 1, 2, 3, 4, 5, 6, 8, 9] for Euclid + LSST
+            [4, 5, 6, 7, 8, 9] for LSST only
+        list_of_samples: list
+            list of the numpy arrays which correspond to the whole training (or validation) sample
+        total_sample_size: int 
+            size of the whole training (or validation) sample
+        batch_size: int
+            size of the batches to provide
+        trainval_or_test: str
+            choice between 'training', 'validation' or 'test' generator
+        denorm: boolean
+            to denormalize images
+        path: str
+            path to the normalization values
+        list_of_weights_e: np.array
+            numpy array of the weights to use to weight inputs
+        linear_norm: bool
+            option to do linear nromalization of input data
         """
         self.bands = bands
         self.nbands = len(bands)

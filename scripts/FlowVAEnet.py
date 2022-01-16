@@ -129,7 +129,7 @@ class FlowVAEnet:
                     epochs=35, 
                     verbose=1):
         """
-        Trains onlt the flow part of the flow_model while keeping the encoder constant.
+        Trains only the flow part of the flow_model while keeping the encoder constant.
 
         Parameters
         ----------
