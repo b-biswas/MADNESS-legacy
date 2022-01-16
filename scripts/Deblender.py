@@ -90,9 +90,11 @@ class Deblend:
 
                 reconstruction = self.flow_vae_net.decoder(tf.reshape(z,(1, 32))).mean()
                 reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
+                
                 reconstruction_loss = tf.math.reduce_sum(tf.square(X - reconstruction)) / tf.cast(tf.square(sig), tf.float32)
 
                 sig = tf.math.reduce_std(X - reconstruction)
+                log_likelihood = self.flow_vae_net.flow(tf.reshape(z,(1, 32)))
                 if self.use_likelihood:
                     loss = reconstruction_loss - log_likelihood
                 else:
