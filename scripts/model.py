@@ -169,9 +169,11 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     _______
     model: tf.keras.Model
         model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
+    bijector_chain: tfp.bijectors.Chain
+        bijector chain that is being applied on the base distribution
     """
 
-    my_bijects = []
+    bijects = []
     zdist = tfd.Independent(
         tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
     )
@@ -188,25 +190,26 @@ def create_flow(latent_dim=32, num_nf_layers=5):
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
         # Add bijectors to a list
-        my_bijects.append(ab)
+        bijects.append(ab)
 
         # Add permutation layers
         permute = tfb.Permute(permute_arr)
-        my_bijects.append(permute)
+        bijects.append(permute)
 
         # add batchnorm layers
-        my_bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
+        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
         #TODO: make batchnorms every 2 layers
 
     # combine the bijectors into a chain
-    bijector_chain = tfb.Chain(my_bijects)
+    bijector_chain = tfb.Chain(bijects)
 
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
 
     # create and return model
     input_layer = Input(shape=(latent_dim,))
-    return Model(input_layer, td.log_prob(input_layer), name='flow')
+    model = Model(input_layer, td.log_prob(input_layer), name='flow')
+    return model, bijector_chain
 
 
 # Function to define model
@@ -277,7 +280,7 @@ def create_model_fvae(
 )
 
     # create the flow transformation
-    flow = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    flow, bijector = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
@@ -291,6 +294,6 @@ def create_model_fvae(
     )(encoder(x_input))
 
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
-    flow_model = Model(inputs=x_input, outputs=flow(z.sample()))
+    flow_model = Model(inputs=x_input, outputs=flow(z.sample())) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
-    return vae_model, flow_model, encoder, decoder, flow
+    return vae_model, flow_model, encoder, decoder, flow, bijector
