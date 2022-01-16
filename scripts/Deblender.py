@@ -54,7 +54,7 @@ class Deblend:
         Parameters
         ----------
         optimizer: tf.keras.optimizers
-            optimizer to be used fo rhte gradient descent
+            optimizer to be used for hte gradient descent
         initZ: np.ndarray
             initial value of the latent space.
         """
