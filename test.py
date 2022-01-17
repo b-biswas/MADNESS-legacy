@@ -1,6 +1,6 @@
 from scripts.Deblender import Deblend
 from scripts.utils import listdir_fullpath
-from scripts.utils import norm, denorm
+from scripts.utils import norm, denorm, convert_to_linear_norm
 
 import numpy as np
 import os
@@ -20,28 +20,20 @@ images = images[:200]
 
 weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test' 
 print(np.shape(images[:, 1, 4:]))
+ 
+images_noisy = convert_to_linear_norm(images[:, 1, 4:])
+images_noisy = np.transpose(images_noisy, axes=(0, 2, 3, 1))
 
-def convert_to_linear_norm(images, channel_last=False):
-
-    normalization_weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test'
-
-    images_denormed = denorm(images, bands=bands, path=normalization_weights_path, channel_last=False)
-    images_linear_normed = norm(images_denormed, bands=bands, path=weights_path, linear_norm=True)
-    if channel_last:
-        return images_linear_normed
-    else:
-        return np.transpose(images_linear_normed, axes=(0, 2, 3, 1))
+images_isolated = convert_to_linear_norm(images[:, 0, 4:])
+images_isolated = np.transpose(images_isolated, axes=(0, 2, 3, 1))
 
 #Fix norm over here
-
 num_images_to_denoise = 10
 shuffled_indices = np.arange(200)
 np.random.shuffle(shuffled_indices)
 
 print(shuffled_indices)
 fig, ax = plt.subplots(num_images_to_denoise, 5, figsize=(20,5*num_images_to_denoise))
-images_noisy = convert_to_linear_norm(images[:, 1, 4:])
-images_isolated = convert_to_linear_norm(images[:, 0, 4:])
 
 for i in range(num_images_to_denoise):
     print("image number: " + str(i))

@@ -95,3 +95,10 @@ def denorm(x, bands, path, channel_last=False, inplace=True, linear_norm=False):
                 y[i,ib] = np.sinh(np.arctanh(x[i,ib]))*(I[b]/beta)
     return y
     
+def convert_to_linear_norm(images, bands=[4, 5, 6, 7, 8, 9], channel_last=False):
+
+    normalization_weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test'
+
+    images_denormed = denorm(images, bands=bands, path=normalization_weights_path, channel_last=False)
+    images_linear_normed = norm(images_denormed, bands=bands, path=normalization_weights_path, linear_norm=True)
+    return images_linear_normed
