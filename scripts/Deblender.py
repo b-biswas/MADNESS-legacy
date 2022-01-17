@@ -43,7 +43,7 @@ class Deblend:
         #self.flow_vae_net.vae_model.trainable = False
         #self.flow_vae_net.flow_model.trainable = False
 
-        self.flow_vae_net.vae_model.summary()
+        #self.flow_vae_net.vae_model.summary()
         self.gradient_decent(initZ)
 
 
@@ -101,12 +101,12 @@ class Deblend:
                     loss = reconstruction_loss
 
             #print(tf.shape(tf.math.reduce_sum(W, axis=0)))
-            print("sigma :" + str(sig.numpy()))
-            print("log prob flow:" + str(log_likelihood.numpy()))
-            print(loss)
+            #print("sigma :" + str(sig.numpy()))
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
 
         self.components = reconstruction.numpy()
-        print(self.components)
+        #print(self.components)
