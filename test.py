@@ -19,7 +19,7 @@ images = np.load(list_of_samples_val[0])
 images = images[:200]
 
 weights_path = '/sps/lsst/users/barcelin/data/isolated_galaxies/' + '27.5/centered/test' 
-print(np.shape(images[:, 1, 4:]))
+
  
 images_noisy = convert_to_linear_norm(images[:, 1, 4:])
 images_noisy = np.transpose(images_noisy, axes=(0, 2, 3, 1))
@@ -62,4 +62,4 @@ for i in range(num_images_to_denoise):
     fig.colorbar(im5, ax=ax[i, 4])
     ax[i, 4].set_title("actual residual")
 
-plt.savefig("result")
+plt.savefig("results/denoising")
