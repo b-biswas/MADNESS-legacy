@@ -7,12 +7,14 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, num_components=1, max_iter=100, lr= .15, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=64, num_components=1, max_iter=150, lr= .05, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
         postage_stamp: np.ndarray
             input stamp/field that is to be deblended
+        detected_positions:
+        cutout_size:
         num_components: int
             number of galaxies present in the image.
         max_iter: int
@@ -34,6 +36,8 @@ class Deblend:
         self.use_likelihood = use_likelihood
         self.components = None
         self.channel_last = channel_last
+        self.detected_positions = detected_positions
+        self.cutout_size = cutout_size
 
         self.flow_vae_net = FlowVAEnet()
 
@@ -46,6 +50,59 @@ class Deblend:
         #self.flow_vae_net.vae_model.summary()
         self.gradient_decent(initZ)
 
+    def compute_residual(self, reconstructions):
+        if self.channel_last:
+            residual_field = self.postage_stamp.copy()
+        else:
+            residual_field = np.transpose(self.postage_stamp, axes = (1,2,0)).copy()
+
+        residual_field = tf.Variable(residual_field, dtype=tf.float32)
+
+        for i in range(self.num_components):
+            detected_position = self.detected_positions[i]
+
+            #TODO: make this optional
+
+            #cutout prediction 
+            reconstruction = reconstructions[i]
+            
+            starting_pos_y = detected_position[0] - (self.cutout_size-1)/2
+            ending_pos_y = detected_position[0] + (self.cutout_size-1)/2
+
+            starting_pos_x = detected_position[1] - (self.cutout_size-1)/2
+            ending_pos_x = detected_position[1] + (self.cutout_size-1)/2
+
+            residual_field[int(starting_pos_x) : int(ending_pos_x) + 1, int(starting_pos_y) : int(ending_pos_y) + 1] = tf.subtract(residual_field[int(starting_pos_x) : int(ending_pos_x) + 1, int(starting_pos_y) : int(ending_pos_y) + 1], reconstruction)
+
+        return residual_field
+
+    def predicted_field(self, reconstructions=None):
+        if reconstructions is None:
+            reconstructions = self.num_components
+        
+        prediction = np.zeros_like(self.postage_stamp)
+
+        if not self.channel_last:
+            prediction = np.transpose(prediction, axes=(1,2,0))
+        
+        for i in range(self.num_components):
+            detected_position = self.detected_positions[i]
+
+            #TODO: make this optional
+
+            #cutout prediction 
+            reconstruction = reconstructions[i]
+            max_loc = tf.math.argmax(reconstruction).numpy()
+            
+            starting_pos_x = detected_position[0] - (self.cutout_size-1)/2
+            ending_pos_x = detected_position[0] + (self.cutout_size-1)/2
+
+            starting_pos_y = detected_position[1] - (self.cutout_size-1)/2
+            ending_pos_y = detected_position[1] + (self.cutout_size-1)/2
+
+            prediction[int(starting_pos_x) : int(ending_pos_x) + 1, int(starting_pos_y) : int(ending_pos_y) + 1] += prediction
+
+        return prediction
 
     def gradient_decent(self, optimizer=None, initZ=None):
         """
@@ -73,7 +130,7 @@ class Deblend:
 
         else:
 
-            z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[32], dtype=tf.float32))
+            z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, 32], dtype=tf.float32))
             # TODO: re-train the encoder to find a good starting point.
             #_, initZ = self.flow_vae_net.vae_model(np.expand_dims(X, 0))
             # z = tf.Variable(initial_value = initZ, shape=tf.TensorShape((1,32)), name ='z')
@@ -87,26 +144,29 @@ class Deblend:
         for i in range(self.max_iter):
             #print(i)
             with tf.GradientTape() as tape:
-
-                reconstruction = self.flow_vae_net.decoder(tf.reshape(z,(1, 32))).mean()
-                reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
                 
-                reconstruction_loss = tf.math.reduce_sum(tf.square(X - reconstruction)) / tf.cast(tf.square(sig), tf.float32)
+                reconstructions = self.flow_vae_net.decoder(z).mean()
+                #reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
 
-                sig = tf.math.reduce_std(X - reconstruction)
-                log_likelihood = self.flow_vae_net.flow(tf.reshape(z,(1, 32)))
+                residual_field = self.compute_residual(reconstructions)
+
+                reconstruction_loss = tf.math.reduce_sum(tf.square(residual_field)) / tf.cast(tf.square(sig), tf.float64)
+
+                log_likelihood = tf.cast(tf.math.reduce_sum(self.flow_vae_net.flow(tf.reshape(z,(self.num_components, 32)))), tf.float64)
                 if self.use_likelihood:
-                    loss = reconstruction_loss - log_likelihood
+                    loss = tf.math.subtract(reconstruction_loss, log_likelihood)
                 else:
                     loss = reconstruction_loss
 
+                sig = tf.math.reduce_std(residual_field)
             #print(tf.shape(tf.math.reduce_sum(W, axis=0)))
-            #print("sigma :" + str(sig.numpy()))
-            #print("log prob flow:" + str(log_likelihood.numpy()))
-            #print(loss)
+            print("sigma :" + str(sig.numpy()))
+            print("log prob flow:" + str(log_likelihood.numpy()))
+            print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
 
-        self.components = reconstruction.numpy()
+        self.components = reconstructions.numpy()
         #print(self.components)
