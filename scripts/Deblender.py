@@ -9,7 +9,7 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=64, num_components=1, max_iter=200, lr= .2, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=64, num_components=1, max_iter=200, lr= .1, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
@@ -138,10 +138,10 @@ class Deblend:
 
                 sig = tf.math.reduce_std(residual_field)
             #print(tf.shape(tf.math.reduce_sum(W, axis=0)))
-            print("sigma :" + str(sig.numpy()))
-            print("log prob flow:" + str(log_likelihood.numpy()))
-            print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            print(loss)
+            #print("sigma :" + str(sig.numpy()))
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
