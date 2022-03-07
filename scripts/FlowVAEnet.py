@@ -18,7 +18,7 @@ def flow_loss_fn(x, output):
 class FlowVAEnet:
 
     def __init__(self,
-        input_shape=[64, 64, 6],
+        input_shape=[59, 59, 6],
         latent_dim=32,
         filters=[32,64,128,256],
         kernels=[3,3,3,3],
@@ -76,6 +76,8 @@ class FlowVAEnet:
                     train_generator, 
                     validation_generator, 
                     callbacks, 
+                    train_encoder=True,
+                    train_decoder=True,
                     optimizer=tf.keras.optimizers.Adam(1e-4), 
                     epochs=35, 
                     verbose=1):
@@ -104,9 +106,11 @@ class FlowVAEnet:
             'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy. 
             Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment). 
         """
-
-        self.encoder.trainable=True
-        self.decoder.trainable=True
+        if (not train_decoder) and (not train_encoder):
+            raise ValueError("Training failed because both encoder and decoder are not trainable")
+        
+        self.encoder.trainable=train_encoder
+        self.decoder.trainable=train_decoder
         self.vae_model.summary()
         print("Training only VAE network")
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
