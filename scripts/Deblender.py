@@ -9,13 +9,13 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=150, lr= .15, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=150, lr= .1, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
         postage_stamp: np.ndarray
             input stamp/field that is to be deblended
-        detected_positions:
+        detected_positions: as in array and not image
         cutout_size:
         num_components: int
             number of galaxies present in the image.
@@ -75,8 +75,8 @@ class Deblend:
             starting_pos_y = round(detected_position[1] - (self.cutout_size-1)/2)
 
             indices = np.indices((self.cutout_size, self.cutout_size, tf.shape(reconstruction)[2])).reshape(3, -1).T
-            indices[:, 0] += int(starting_pos_y)
-            indices[:, 1] += int(starting_pos_x)
+            indices[:, 0] += int(starting_pos_x)
+            indices[:, 1] += int(starting_pos_y)
 
             residual_field = tf.tensor_scatter_nd_sub(residual_field, indices, tf.reshape(reconstruction, -1))
 
@@ -109,7 +109,7 @@ class Deblend:
         else:
             # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, 32], dtype=tf.float32))
             # use the encoder to find a good starting point.
-            distances_to_center = list(np.array(self.detected_positions) - self.cutout_size/2)
+            distances_to_center = list(np.array(self.detected_positions) - int((m-1)/2))
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(self.flow_vae_net.encoder(cutouts))
             print("using encoder for initial point")
