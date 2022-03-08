@@ -189,7 +189,7 @@ class FlowVAEnet:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.vae_model.load_weights(weights_path).expect_partial()
 
-    def load_flow_weights(self, weights_path, Folder=True):
+    def load_flow_weights(self, weights_path, is_folder=True):
         """
         Parameters
         ----------
@@ -201,6 +201,6 @@ class FlowVAEnet:
             If True, then the latest checkpoint is loaded.
             else, the checkpoint specified in the path is loaded
         """
-        if Folder:
+        if is_folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.flow_model.load_weights(weights_path).expect_partial()
