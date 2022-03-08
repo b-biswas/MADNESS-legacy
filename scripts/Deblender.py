@@ -9,7 +9,7 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=64, num_components=1, max_iter=200, lr= .1, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=150, lr= .15, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
@@ -41,10 +41,11 @@ class Deblend:
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
 
-        self.flow_vae_net = FlowVAEnet()
+        self.latent_dim = latent_dim
+        self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
-        self.flow_vae_net.load_vae_weights('/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/separated_architecture/vae/')
-        self.flow_vae_net.load_flow_weights('/sps/lsst/users/bbiswas/weights/LSST/FlowDeblender/separated_architecture/fvae/')
+        self.flow_vae_net.load_flow_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/2step_scheduled_lr/fvae/')
+        self.flow_vae_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/2step_scheduled_lr/deblender/val_loss')
 
         #self.flow_vae_net.vae_model.trainable = False
         #self.flow_vae_net.flow_model.trainable = False
@@ -106,14 +107,13 @@ class Deblend:
             z = tf.Variable(initial_value = initZ, name ='z')
 
         else:
-
-            z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, 32], dtype=tf.float32))
-            # TODO: re-train the encoder to find a good starting point.
+            # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, 32], dtype=tf.float32))
+            # use the encoder to find a good starting point.
             distances_to_center = list(np.array(self.detected_positions) - self.cutout_size/2)
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
-            initZ = self.flow_vae_net.encoder(cutouts)
-            initZ = initZ
-            # z = tf.Variable(initial_value = initZ, shape=tf.TensorShape((1,32)), name ='z')
+            initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(self.flow_vae_net.encoder(cutouts))
+            print("using encoder for initial point")
+            z = tf.Variable(initZ.mean())
 
         optimizer = tf.keras.optimizers.Adam(lr = self.lr)
 
