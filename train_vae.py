@@ -38,6 +38,8 @@ validation_generator = COSMOSsequence(validation_path, 'isolated_gal_stamps', 'i
                                  batch_size=batch_size, num_iterations_per_epoch=100, 
                                  normalizer=LinearNormCosmos())
 
+f_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/2step_scheduled_lr/deblender/val_loss')
+
 ######## Define all used callbacks
 checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(filepath=path_weights + "vae/" + 'weights_isolated.{epoch:02d}-{val_loss:.2f}.ckpt', monitor='val_loss', verbose=1, save_best_only=True,save_weights_only=True, mode='min', period=1)
 f_net.train_vae(train_generator, validation_generator, callbacks=[checkpointer_vae_loss], epochs=vae_epochs)
