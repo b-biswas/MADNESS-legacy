@@ -44,10 +44,6 @@ def create_encoder(
     encoder: tf.keras.Model
        model that takes as input the image of a galaxy and projects it to the latent space
     """
-    # Define the prior for the latent space
-    prior = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
-    )
 
     # Input layer
     input_layer = Input(shape=(input_shape))
@@ -56,7 +52,10 @@ def create_encoder(
     h = BatchNormalization()(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
-            filters[i], (kernels[i], kernels[i]), activation=None, padding="same"
+            filters[i],
+            (kernels[i], kernels[i]),
+            activation=None,
+            padding="same",
         )(h)
         h = PReLU()(h)
         h = Conv2D(
@@ -71,10 +70,11 @@ def create_encoder(
     h = Flatten()(h)
     h = PReLU()(h)
     h = Dense(
-        tfp.layers.MultivariateNormalTriL.params_size(latent_dim), activation=None
+        tfp.layers.MultivariateNormalTriL.params_size(latent_dim),
+        activation=None,
     )(h)
 
-    return Model(input_layer, h, name='encoder')
+    return Model(input_layer, h, name="encoder")
 
 
 def create_decoder(
@@ -113,14 +113,14 @@ def create_decoder(
     h = Dense(tfp.layers.MultivariateNormalTriL.params_size(32))(input_layer)
     h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
-    h = Dense(w * w * filters[-1], activation=dense_activation)(tf.cast(h, tf.float32))
+    h = Dense(w * w * filters[-1], activation=None)(tf.cast(h, tf.float32))
     h = PReLU()(h)
     h = Reshape((w, w, filters[-1]))(h)
     for i in range(len(filters) - 1, -1, -1):
         h = Conv2DTranspose(
             filters[i],
             (kernels[i], kernels[i]),
-            activation=conv_activation,
+            activation=None,
             padding="same",
             strides=(2, 2),
         )(h)
@@ -128,12 +128,13 @@ def create_decoder(
         h = Conv2DTranspose(
             filters[i],
             (kernels[i], kernels[i]),
-            activation=conv_activation,
+            activation=None,
             padding="same",
         )(h)
         h = PReLU()(h)
-        
-    h = Conv2D(input_shape[-1]*2, (3, 3), activation="relu", padding="same")(h)
+
+    # keep the output of the last layer as relu as we want only positive flux values.
+    h = Conv2D(input_shape[-1] * 2, (3, 3), activation="relu", padding="same")(h)
 
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
     cropping = int(h.get_shape()[1] - input_shape[0])
@@ -147,10 +148,14 @@ def create_decoder(
             )(h)
 
     # Build the encoder only
-    h = tfp.layers.DistributionLambda(make_distribution_fn=lambda t: tfd.Normal(loc=t[...,:input_shape[-1]], scale=1e-4 +t[...,input_shape[-1]:])
-                                          ,convert_to_tensor_fn=tfp.distributions.Distribution.sample)(h)
+    h = tfp.layers.DistributionLambda(
+        make_distribution_fn=lambda t: tfd.Normal(
+            loc=t[..., : input_shape[-1]], scale=1e-4 + t[..., input_shape[-1] :]
+        ),
+        convert_to_tensor_fn=tfp.distributions.Distribution.sample,
+    )(h)
 
-    return Model(input_layer,h, name='decoder')
+    return Model(input_layer, h, name="decoder")
 
 
 def create_flow(latent_dim=32, num_nf_layers=5):
@@ -184,7 +189,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     for i in range(num_nf_layers):
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[64, 64], activation="relu"
+            params=2, hidden_units=[128, 128], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
