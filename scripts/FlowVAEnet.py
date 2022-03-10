@@ -10,10 +10,10 @@ tfb = tfp.bijectors
 
 def vae_loss_fn(x, x_decoded_mean):
     # tf.print(tf.shape(x_decoded_mean.log_prob(x)))
-    return -tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3])
+    return -tf.math.reduce_mean(tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3]))
 
 def flow_loss_fn(x, output):
-    return -output 
+    return -tf.math.reduce_mean(output)
 
 class FlowVAEnet:
 
@@ -128,7 +128,7 @@ class FlowVAEnet:
                     train_generator, 
                     validation_generator, 
                     callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(5e-4), 
+                    optimizer=tf.keras.optimizers.Adam(1e-4), 
                     epochs=35, 
                     verbose=1):
         """
@@ -164,6 +164,16 @@ class FlowVAEnet:
         self.flow_model.summary()
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
+
+        def scheduler(epoch, lr):
+            if (epoch + 1) % 10 != 0:
+                return lr
+            else:
+                return lr * tf.math.exp(-1.0)
+
+        lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
+
+        callbacks += [lr_scheduler]
         self.flow_model.fit_generator(generator=train_generator,
                                     epochs=epochs,
                                     verbose=verbose,

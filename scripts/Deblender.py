@@ -9,7 +9,7 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=150, lr= .1, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=200, lr= .03, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
@@ -44,8 +44,8 @@ class Deblend:
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
-        self.flow_vae_net.load_flow_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/2step_scheduled_lr/fvae/')
-        self.flow_vae_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/2step_scheduled_lr/deblender/val_loss')
+        self.flow_vae_net.load_flow_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/weights/fvae/')
+        self.flow_vae_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/weights/deblender/val_loss')
 
         #self.flow_vae_net.vae_model.trainable = False
         #self.flow_vae_net.flow_model.trainable = False
