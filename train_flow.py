@@ -17,7 +17,7 @@ f_net = FlowVAEnet(latent_dim=latent_dim, linear_norm=linear_norm)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 # Keras Callbacks
-path_weights = '/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos8dim/'
+path_weights = '/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim/'
 
 ######## List of data samples
 def listdir_fullpath(d):
