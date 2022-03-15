@@ -166,7 +166,7 @@ class FlowVAEnet:
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
 
         def scheduler(epoch, lr):
-            if (epoch + 1) % 25 != 0:
+            if (epoch + 1) % 30 != 0:
                 return lr
             else:
                 return lr * tf.math.exp(-1.0)
