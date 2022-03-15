@@ -11,7 +11,7 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=45, lr= .3, latent_dim=10, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=60, lr= .3, latent_dim=10, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
@@ -126,12 +126,13 @@ class Deblend:
             if i % 15==0:
                 optimizer.lr = optimizer.lr/2
 
-        with tf.GradientTape() as tape:
+        for i in range(self.max_iter):
+            #print(i)
+            if i % 15==0:
+                optimizer.lr = optimizer.lr/2
+            
+            with tf.GradientTape() as tape:
                 
-            for i in range(self.max_iter):
-                #print(i)
-                if i % 15==0:
-                    optimizer.lr = optimizer.lr/2
                 reconstructions = self.flow_vae_net.decoder(z).mean()
                 #reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
 
