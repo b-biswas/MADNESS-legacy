@@ -159,65 +159,39 @@ def create_decoder(
 
     return Model(input_layer, h, name="decoder")
 
+def make_MAF(latent_dim=32, hidden_units=[16, 16], activation='relu'):
+    MADE = tfb.AutoregressiveNetwork(
+        params=2,
+        event_shape=[latent_dim],
+        hidden_units=hidden_units,
+        activation=activation)
+    return tfb.MaskedAutoregressiveFlow(shift_and_log_scale_fn=MADE)
 
-def create_flow(latent_dim=32, num_nf_layers=5):
-    """
-    Create the Flow model that takes as input a point in latent space and returns the log_prob
+class Flow(tf.keras.layers.Layer):
+    def __init__(self, latent_dim, num_nf_layers):
+        super(Flow, self).__init__()
+        self.latent_dim = latent_dim
+        self.num_nf_layers = num_nf_layers
 
-    Parameters
-    __________
-    latent_dim: int
-        size of the latent space
-    num_nf_layers: int
-        number of layers in the normalizing flow
+    def build(self, input_shape):
+        bijectors = []
+        permute_arr = np.arange(self.latent_dim)[::-1]
+        for i in range(self.num_nf_layers):
+            masked_auto_i = make_MAF(latent_dim=self.latent_dim,
+                                    hidden_units=[256, 256],
+                                    activation='relu')
+            bijectors.append(masked_auto_i)
+            bijectors.append(tfb.Permute(permutation=permute_arr))
 
-    Returns
-    _______
-    model: tf.keras.Model
-        model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
-    bijector_chain: tfp.bijectors.Chain
-        bijector chain that is being applied on the base distribution
-    """
+        flow_bijectors = tfb.Chain(list(reversed(bijectors[:-1])))
 
-    bijects = []
-    zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1
-    )
-    # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
+        base_dist = tfd.Sample(tfd.Normal(loc=0, scale=1), self.latent_dim)
+        self.trainable_dist = tfd.TransformedDistribution(
+            distribution=base_dist,
+            bijector=flow_bijectors)
 
-    # loop over desired bijectors and put into list
-    permute_arr = np.arange(latent_dim)[::-1]
-
-    for i in range(num_nf_layers):
-
-        # add batchnorm layers
-        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
-        #TODO: make batchnorms every 2 layers
-
-        # create a MAF
-        anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[128, 128], activation="relu"
-        )
-        ab = tfb.MaskedAutoregressiveFlow(anet)
-
-        # Add bijectors to a list
-        bijects.append(ab)
-
-        # Add permutation layers
-        permute = tfb.Permute(permute_arr)
-        bijects.append(permute)
-
-    # combine the bijectors into a chain
-    bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
-
-    # make transformed dist
-    td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
-
-    # create and return model
-    input_layer = Input(shape=(latent_dim,))
-    model = Model(input_layer, td.log_prob(input_layer), name='flow')
-    return model, bijector_chain
-
+    def call(self, inputs):
+        return self.trainable_dist.log_prob(inputs)
 
 # Function to define model
 def create_model_fvae(
@@ -287,7 +261,7 @@ def create_model_fvae(
 )
 
     # create the flow transformation
-    flow, bijector = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    flow = Flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
@@ -301,6 +275,6 @@ def create_model_fvae(
     )(encoder(x_input))
 
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
-    flow_model = Model(inputs=x_input, outputs=flow(z.sample())) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
+    flow_model = Model(inputs=x_input, outputs=flow(z)) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
-    return vae_model, flow_model, encoder, decoder, flow, bijector
+    return vae_model, flow_model, encoder, decoder, flow

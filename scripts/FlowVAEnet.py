@@ -1,4 +1,4 @@
-from scripts.model import create_model_fvae, create_flow
+from scripts.model import create_model_fvae
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -61,7 +61,7 @@ class FlowVAEnet:
         self.num_nf_layers = num_nf_layers
         self.linear_norm = linear_norm
 
-        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.bijector = create_model_fvae(input_shape=self.input_shape, 
+        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow = create_model_fvae(input_shape=self.input_shape, 
                                                                                 latent_dim=self.latent_dim, 
                                                                                 filters=self.filters, 
                                                                                 kernels=self.kernels, 
