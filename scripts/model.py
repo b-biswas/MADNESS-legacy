@@ -69,6 +69,8 @@ def create_encoder(
 
     h = Flatten()(h)
     h = PReLU()(h)
+    h = Dense(1024)(h)
+    h = PReLU()(h)
     h = Dense(
         tfp.layers.MultivariateNormalTriL.params_size(latent_dim),
         activation=None,
@@ -110,7 +112,7 @@ def create_decoder(
     """
 
     input_layer = Input(shape=(latent_dim,))
-    h = Dense(tfp.layers.MultivariateNormalTriL.params_size(32))(input_layer)
+    h = Dense(256)(input_layer)
     h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
     h = Dense(w * w * filters[-1], activation=None)(tf.cast(h, tf.float32))
@@ -179,7 +181,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
 
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1
     )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
@@ -187,6 +189,11 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     permute_arr = np.arange(latent_dim)[::-1]
 
     for i in range(num_nf_layers):
+
+        # add batchnorm layers
+        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
+        #TODO: make batchnorms every 2 layers
+
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2, hidden_units=[128, 128], activation="relu"
@@ -200,12 +207,8 @@ def create_flow(latent_dim=32, num_nf_layers=5):
         permute = tfb.Permute(permute_arr)
         bijects.append(permute)
 
-        # add batchnorm layers
-        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
-        #TODO: make batchnorms every 2 layers
-
     # combine the bijectors into a chain
-    bijector_chain = tfb.Chain(bijects)
+    bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
 
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)

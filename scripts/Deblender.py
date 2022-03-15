@@ -1,4 +1,6 @@
 import numpy as np
+from tensorflow import math
+from tensorflow import square, reshape, tensor_scatter_nd_sub, cast
 import tensorflow as tf
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.extraction import extract_cutouts
@@ -9,7 +11,7 @@ tfd = tfp.distributions
 
 class Deblend:
 
-    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=200, lr= .03, latent_dim=32, initZ=None, use_likelihood=True, channel_last=False):
+    def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=45, lr= .3, latent_dim=10, initZ=None, use_likelihood=True, channel_last=False):
         """
         Parameters
         __________
@@ -44,8 +46,8 @@ class Deblend:
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
-        self.flow_vae_net.load_flow_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/weights/fvae/')
-        self.flow_vae_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/weights/deblender/val_loss')
+        self.flow_vae_net.load_flow_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim/fvae/')
+        self.flow_vae_net.load_vae_weights(weights_path='/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim/deblender/val_loss')
 
         #self.flow_vae_net.vae_model.trainable = False
         #self.flow_vae_net.flow_model.trainable = False
@@ -78,7 +80,7 @@ class Deblend:
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
 
-            residual_field = tf.tensor_scatter_nd_sub(residual_field, indices, tf.reshape(reconstruction, -1))
+            residual_field = tensor_scatter_nd_sub(residual_field, indices, reshape(reconstruction, -1))
 
         return residual_field
 
@@ -107,7 +109,7 @@ class Deblend:
             z = tf.Variable(initial_value = initZ, name ='z')
 
         else:
-            # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, 32], dtype=tf.float32))
+            # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
             # use the encoder to find a good starting point.
             distances_to_center = list(np.array(self.detected_positions) - int((m-1)/2))
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
@@ -121,16 +123,23 @@ class Deblend:
 
         for i in range(self.max_iter):
             #print(i)
-            with tf.GradientTape() as tape:
+            if i % 15==0:
+                optimizer.lr = optimizer.lr/2
+
+        with tf.GradientTape() as tape:
                 
+            for i in range(self.max_iter):
+                #print(i)
+                if i % 15==0:
+                    optimizer.lr = optimizer.lr/2
                 reconstructions = self.flow_vae_net.decoder(z).mean()
                 #reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
 
                 residual_field = self.compute_residual(reconstructions)
 
-                reconstruction_loss = tf.cast(tf.math.reduce_sum(tf.square(residual_field)), tf.float32) / tf.cast(tf.square(sig), tf.float32)
+                reconstruction_loss = cast(tf.math.reduce_sum(square(residual_field)), tf.float32) / cast(square(sig), tf.float32)
 
-                log_likelihood = tf.cast(tf.math.reduce_sum(self.flow_vae_net.flow(tf.reshape(z,(self.num_components, 32)))), tf.float32)
+                log_likelihood = cast(tf.math.reduce_sum(self.flow_vae_net.flow(reshape(z,(self.num_components, self.latent_dim)))), tf.float32)
                 if self.use_likelihood:
                     loss = tf.math.subtract(reconstruction_loss, log_likelihood)
                 else:
