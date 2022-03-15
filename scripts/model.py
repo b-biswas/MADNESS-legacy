@@ -169,7 +169,7 @@ def make_MAF(latent_dim=32, hidden_units=[16, 16], activation='relu'):
 
 class Flow(tf.keras.layers.Layer):
     def __init__(self, latent_dim, num_nf_layers):
-        super(Flow, self).__init__()
+        super(Flow, self).__init__(name="flow")
         self.latent_dim = latent_dim
         self.num_nf_layers = num_nf_layers
 
