@@ -1,6 +1,7 @@
 import numpy as np
 
 import tensorflow as tf
+
 import tensorflow_probability as tfp
 
 import matplotlib as mpl
@@ -159,10 +160,9 @@ def create_decoder(
 
     return Model(input_layer, h, name="decoder")
 
-def make_MAF(latent_dim=32, hidden_units=[16, 16], activation='relu'):
+def make_MAF(hidden_units=[16, 16], activation='relu'):
     MADE = tfb.AutoregressiveNetwork(
         params=2,
-        event_shape=[latent_dim],
         hidden_units=hidden_units,
         activation=activation)
     return tfb.MaskedAutoregressiveFlow(shift_and_log_scale_fn=MADE)
@@ -177,20 +177,22 @@ class Flow(tf.keras.layers.Layer):
         bijectors = []
         permute_arr = np.arange(self.latent_dim)[::-1]
         for i in range(self.num_nf_layers):
-            masked_auto_i = make_MAF(latent_dim=self.latent_dim,
-                                    hidden_units=[256, 256],
+            masked_auto_i = make_MAF(hidden_units=[256, 256],
                                     activation='relu')
+            print(i)
             bijectors.append(masked_auto_i)
             bijectors.append(tfb.Permute(permutation=permute_arr))
-
+        
         flow_bijectors = tfb.Chain(list(reversed(bijectors[:-1])))
-
+        print(flow_bijectors)
         base_dist = tfd.Sample(tfd.Normal(loc=0, scale=1), self.latent_dim)
         self.trainable_dist = tfd.TransformedDistribution(
             distribution=base_dist,
             bijector=flow_bijectors)
+        print(len(flow_bijectors.trainable_variables))
 
     def call(self, inputs):
+        print(self.trainable_dist)
         return self.trainable_dist.log_prob(inputs)
 
 # Function to define model
@@ -262,7 +264,6 @@ def create_model_fvae(
 
     # create the flow transformation
     flow = Flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
-
     # Define the prior for the latent space
     prior = tfd.Independent(
         tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)

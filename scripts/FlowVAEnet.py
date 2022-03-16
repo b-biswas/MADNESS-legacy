@@ -160,7 +160,7 @@ class FlowVAEnet:
         
         self.flow.trainable = True
         self.encoder.trainable = False
-        self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
+        self.flow_model.compile(optimizer=optimizer, loss=lambda _, log_prob: -log_prob)
         self.flow_model.summary()
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
