@@ -125,11 +125,6 @@ class Deblend:
             #print(i)
             if i % 15==0:
                 optimizer.lr = optimizer.lr/2
-
-        for i in range(self.max_iter):
-            #print(i)
-            if i % 15==0:
-                optimizer.lr = optimizer.lr/2
             
             with tf.GradientTape() as tape:
                 
