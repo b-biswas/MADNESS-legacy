@@ -179,20 +179,16 @@ class Flow(tf.keras.layers.Layer):
         for i in range(self.num_nf_layers):
             masked_auto_i = make_MAF(hidden_units=[256, 256],
                                     activation='relu')
-            print(i)
             bijectors.append(masked_auto_i)
             bijectors.append(tfb.Permute(permutation=permute_arr))
         
         flow_bijectors = tfb.Chain(list(reversed(bijectors[:-1])))
-        print(flow_bijectors)
         base_dist = tfd.Sample(tfd.Normal(loc=0, scale=1), self.latent_dim)
         self.trainable_dist = tfd.TransformedDistribution(
             distribution=base_dist,
             bijector=flow_bijectors)
-        print(len(flow_bijectors.trainable_variables))
 
     def call(self, inputs):
-        print(self.trainable_dist)
         return self.trainable_dist.log_prob(inputs)
 
 # Function to define model
