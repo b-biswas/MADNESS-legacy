@@ -181,6 +181,7 @@ class Flow(tf.keras.layers.Layer):
                                     activation='relu')
             bijectors.append(masked_auto_i)
             bijectors.append(tfb.Permute(permutation=permute_arr))
+            bijectors.append(tfb.BatchNormalization())
         
         flow_bijectors = tfb.Chain(list(reversed(bijectors[:-1])))
         base_dist = tfd.Sample(tfd.Normal(loc=0, scale=1), self.latent_dim)
