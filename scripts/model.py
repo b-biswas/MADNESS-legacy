@@ -260,7 +260,8 @@ def create_model_fvae(
 )
 
     # create the flow transformation
-    flow = Flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    flow_layer = Flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    _ = flow_layer(np.zeros((1, latent_dim)))
     # Define the prior for the latent space
     prior = tfd.Independent(
         tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
@@ -273,6 +274,6 @@ def create_model_fvae(
     )(encoder(x_input))
 
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
-    flow_model = Model(inputs=x_input, outputs=flow(z)) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
+    flow_model = Model(inputs=x_input, outputs=flow_layer(z)) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
-    return vae_model, flow_model, encoder, decoder, flow
+    return vae_model, flow_model, encoder, decoder, flow_layer
