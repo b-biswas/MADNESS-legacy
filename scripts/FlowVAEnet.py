@@ -61,7 +61,7 @@ class FlowVAEnet:
         self.num_nf_layers = num_nf_layers
         self.linear_norm = linear_norm
 
-        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.bijector = create_model_fvae(input_shape=self.input_shape, 
+        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.td = create_model_fvae(input_shape=self.input_shape, 
                                                                                 latent_dim=self.latent_dim, 
                                                                                 filters=self.filters, 
                                                                                 kernels=self.kernels, 
@@ -160,6 +160,7 @@ class FlowVAEnet:
         
         self.flow.trainable = True
         self.encoder.trainable = False
+        self.encoder.get_layer('batchnorm1').trainable = False
         self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
         self.flow_model.summary()
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
@@ -180,7 +181,7 @@ class FlowVAEnet:
                                     shuffle=True,
                                     validation_data=validation_generator,
                                     callbacks=callbacks + terminate_on_nan,
-                                    workers=4, 
+                                    workers=8, 
                                     use_multiprocessing=True)
 
     def load_vae_weights(self, weights_path, is_folder=True):
