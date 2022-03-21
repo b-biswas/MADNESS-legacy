@@ -49,7 +49,7 @@ def create_encoder(
     input_layer = Input(shape=(input_shape))
 
     # Define the model
-    h = BatchNormalization()(input_layer)
+    h = BatchNormalization(name='batchnorm1')(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
             filters[i],
@@ -152,7 +152,7 @@ def create_decoder(
     # Build the encoder only
     h = tfp.layers.DistributionLambda(
         make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=1e-4 + t[..., input_shape[-1] :]
+            loc=t[..., : input_shape[-1]], scale=1e-6 + t[..., input_shape[-1] :]
         ),
         convert_to_tensor_fn=tfp.distributions.Distribution.sample,
     )(h)
@@ -216,7 +216,7 @@ def create_flow(latent_dim=32, num_nf_layers=5):
     # create and return model
     input_layer = Input(shape=(latent_dim,))
     model = Model(input_layer, td.log_prob(input_layer), name='flow')
-    return model, bijector_chain
+    return model, td
 
 
 # Function to define model
@@ -287,7 +287,7 @@ def create_model_fvae(
 )
 
     # create the flow transformation
-    flow, bijector = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    flow, td = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
@@ -303,4 +303,4 @@ def create_model_fvae(
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
     flow_model = Model(inputs=x_input, outputs=flow(z.sample())) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
-    return vae_model, flow_model, encoder, decoder, flow, bijector
+    return vae_model, flow_model, encoder, decoder, flow, td
