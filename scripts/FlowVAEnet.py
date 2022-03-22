@@ -25,7 +25,7 @@ class FlowVAEnet:
         conv_activation=None,
         dense_activation=None,
         linear_norm=True,
-        num_nf_layers=5,
+        num_nf_layers=6,
     ):
         """
         Creates the required models according to the specifications.
@@ -128,7 +128,7 @@ class FlowVAEnet:
                     train_generator, 
                     validation_generator, 
                     callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(1e-4), 
+                    optimizer=tf.keras.optimizers.Adam(1e-3), 
                     epochs=35, 
                     verbose=1):
         """
@@ -160,7 +160,8 @@ class FlowVAEnet:
         
         self.flow.trainable = True
         self.encoder.trainable = False
-        self.flow_model.compile(optimizer=optimizer, loss=lambda _, log_prob: -log_prob)
+        self.encoder.get_layer('batchnorm1').trainable = False
+        self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
         self.flow_model.summary()
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
@@ -180,7 +181,7 @@ class FlowVAEnet:
                                     shuffle=True,
                                     validation_data=validation_generator,
                                     callbacks=callbacks + terminate_on_nan,
-                                    workers=4, 
+                                    workers=8, 
                                     use_multiprocessing=True)
 
     def load_vae_weights(self, weights_path, is_folder=True):

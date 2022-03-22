@@ -50,7 +50,7 @@ def create_encoder(
     input_layer = Input(shape=(input_shape))
 
     # Define the model
-    h = BatchNormalization()(input_layer)
+    h = BatchNormalization(name='batchnorm1')(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
             filters[i],
@@ -153,7 +153,7 @@ def create_decoder(
     # Build the encoder only
     h = tfp.layers.DistributionLambda(
         make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=1e-4 + t[..., input_shape[-1] :]
+            loc=t[..., : input_shape[-1]], scale=1e-6 + t[..., input_shape[-1] :]
         ),
         convert_to_tensor_fn=tfp.distributions.Distribution.sample,
     )(h)
@@ -177,11 +177,11 @@ class Flow(tf.keras.layers.Layer):
         bijectors = []
         permute_arr = np.arange(self.latent_dim)[::-1]
         for i in range(self.num_nf_layers):
-            masked_auto_i = make_MAF(hidden_units=[256, 256],
-                                    activation='relu')
+            masked_auto_i = make_MAF(hidden_units=[64, 64],
+                                    activation='sigmoid')
             bijectors.append(masked_auto_i)
             bijectors.append(tfb.Permute(permutation=permute_arr))
-            bijectors.append(tfb.BatchNormalization())
+            #bijectors.append(tfb.BatchNormalization())
         
         flow_bijectors = tfb.Chain(list(reversed(bijectors[:-1])))
         base_dist = tfd.Sample(tfd.Normal(loc=0, scale=1), self.latent_dim)
@@ -200,7 +200,7 @@ def create_model_fvae(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    num_nf_layers=5,
+    num_nf_layers=6,
 ):
     """
     Create the sinmultaneously create the VAE and the flow model.
