@@ -181,7 +181,7 @@ def create_flow(latent_dim=32, num_nf_layers=6):
 
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
     )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
@@ -191,12 +191,12 @@ def create_flow(latent_dim=32, num_nf_layers=6):
     for i in range(num_nf_layers):
 
         # add batchnorm layers
-        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
+        #bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
         #TODO: make batchnorms every 2 layers
 
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[64, 64], activation="relu"
+            params=2, hidden_units=[64, 64], activation="sigmoid",
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
@@ -207,6 +207,7 @@ def create_flow(latent_dim=32, num_nf_layers=6):
         permute = tfb.Permute(permute_arr)
         bijects.append(permute)
 
+    #bijects.append(tfb.BatchNormalization())
     # combine the bijectors into a chain
     bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
 
