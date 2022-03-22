@@ -160,7 +160,7 @@ def create_decoder(
     return Model(input_layer, h, name="decoder")
 
 
-def create_flow(latent_dim=32, num_nf_layers=5):
+def create_flow(latent_dim=32, num_nf_layers=6):
     """
     Create the Flow model that takes as input a point in latent space and returns the log_prob
 
@@ -227,7 +227,7 @@ def create_model_fvae(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    num_nf_layers=5,
+    num_nf_layers=6,
 ):
     """
     Create the sinmultaneously create the VAE and the flow model.

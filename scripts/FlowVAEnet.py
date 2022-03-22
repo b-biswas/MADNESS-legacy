@@ -25,7 +25,7 @@ class FlowVAEnet:
         conv_activation=None,
         dense_activation=None,
         linear_norm=True,
-        num_nf_layers=5,
+        num_nf_layers=6,
     ):
         """
         Creates the required models according to the specifications.
@@ -128,7 +128,7 @@ class FlowVAEnet:
                     train_generator, 
                     validation_generator, 
                     callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(1e-4), 
+                    optimizer=tf.keras.optimizers.Adam(1e-3), 
                     epochs=35, 
                     verbose=1):
         """
