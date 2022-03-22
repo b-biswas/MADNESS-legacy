@@ -25,7 +25,7 @@ class FlowVAEnet:
         conv_activation=None,
         dense_activation=None,
         linear_norm=True,
-        num_nf_layers=5,
+        num_nf_layers=6,
     ):
         """
         Creates the required models according to the specifications.
@@ -61,7 +61,7 @@ class FlowVAEnet:
         self.num_nf_layers = num_nf_layers
         self.linear_norm = linear_norm
 
-        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.bijector = create_model_fvae(input_shape=self.input_shape, 
+        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.td = create_model_fvae(input_shape=self.input_shape, 
                                                                                 latent_dim=self.latent_dim, 
                                                                                 filters=self.filters, 
                                                                                 kernels=self.kernels, 
@@ -128,7 +128,7 @@ class FlowVAEnet:
                     train_generator, 
                     validation_generator, 
                     callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(1e-4), 
+                    optimizer=tf.keras.optimizers.Adam(1e-3), 
                     epochs=35, 
                     verbose=1):
         """
@@ -160,13 +160,14 @@ class FlowVAEnet:
         
         self.flow.trainable = True
         self.encoder.trainable = False
+        self.encoder.get_layer('batchnorm1').trainable = False
         self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
         self.flow_model.summary()
         #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
 
         def scheduler(epoch, lr):
-            if (epoch + 1) % 10 != 0:
+            if (epoch + 1) % 30 != 0:
                 return lr
             else:
                 return lr * tf.math.exp(-1.0)
@@ -180,7 +181,7 @@ class FlowVAEnet:
                                     shuffle=True,
                                     validation_data=validation_generator,
                                     callbacks=callbacks + terminate_on_nan,
-                                    workers=0, 
+                                    workers=8, 
                                     use_multiprocessing=True)
 
     def load_vae_weights(self, weights_path, is_folder=True):
