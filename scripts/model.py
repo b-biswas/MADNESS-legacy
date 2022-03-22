@@ -49,7 +49,7 @@ def create_encoder(
     input_layer = Input(shape=(input_shape))
 
     # Define the model
-    h = BatchNormalization(name='batchnorm1')(input_layer)
+    h = BatchNormalization()(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
             filters[i],
@@ -68,8 +68,6 @@ def create_encoder(
         h = PReLU()(h)
 
     h = Flatten()(h)
-    h = PReLU()(h)
-    h = Dense(1024)(h)
     h = PReLU()(h)
     h = Dense(
         tfp.layers.MultivariateNormalTriL.params_size(latent_dim),
@@ -112,7 +110,7 @@ def create_decoder(
     """
 
     input_layer = Input(shape=(latent_dim,))
-    h = Dense(256)(input_layer)
+    h = Dense(tfp.layers.MultivariateNormalTriL.params_size(32))(input_layer)
     h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
     h = Dense(w * w * filters[-1], activation=None)(tf.cast(h, tf.float32))
@@ -152,7 +150,7 @@ def create_decoder(
     # Build the encoder only
     h = tfp.layers.DistributionLambda(
         make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=1e-6 + t[..., input_shape[-1] :]
+            loc=t[..., : input_shape[-1]], scale=1e-4 + t[..., input_shape[-1] :]
         ),
         convert_to_tensor_fn=tfp.distributions.Distribution.sample,
     )(h)
@@ -160,7 +158,7 @@ def create_decoder(
     return Model(input_layer, h, name="decoder")
 
 
-def create_flow(latent_dim=32, num_nf_layers=6):
+def create_flow(latent_dim=32, num_nf_layers=5):
     """
     Create the Flow model that takes as input a point in latent space and returns the log_prob
 
@@ -189,14 +187,9 @@ def create_flow(latent_dim=32, num_nf_layers=6):
     permute_arr = np.arange(latent_dim)[::-1]
 
     for i in range(num_nf_layers):
-
-        # add batchnorm layers
-        #bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
-        #TODO: make batchnorms every 2 layers
-
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[64, 64], activation="sigmoid",
+            params=2, hidden_units=[128, 128], activation="relu"
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
@@ -207,9 +200,12 @@ def create_flow(latent_dim=32, num_nf_layers=6):
         permute = tfb.Permute(permute_arr)
         bijects.append(permute)
 
-    #bijects.append(tfb.BatchNormalization())
+        # add batchnorm layers
+        bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
+        #TODO: make batchnorms every 2 layers
+
     # combine the bijectors into a chain
-    bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
+    bijector_chain = tfb.Chain(bijects)
 
     # make transformed dist
     td = tfd.TransformedDistribution(zdist, bijector=bijector_chain)
@@ -217,7 +213,7 @@ def create_flow(latent_dim=32, num_nf_layers=6):
     # create and return model
     input_layer = Input(shape=(latent_dim,))
     model = Model(input_layer, td.log_prob(input_layer), name='flow')
-    return model, td
+    return model, bijector_chain
 
 
 # Function to define model
@@ -228,7 +224,7 @@ def create_model_fvae(
     kernels,
     conv_activation=None,
     dense_activation=None,
-    num_nf_layers=6,
+    num_nf_layers=5,
 ):
     """
     Create the sinmultaneously create the VAE and the flow model.
@@ -288,7 +284,7 @@ def create_model_fvae(
 )
 
     # create the flow transformation
-    flow, td = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
+    flow, bijector = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
@@ -304,4 +300,4 @@ def create_model_fvae(
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
     flow_model = Model(inputs=x_input, outputs=flow(z.sample())) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
-    return vae_model, flow_model, encoder, decoder, flow, td
+    return vae_model, flow_model, encoder, decoder, flow, bijector
