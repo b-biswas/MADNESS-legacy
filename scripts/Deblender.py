@@ -3,9 +3,18 @@ import tensorflow as tf
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.extraction import extract_cutouts
 import tensorflow_probability as tfp
-
+import logging
+import time
 
 tfd = tfp.distributions
+
+# logging level set to INFO
+logging.basicConfig(format='%(message)s',
+                    level=logging.INFO)
+
+LOG = logging.getLogger(__name__)
+
+tf.get_logger().setLevel('ERROR')
 
 class Deblend:
 
@@ -97,7 +106,6 @@ class Deblend:
         if not self.channel_last:
             X = np.transpose(X, axes = (1,2,0))
 
-        print(np.shape(X))
         m, n, b = np.shape(X) 
         
         if initZ is not None: 
@@ -110,13 +118,20 @@ class Deblend:
             distances_to_center = list(np.array(self.detected_positions) - int((m-1)/2))
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(self.flow_vae_net.encoder(cutouts))
-            print("using encoder for initial point")
+            LOG.info("Using encoder for initial point")
             z = tf.Variable(initZ.mean())
 
         optimizer = tf.keras.optimizers.Adam(lr = self.lr)
 
         sig = tf.math.reduce_std(X)
 
+        LOG.info("\n--- Starting gradient descent in the latent space ---")
+        LOG.info("Number of iterations: " + str(self.max_iter))
+        LOG.info("Learning rate: " + str(self.lr))
+        LOG.info("Number of components: " + str(self.lr))
+        LOG.info("Dimensions of latent space: " + str(self.lr))
+
+        t0 = time.time()
         for i in range(self.max_iter):
 
             with tf.GradientTape() as tape:
@@ -142,5 +157,6 @@ class Deblend:
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
 
+        LOG.info("--- Gradient descent complete ---")
+        LOG.info("\nTime taken for gradient descent: " + str(time.time()-t0))
         self.components = reconstructions.numpy()
-        #print(self.components)

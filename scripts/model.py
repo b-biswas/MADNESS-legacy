@@ -141,7 +141,6 @@ def create_decoder(
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
     cropping = int(h.get_shape()[1] - input_shape[0])
     if cropping > 0:
-        print("in cropping")
         if cropping % 2 == 0:
             h = Cropping2D(cropping / 2)(h)
         else:
