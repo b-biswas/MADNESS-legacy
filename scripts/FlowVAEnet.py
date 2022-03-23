@@ -27,9 +27,6 @@ class FlowVAEnet:
         latent_dim=32,
         filters=[32,64,128,256],
         kernels=[3,3,3,3],
-        conv_activation=None,
-        dense_activation=None,
-        linear_norm=True,
         num_nf_layers=6,
     ):
         """
@@ -45,12 +42,6 @@ class FlowVAEnet:
             filters used for the convolutional layers
         kernels: list
             kernels used for the convolutional layers
-        conv_activation: str
-            activation for conv layers
-        dense_activation: str
-            activation for dense layers
-        linear_norm: bool
-            to specify by normalization is linear or not
         num_nf_layers: int
             number of layers in the flow network
         """
@@ -61,17 +52,12 @@ class FlowVAEnet:
         self.filters = filters
         self.kernels = kernels
         self.nb_of_bands = input_shape[2]
-        self.conv_activation = conv_activation
-        self.dense_activation = dense_activation
         self.num_nf_layers = num_nf_layers
-        self.linear_norm = linear_norm
 
         self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.td = create_model_fvae(input_shape=self.input_shape, 
                                                                                 latent_dim=self.latent_dim, 
                                                                                 filters=self.filters, 
                                                                                 kernels=self.kernels, 
-                                                                                conv_activation=self.conv_activation, 
-                                                                                dense_activation=self.dense_activation,
                                                                                 num_nf_layers=self.num_nf_layers)
 
         self.optimizer = None

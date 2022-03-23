@@ -14,8 +14,6 @@ def create_encoder(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 ):
     """
     function to create the encoder
@@ -30,10 +28,6 @@ def create_encoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
-    conv_activation: str
-        activation for conv layers
-    dense_activation: str
-        activation for dense layers
 
     Returns
     -------
@@ -80,8 +74,6 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 ):
     """
     function to create the decoder 
@@ -96,10 +88,6 @@ def create_decoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
-    conv_activation: str
-        activation for conv layers
-    dense_activation: str
-        activation for dense layers
 
     Returns
     -------
@@ -221,8 +209,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
     num_nf_layers=6,
 ):
     """
@@ -240,10 +226,6 @@ def create_model_fvae(
         kernels used for the convolutional layers
     conv_activation: str
         activation for conv layers
-    dense_activation: str
-        activation for dense layers
-    num_nf_layers: int
-        number of layers in the flow network
 
     Returns
     -------
@@ -268,8 +250,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 )
     
     # create the decoder
@@ -278,8 +258,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 )
 
     # create the flow transformation
