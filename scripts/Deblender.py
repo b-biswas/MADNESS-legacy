@@ -14,8 +14,6 @@ logging.basicConfig(format='%(message)s',
 
 LOG = logging.getLogger(__name__)
 
-tf.get_logger().setLevel('ERROR')
-
 class Deblend:
 
     def __init__(self, postage_stamp, detected_positions, cutout_size=59, num_components=1, max_iter=60, lr= .3, latent_dim=10, initZ=None, use_likelihood=True, channel_last=False):
@@ -128,8 +126,8 @@ class Deblend:
         LOG.info("\n--- Starting gradient descent in the latent space ---")
         LOG.info("Number of iterations: " + str(self.max_iter))
         LOG.info("Learning rate: " + str(self.lr))
-        LOG.info("Number of components: " + str(self.lr))
-        LOG.info("Dimensions of latent space: " + str(self.lr))
+        LOG.info("Number of components: " + str(self.num_components))
+        LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
         for i in range(self.max_iter):
