@@ -3,12 +3,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import matplotlib as mpl
-import warnings
-import os
-
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Conv2D, Input, Dense, Dropout, MaxPool2D, Flatten,  Reshape, UpSampling2D, Cropping2D, Conv2DTranspose, PReLU, Concatenate, Lambda, BatchNormalization, concatenate, LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Conv2D, Input, Dense, Flatten,  Reshape, Cropping2D, Conv2DTranspose, PReLU, BatchNormalization, concatenate, LeakyReLU
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
