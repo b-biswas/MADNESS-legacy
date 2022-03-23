@@ -122,7 +122,6 @@ class Deblend:
         sig = tf.math.reduce_std(X)
 
         for i in range(self.max_iter):
-            
             with tf.GradientTape() as tape:
                 
                 reconstructions = self.flow_vae_net.decoder(z).mean()
