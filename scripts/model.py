@@ -3,12 +3,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-import matplotlib as mpl
-import warnings
-import os
-
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Conv2D, Input, Dense, Dropout, MaxPool2D, Flatten,  Reshape, UpSampling2D, Cropping2D, Conv2DTranspose, PReLU, Concatenate, Lambda, BatchNormalization, concatenate, LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Conv2D, Input, Dense, Flatten,  Reshape, Cropping2D, Conv2DTranspose, PReLU, BatchNormalization, concatenate, LeakyReLU
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -18,8 +14,6 @@ def create_encoder(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 ):
     """
     function to create the encoder
@@ -34,10 +28,6 @@ def create_encoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
-    conv_activation: str
-        activation for conv layers
-    dense_activation: str
-        activation for dense layers
 
     Returns
     -------
@@ -84,8 +74,6 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 ):
     """
     function to create the decoder 
@@ -100,10 +88,6 @@ def create_decoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
-    conv_activation: str
-        activation for conv layers
-    dense_activation: str
-        activation for dense layers
 
     Returns
     -------
@@ -141,7 +125,6 @@ def create_decoder(
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
     cropping = int(h.get_shape()[1] - input_shape[0])
     if cropping > 0:
-        print("in cropping")
         if cropping % 2 == 0:
             h = Cropping2D(cropping / 2)(h)
         else:
@@ -226,8 +209,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
     num_nf_layers=6,
 ):
     """
@@ -245,10 +226,6 @@ def create_model_fvae(
         kernels used for the convolutional layers
     conv_activation: str
         activation for conv layers
-    dense_activation: str
-        activation for dense layers
-    num_nf_layers: int
-        number of layers in the flow network
 
     Returns
     -------
@@ -273,8 +250,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 )
     
     # create the decoder
@@ -283,8 +258,6 @@ def create_model_fvae(
     latent_dim,
     filters,
     kernels,
-    conv_activation=None,
-    dense_activation=None,
 )
 
     # create the flow transformation

@@ -1,13 +1,18 @@
 import numpy as np
-from tensorflow import math
-from tensorflow import square, reshape, tensor_scatter_nd_sub, cast
 import tensorflow as tf
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.extraction import extract_cutouts
 import tensorflow_probability as tfp
-
+import logging
+import time
 
 tfd = tfp.distributions
+
+# logging level set to INFO
+logging.basicConfig(format='%(message)s',
+                    level=logging.INFO)
+
+LOG = logging.getLogger(__name__)
 
 class Deblend:
 
@@ -80,7 +85,7 @@ class Deblend:
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
 
-            residual_field = tensor_scatter_nd_sub(residual_field, indices, reshape(reconstruction, -1))
+            residual_field = tf.tensor_scatter_nd_sub(residual_field, indices, tf.reshape(reconstruction, -1))
 
         return residual_field
 
@@ -99,10 +104,7 @@ class Deblend:
         if not self.channel_last:
             X = np.transpose(X, axes = (1,2,0))
 
-        print(np.shape(X))
         m, n, b = np.shape(X) 
-
-        initializer = tf.random_uniform_initializer(0,1)
         
         if initZ is not None: 
             # check constraint parameter over here
@@ -114,39 +116,45 @@ class Deblend:
             distances_to_center = list(np.array(self.detected_positions) - int((m-1)/2))
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(self.flow_vae_net.encoder(cutouts))
-            print("using encoder for initial point")
+            LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
         optimizer = tf.keras.optimizers.Adam(lr = self.lr)
 
         sig = tf.math.reduce_std(X)
 
+        LOG.info("\n--- Starting gradient descent in the latent space ---")
+        LOG.info("Number of iterations: " + str(self.max_iter))
+        LOG.info("Learning rate: " + str(self.lr))
+        LOG.info("Number of Galaxies: " + str(self.num_components))
+        LOG.info("Dimensions of latent space: " + str(self.latent_dim))
+
+        t0 = time.time()
         for i in range(self.max_iter):
 
             with tf.GradientTape() as tape:
                 
                 reconstructions = self.flow_vae_net.decoder(z).mean()
-                #reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
 
                 residual_field = self.compute_residual(reconstructions)
 
-                reconstruction_loss = cast(tf.math.reduce_sum(square(residual_field)), tf.float32) / cast(square(sig), tf.float32)
+                reconstruction_loss = tf.cast(tf.math.reduce_sum(tf.square(residual_field)), tf.float32) / tf.cast(tf.square(sig), tf.float32)
 
-                log_likelihood = cast(tf.math.reduce_sum(self.flow_vae_net.flow(reshape(z,(self.num_components, self.latent_dim)))), tf.float32)
+                log_likelihood = tf.cast(tf.math.reduce_sum(self.flow_vae_net.flow(tf.reshape(z,(self.num_components, self.latent_dim)))), tf.float32)
                 if self.use_likelihood:
                     loss = tf.math.subtract(reconstruction_loss, log_likelihood)
                 else:
                     loss = reconstruction_loss
 
                 sig = tf.math.reduce_std(residual_field)
-            #print(tf.shape(tf.math.reduce_sum(W, axis=0)))
-            #print("sigma :" + str(sig.numpy()))
-            print("log prob flow:" + str(log_likelihood.numpy()))
-            print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            print(loss)
+
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
 
+        LOG.info("--- Gradient descent complete ---")
+        LOG.info("\nTime taken for gradient descent: " + str(time.time()-t0))
         self.components = reconstructions.numpy()
-        #print(self.components)
