@@ -99,8 +99,6 @@ class Deblend:
 
         print(np.shape(X))
         m, n, b = np.shape(X) 
-
-        initializer = tf.random_uniform_initializer(0,1)
         
         if initZ is not None: 
             # check constraint parameter over here
@@ -124,7 +122,6 @@ class Deblend:
             with tf.GradientTape() as tape:
                 
                 reconstructions = self.flow_vae_net.decoder(z).mean()
-                #reconstruction = tf.math.reduce_sum(reconstruction, axis=0)
 
                 residual_field = self.compute_residual(reconstructions)
 
@@ -137,11 +134,10 @@ class Deblend:
                     loss = reconstruction_loss
 
                 sig = tf.math.reduce_std(residual_field)
-            #print(tf.shape(tf.math.reduce_sum(W, axis=0)))
-            #print("sigma :" + str(sig.numpy()))
-            print("log prob flow:" + str(log_likelihood.numpy()))
-            print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            print(loss)
+
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars=[(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))

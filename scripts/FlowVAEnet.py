@@ -1,8 +1,7 @@
-from scripts.model import create_model_fvae, create_flow
+from scripts.model import create_model_fvae
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tensorflow.keras.layers import Input
 import tensorflow.keras.backend as K
 
 tfd = tfp.distributions
@@ -160,10 +159,10 @@ class FlowVAEnet:
         
         self.flow.trainable = True
         self.encoder.trainable = False
+        # TODO: find a better way to fix all batchnorm layers
         self.encoder.get_layer('batchnorm1').trainable = False
         self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
         self.flow_model.summary()
-        #self.model.compile(optimizer=optimizer, loss={'flow': flow_loss_fn})
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
 
         def scheduler(epoch, lr):
