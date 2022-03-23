@@ -116,7 +116,7 @@ class Deblend:
             distances_to_center = list(np.array(self.detected_positions) - int((m-1)/2))
             cutouts = extract_cutouts(X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b)
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(self.flow_vae_net.encoder(cutouts))
-            LOG.info("Using encoder for initial point")
+            LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
         optimizer = tf.keras.optimizers.Adam(lr = self.lr)
@@ -126,7 +126,7 @@ class Deblend:
         LOG.info("\n--- Starting gradient descent in the latent space ---")
         LOG.info("Number of iterations: " + str(self.max_iter))
         LOG.info("Learning rate: " + str(self.lr))
-        LOG.info("Number of components: " + str(self.num_components))
+        LOG.info("Number of Galaxies: " + str(self.num_components))
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
