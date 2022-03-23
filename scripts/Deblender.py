@@ -1,6 +1,4 @@
 import numpy as np
-from tensorflow import math
-from tensorflow import square, reshape, tensor_scatter_nd_sub, cast
 import tensorflow as tf
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.extraction import extract_cutouts
@@ -80,7 +78,7 @@ class Deblend:
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
 
-            residual_field = tensor_scatter_nd_sub(residual_field, indices, reshape(reconstruction, -1))
+            residual_field = tf.tensor_scatter_nd_sub(residual_field, indices, tf.reshape(reconstruction, -1))
 
         return residual_field
 
@@ -130,9 +128,9 @@ class Deblend:
 
                 residual_field = self.compute_residual(reconstructions)
 
-                reconstruction_loss = cast(tf.math.reduce_sum(square(residual_field)), tf.float32) / cast(square(sig), tf.float32)
+                reconstruction_loss = tf.cast(tf.math.reduce_sum(tf.square(residual_field)), tf.float32) / tf.cast(tf.square(sig), tf.float32)
 
-                log_likelihood = cast(tf.math.reduce_sum(self.flow_vae_net.flow(reshape(z,(self.num_components, self.latent_dim)))), tf.float32)
+                log_likelihood = tf.cast(tf.math.reduce_sum(self.flow_vae_net.flow(tf.reshape(z,(self.num_components, self.latent_dim)))), tf.float32)
                 if self.use_likelihood:
                     loss = tf.math.subtract(reconstruction_loss, log_likelihood)
                 else:
