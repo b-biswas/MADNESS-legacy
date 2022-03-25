@@ -1,32 +1,36 @@
-from scripts.model import create_model_fvae
 import tensorflow as tf
+import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
-import tensorflow.keras.backend as K
+from scripts.model import create_model_fvae
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
 import logging
 
-logging.basicConfig(format='%(message)s',
-                    level=logging.INFO)
+logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
+
 def vae_loss_fn(x, x_decoded_mean):
-    return -tf.math.reduce_mean(tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3]))
+    return -tf.math.reduce_mean(
+        tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3])
+    )
+
 
 def flow_loss_fn(x, output):
     return -tf.math.reduce_mean(output)
 
-class FlowVAEnet:
 
-    def __init__(self,
+class FlowVAEnet:
+    def __init__(
+        self,
         input_shape=[59, 59, 6],
         latent_dim=32,
-        filters=[32,64,128,256],
-        kernels=[3,3,3,3],
+        filters=[32, 64, 128, 256],
+        kernels=[3, 3, 3, 3],
         num_nf_layers=6,
     ):
         """
@@ -54,24 +58,35 @@ class FlowVAEnet:
         self.nb_of_bands = input_shape[2]
         self.num_nf_layers = num_nf_layers
 
-        self.vae_model, self.flow_model, self.encoder, self.decoder, self.flow, self.td = create_model_fvae(input_shape=self.input_shape, 
-                                                                                latent_dim=self.latent_dim, 
-                                                                                filters=self.filters, 
-                                                                                kernels=self.kernels, 
-                                                                                num_nf_layers=self.num_nf_layers)
+        (
+            self.vae_model,
+            self.flow_model,
+            self.encoder,
+            self.decoder,
+            self.flow,
+            self.td,
+        ) = create_model_fvae(
+            input_shape=self.input_shape,
+            latent_dim=self.latent_dim,
+            filters=self.filters,
+            kernels=self.kernels,
+            num_nf_layers=self.num_nf_layers,
+        )
 
         self.optimizer = None
         self.callbacks = None
 
-    def train_vae(self, 
-                    train_generator, 
-                    validation_generator, 
-                    callbacks, 
-                    train_encoder=True,
-                    train_decoder=True,
-                    optimizer=tf.keras.optimizers.Adam(1e-4), 
-                    epochs=35, 
-                    verbose=1):
+    def train_vae(
+        self,
+        train_generator,
+        validation_generator,
+        callbacks,
+        train_encoder=True,
+        train_decoder=True,
+        optimizer=tf.keras.optimizers.Adam(1e-4),
+        epochs=35,
+        verbose=1,
+    ):
         """
         trains only the vae model. (both the encoder and the decoder)
 
@@ -84,8 +99,8 @@ class FlowVAEnet:
             generator to be used for validation
             keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         callbacks: list
-            List of keras.callbacks.Callback instances. 
-            List of callbacks to apply during training. 
+            List of keras.callbacks.Callback instances.
+            List of callbacks to apply during training.
             See tf.keras.callbacks
         optimizer: str or tf.keras.optimizers
             String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
@@ -93,15 +108,17 @@ class FlowVAEnet:
             number of epochs for which the model is going to be trained
         verbose: int
             verbose option for training.
-            'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch. 
-            'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy. 
-            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment). 
+            'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
+            'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy.
+            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
         """
         if (not train_decoder) and (not train_encoder):
-            raise ValueError("Training failed because both encoder and decoder are not trainable")
-        
-        self.encoder.trainable=train_encoder
-        self.decoder.trainable=train_decoder
+            raise ValueError(
+                "Training failed because both encoder and decoder are not trainable"
+            )
+
+        self.encoder.trainable = train_encoder
+        self.decoder.trainable = train_decoder
         self.vae_model.summary()
         LOG.info("\n--- Training only VAE network ---")
         LOG.info("Encoder status: " + str(train_encoder))
@@ -109,24 +126,32 @@ class FlowVAEnet:
         # LOG.info("Initial learning rate: " + str(lr))
         LOG.info("Number of epochs: " + str(epochs))
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
-        self.vae_model.compile(optimizer=optimizer, loss={"decoder": vae_loss_fn}, experimental_run_tf_function=False)
-        self.vae_model.fit_generator(generator=train_generator, 
-                                    epochs=epochs,
-                                    verbose=verbose,
-                                    shuffle=True,
-                                    validation_data=validation_generator,
-                                    callbacks= callbacks + terminate_on_nan,
-                                    workers=0, 
-                                    use_multiprocessing = True)
+        self.vae_model.compile(
+            optimizer=optimizer,
+            loss={"decoder": vae_loss_fn},
+            experimental_run_tf_function=False,
+        )
+        self.vae_model.fit_generator(
+            generator=train_generator,
+            epochs=epochs,
+            verbose=verbose,
+            shuffle=True,
+            validation_data=validation_generator,
+            callbacks=callbacks + terminate_on_nan,
+            workers=0,
+            use_multiprocessing=True,
+        )
 
-    def train_flow(self, 
-                    train_generator, 
-                    validation_generator, 
-                    callbacks, 
-                    optimizer=tf.keras.optimizers.Adam(1e-3), 
-                    epochs=35,
-                    num_scheduler_epochs=30,
-                    verbose=1):
+    def train_flow(
+        self,
+        train_generator,
+        validation_generator,
+        callbacks,
+        optimizer=tf.keras.optimizers.Adam(1e-3),
+        epochs=35,
+        num_scheduler_epochs=30,
+        verbose=1,
+    ):
         """
         Trains only the flow part of the flow_model while keeping the encoder constant.
 
@@ -139,26 +164,30 @@ class FlowVAEnet:
             generator to be used for validation
             keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
         callbacks: list
-            List of keras.callbacks.Callback instances. 
-            List of callbacks to apply during training. 
+            List of keras.callbacks.Callback instances.
+            List of callbacks to apply during training.
             See tf.keras.callbacks
         optimizer: str or tf.keras.optimizers
             String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
         epochs: int
             number of epochs for which the model is going to be trained
-        num_scheduler_epochs: int 
+        num_scheduler_epochs: int
             number of epochs after which learning rate is reduced by a factor of `e`
         verbose: int
             verbose option for training.
-            'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch. 
-            'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy. 
-            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment). 
+            'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
+            'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy.
+            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
         """
         self.flow.trainable = True
         self.encoder.trainable = False
         # TODO: find a better way to fix all batchnorm layers
-        self.encoder.get_layer('batchnorm1').trainable = False
-        self.flow_model.compile(optimizer=optimizer, loss={"flow": flow_loss_fn}, experimental_run_tf_function=False)
+        self.encoder.get_layer("batchnorm1").trainable = False
+        self.flow_model.compile(
+            optimizer=optimizer,
+            loss={"flow": flow_loss_fn},
+            experimental_run_tf_function=False,
+        )
         self.flow_model.summary()
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
 
@@ -167,6 +196,7 @@ class FlowVAEnet:
                 return lr
             else:
                 return lr * tf.math.exp(-1.0)
+
         LOG.info("\n--- Training only FLOW network ---")
         # LOG.info("Initial learning rate: " + str(lr))
         LOG.info("Number of epochs: " + str(epochs))
@@ -175,14 +205,16 @@ class FlowVAEnet:
         lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
         callbacks += [lr_scheduler]
-        self.flow_model.fit_generator(generator=train_generator,
-                                    epochs=epochs,
-                                    verbose=verbose,
-                                    shuffle=True,
-                                    validation_data=validation_generator,
-                                    callbacks=callbacks + terminate_on_nan,
-                                    workers=8, 
-                                    use_multiprocessing=True)
+        self.flow_model.fit_generator(
+            generator=train_generator,
+            epochs=epochs,
+            verbose=verbose,
+            shuffle=True,
+            validation_data=validation_generator,
+            callbacks=callbacks + terminate_on_nan,
+            workers=8,
+            use_multiprocessing=True,
+        )
 
     def load_vae_weights(self, weights_path, is_folder=True):
         """
