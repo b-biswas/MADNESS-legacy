@@ -1,13 +1,24 @@
 import numpy as np
-
 import tensorflow as tf
 import tensorflow_probability as tfp
-
+from tensorflow.keras.layers import (
+    BatchNormalization,
+    Conv2D,
+    Conv2DTranspose,
+    Cropping2D,
+    Dense,
+    Flatten,
+    Input,
+    LeakyReLU,
+    PReLU,
+    Reshape,
+    concatenate,
+)
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Conv2D, Input, Dense, Flatten,  Reshape, Cropping2D, Conv2DTranspose, PReLU, BatchNormalization, concatenate, LeakyReLU
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
+
 
 def create_encoder(
     input_shape,
@@ -39,7 +50,7 @@ def create_encoder(
     input_layer = Input(shape=(input_shape))
 
     # Define the model
-    h = BatchNormalization(name='batchnorm1')(input_layer)
+    h = BatchNormalization(name="batchnorm1")(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
             filters[i],
@@ -76,7 +87,7 @@ def create_decoder(
     kernels,
 ):
     """
-    function to create the decoder 
+    function to create the decoder
 
     Parameters
     ----------
@@ -174,12 +185,14 @@ def create_flow(latent_dim=32, num_nf_layers=6):
     for i in range(num_nf_layers):
 
         # add batchnorm layers
-        #bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
-        #TODO: make batchnorms every 2 layers
+        # bijects.append(tfb.BatchNormalization()) # otherwise log_prob returns nans!
+        # TODO: make batchnorms every 2 layers
 
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
-            params=2, hidden_units=[64, 64], activation="sigmoid",
+            params=2,
+            hidden_units=[64, 64],
+            activation="sigmoid",
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
@@ -190,7 +203,7 @@ def create_flow(latent_dim=32, num_nf_layers=6):
         permute = tfb.Permute(permute_arr)
         bijects.append(permute)
 
-    #bijects.append(tfb.BatchNormalization())
+    # bijects.append(tfb.BatchNormalization())
     # combine the bijectors into a chain
     bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
 
@@ -199,7 +212,7 @@ def create_flow(latent_dim=32, num_nf_layers=6):
 
     # create and return model
     input_layer = Input(shape=(latent_dim,))
-    model = Model(input_layer, td.log_prob(input_layer), name='flow')
+    model = Model(input_layer, td.log_prob(input_layer), name="flow")
     return model, td
 
 
@@ -230,7 +243,7 @@ def create_model_fvae(
     Returns
     -------
     vae_model: tf.keras.Model
-        vae model which consists of the encoder and decoder. 
+        vae model which consists of the encoder and decoder.
     flow_model: tf.keras.Model
         flow model which consists of the encoder and flow transormation layers
     encoder: tf.keras.Model
@@ -246,26 +259,27 @@ def create_model_fvae(
 
     # create the encoder
     encoder = create_encoder(
-    input_shape,
-    latent_dim,
-    filters,
-    kernels,
-)
-    
+        input_shape,
+        latent_dim,
+        filters,
+        kernels,
+    )
+
     # create the decoder
     decoder = create_decoder(
-    input_shape,
-    latent_dim,
-    filters,
-    kernels,
-)
+        input_shape,
+        latent_dim,
+        filters,
+        kernels,
+    )
 
     # create the flow transformation
     flow, td = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
     prior = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+    )
 
     # Build the model
     x_input = Input(shape=(input_shape))
@@ -275,6 +289,8 @@ def create_model_fvae(
     )(encoder(x_input))
 
     vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
-    flow_model = Model(inputs=x_input, outputs=flow(z.sample())) # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
+    flow_model = Model(
+        inputs=x_input, outputs=flow(z.sample())
+    )  # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
     return vae_model, flow_model, encoder, decoder, flow, td
