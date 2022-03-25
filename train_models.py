@@ -16,7 +16,7 @@ deblender_epochs = 100
 latent_dim = 32
 num_iter_per_epoch = None
 
-f_net = FlowVAEnet(latent_dim=latent_dim, linear_norm=linear_norm)
+f_net = FlowVAEnet(latent_dim=latent_dim)
 
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 
