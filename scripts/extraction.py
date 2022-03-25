@@ -1,10 +1,11 @@
-import numpy as np
 import logging
 
-logging.basicConfig(format='%(message)s',
-                    level=logging.INFO)
+import numpy as np
+
+logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
+
 
 def extract_cutouts(
     field_image, field_size, galaxy_distances_to_center, cutout_size=59, nb_of_bands=6
@@ -41,7 +42,9 @@ def extract_cutouts(
             flag = True
 
     if flag:
-        
-        LOG.warning("Some galaxies are too close from the border of the field to be considered here.")
+
+        LOG.warning(
+            "Some galaxies are too close from the border of the field to be considered here."
+        )
 
     return cutout_images, list_idx
