@@ -173,6 +173,8 @@ class Deblend:
                     tf.math.reduce_sum(tf.square(residual_field)), tf.float32
                 ) / tf.cast(tf.square(sig), tf.float32)
 
+                reconstruction_loss = tf.divide(reconstruction_loss, 2)
+
                 log_likelihood = tf.cast(
                     tf.math.reduce_sum(
                         self.flow_vae_net.flow(
@@ -188,9 +190,9 @@ class Deblend:
 
                 sig = tf.math.reduce_std(residual_field)
 
-            # print("log prob flow:" + str(log_likelihood.numpy()))
-            # print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            # print(loss)
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #print(loss)
             grad = tape.gradient(loss, [z])
             grads_and_vars = [(grad, [z])]
             optimizer.apply_gradients(zip(grad, [z]))
