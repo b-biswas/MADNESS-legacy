@@ -125,6 +125,7 @@ class Deblend:
 
         return residual_field
 
+    @tf.function(jit_compile=True)
     def gradient_tape_loss(self, z, optimizer):
         with tf.GradientTape() as tape:
 
