@@ -77,6 +77,17 @@ class Deblend:
         # self.flow_vae_net.vae_model.summary()
         self.gradient_decent(initZ)
 
+    def get_components(self):
+        """
+        Function to return the predicted components. 
+
+        The final returned image has same value of channel_last as input image.
+        """
+        if self.channel_last:
+            return self.components.copy()
+        return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
+        
+
     def compute_residual(self, reconstructions=None):
         if reconstructions is None:
             reconstructions = self.components
