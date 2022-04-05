@@ -106,8 +106,8 @@ class Deblend:
             # cutout prediction
             reconstruction = reconstructions[i]
 
-            starting_pos_x = round(detected_position[0] - (self.cutout_size - 1) / 2)
-            starting_pos_y = round(detected_position[1] - (self.cutout_size - 1) / 2)
+            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
             indices = (
                 np.indices(
@@ -211,3 +211,4 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
         self.components = reconstructions.numpy()
+        #print(self.components)
