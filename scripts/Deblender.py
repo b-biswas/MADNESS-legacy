@@ -125,6 +125,37 @@ class Deblend:
 
         return residual_field
 
+    def gradient_tape_loss(self, z, optimizer):
+        with tf.GradientTape() as tape:
+
+            reconstructions = self.flow_vae_net.decoder(z).mean()
+
+            residual_field = self.compute_residual(reconstructions)
+
+            sig = tf.math.reduce_std(residual_field)
+            reconstruction_loss = tf.cast(
+                tf.math.reduce_sum(tf.square(residual_field)), tf.float32
+            ) / tf.cast(tf.square(sig), tf.float32)
+
+            reconstruction_loss = tf.divide(reconstruction_loss, 2)
+
+            log_likelihood = tf.cast(
+                tf.math.reduce_sum(
+                    self.flow_vae_net.flow(
+                        tf.reshape(z, (self.num_components, self.latent_dim))
+                    )
+                ),
+                tf.float32,
+            )
+            if self.use_likelihood:
+                loss = tf.math.subtract(reconstruction_loss, log_likelihood)
+            else:
+                loss = reconstruction_loss
+            self.gradient_tape_loss()
+            grad = tape.gradient(loss, [z])
+            grads_and_vars = [(grad, [z])]
+            self.optimizer.apply_gradients(zip(grad, [z]))
+
     def gradient_decent(self, optimizer=None, initZ=None):
         """
         perform the gradient descent step to separate components (galaxies)
@@ -174,41 +205,13 @@ class Deblend:
         t0 = time.time()
         for i in range(self.max_iter):
 
-            with tf.GradientTape() as tape:
-
-                reconstructions = self.flow_vae_net.decoder(z).mean()
-
-                residual_field = self.compute_residual(reconstructions)
-
-                reconstruction_loss = tf.cast(
-                    tf.math.reduce_sum(tf.square(residual_field)), tf.float32
-                ) / tf.cast(tf.square(sig), tf.float32)
-
-                reconstruction_loss = tf.divide(reconstruction_loss, 2)
-
-                log_likelihood = tf.cast(
-                    tf.math.reduce_sum(
-                        self.flow_vae_net.flow(
-                            tf.reshape(z, (self.num_components, self.latent_dim))
-                        )
-                    ),
-                    tf.float32,
-                )
-                if self.use_likelihood:
-                    loss = tf.math.subtract(reconstruction_loss, log_likelihood)
-                else:
-                    loss = reconstruction_loss
-
-                sig = tf.math.reduce_std(residual_field)
-
+            
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
             #print(loss)
-            grad = tape.gradient(loss, [z])
-            grads_and_vars = [(grad, [z])]
-            optimizer.apply_gradients(zip(grad, [z]))
+            loss = self.gradient_tape_loss(z, optimizer)
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
-        self.components = reconstructions.numpy()
+        self.components = self.flow_vae_net.decoder(z).numpy()
         #print(self.components)
