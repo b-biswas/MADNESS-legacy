@@ -131,32 +131,35 @@ class Deblend:
 
         return residual_field
 
+    @tf.function 
+    def compute_loss(self, z, postage_stamp, sig, index_pos_to_sub):
+        reconstructions = self.flow_vae_net.decoder(z).mean()
+
+        residual_field = self.compute_residual(postage_stamp, reconstructions, index_pos_to_sub)
+
+        reconstruction_loss = tf.cast(
+            tf.math.reduce_sum(tf.square(residual_field)), tf.float32
+        ) / tf.cast(tf.square(sig), tf.float32)
+
+        reconstruction_loss = tf.divide(reconstruction_loss, 2)
+
+        log_likelihood = tf.cast(
+            tf.math.reduce_sum(
+                self.flow_vae_net.flow(
+                    tf.reshape(z, (self.num_components, self.latent_dim))
+                )
+            ),
+            tf.float32,
+        )
+        if self.use_likelihood:
+            return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
+        return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
+
     @tf.function
     def gradient_descent_step(self, z, postage_stamp, sig, index_pos_to_sub):
         with tf.GradientTape() as tape:
 
-            reconstructions = self.flow_vae_net.decoder(z).mean()
-
-            residual_field = self.compute_residual(postage_stamp, reconstructions, index_pos_to_sub)
-
-            reconstruction_loss = tf.cast(
-                tf.math.reduce_sum(tf.square(residual_field)), tf.float32
-            ) / tf.cast(tf.square(sig), tf.float32)
-
-            reconstruction_loss = tf.divide(reconstruction_loss, 2)
-
-            log_likelihood = tf.cast(
-                tf.math.reduce_sum(
-                    self.flow_vae_net.flow(
-                        tf.reshape(z, (self.num_components, self.latent_dim))
-                    )
-                ),
-                tf.float32,
-            )
-            if self.use_likelihood:
-                loss = tf.math.subtract(reconstruction_loss, log_likelihood)
-            else:
-                loss = reconstruction_loss
+            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, sig=sig, index_pos_to_sub=index_pos_to_sub)
 
             grad = tape.gradient(loss, [z])
             self.optimizer.apply_gradients(zip(grad, [z]))
