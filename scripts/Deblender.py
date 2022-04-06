@@ -93,7 +93,7 @@ class Deblend:
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
     @tf.function
-    def compute_residual(self, postage_stamp, reconstructions=None):
+    def compute_residual(self, postage_stamp, reconstructions=None, index_pos_to_sub=None):
 
         if reconstructions is None:
             reconstructions = self.components
@@ -105,25 +105,25 @@ class Deblend:
         residual_field = tf.cast(residual_field, tf.float32)
 
         for i in range(self.num_components):
-            detected_position = self.detected_positions[i]
+            if index_pos_to_sub is None:
+                detected_position = self.detected_positions[i]
 
-            # TODO: make this optional
+                starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+                starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
-            # cutout prediction
-            reconstruction = reconstructions[i]
-
-            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
-
-            indices = (
-                np.indices(
-                    (self.cutout_size, self.cutout_size, self.num_bands)
+                indices = (
+                    np.indices(
+                        (self.cutout_size, self.cutout_size, self.num_bands)
+                    )
+                    .reshape(3, -1)
+                    .T
                 )
-                .reshape(3, -1)
-                .T
-            )
-            indices[:, 0] += int(starting_pos_x)
-            indices[:, 1] += int(starting_pos_y)
+                indices[:, 0] += int(starting_pos_x)
+                indices[:, 1] += int(starting_pos_y)
+            else:
+                indices = index_pos_to_sub[i]
+
+            reconstruction = reconstructions[i]
 
             residual_field = tf.tensor_scatter_nd_sub(
                 residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
@@ -132,12 +132,12 @@ class Deblend:
         return residual_field
 
     @tf.function
-    def gradient_tape_loss(self, z, postage_stamp, sig):
+    def gradient_descent_step(self, z, postage_stamp, sig, index_pos_to_sub):
         with tf.GradientTape() as tape:
 
             reconstructions = self.flow_vae_net.decoder(z).mean()
 
-            residual_field = self.compute_residual(postage_stamp, reconstructions)
+            residual_field = self.compute_residual(postage_stamp, reconstructions, index_pos_to_sub)
 
             reconstruction_loss = tf.cast(
                 tf.math.reduce_sum(tf.square(residual_field)), tf.float32
@@ -159,12 +159,32 @@ class Deblend:
                 loss = reconstruction_loss
 
             grad = tape.gradient(loss, [z])
-
             self.optimizer.apply_gradients(zip(grad, [z]))
         
             return grad, loss, reconstruction_loss, log_likelihood, residual_field
 
-    def gradient_decent(self, optimizer=None, initZ=None):
+    def get_index_pos_to_sub(self):
+        index_list = []
+        for i in range(self.num_components):
+            detected_position = self.detected_positions[i]
+
+            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+
+            indices = (
+                np.indices(
+                    (self.cutout_size, self.cutout_size, self.num_bands)
+                )
+                .reshape(3, -1)
+                .T
+            )
+            indices[:, 0] += int(starting_pos_x)
+            indices[:, 1] += int(starting_pos_y)
+            index_list.append(indices)
+
+        return np.array(index_list)
+
+    def gradient_decent(self, initZ=None):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -211,20 +231,16 @@ class Deblend:
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
-
+        index_pos_to_sub = self.get_index_pos_to_sub()
         for i in range(self.max_iter):
-
-            print(i)
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            grad, loss, reconstruction_loss, log_likelihood, residual_field = self.gradient_tape_loss(z, self.postage_stamp, sig)
+            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, sig, index_pos_to_sub)
             sig = tf.math.reduce_std(residual_field)
-            
-            
-            
+
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
-        print(z)
+
         self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
