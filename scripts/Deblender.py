@@ -92,7 +92,7 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    @tf.function
+    @tf.function(experimental_compile=True)
     def compute_residual(self, postage_stamp, reconstructions=None, index_pos_to_sub=None):
 
         if reconstructions is None:
