@@ -92,7 +92,7 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    #@tf.function
+    @tf.function
     def compute_residual(self, postage_stamp, reconstructions=None):
 
         if reconstructions is None:
@@ -100,9 +100,9 @@ class Deblend:
         if self.channel_last:
             residual_field = postage_stamp
         else:
-            residual_field = np.transpose(postage_stamp, axes=(1, 2, 0))
+            residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
-        residual_field = tf.Variable(residual_field)
+        residual_field = tf.cast(residual_field, tf.float32)
 
         for i in range(self.num_components):
             detected_position = self.detected_positions[i]
@@ -117,7 +117,7 @@ class Deblend:
 
             indices = (
                 np.indices(
-                    (self.cutout_size, self.cutout_size, tf.shape(reconstruction)[2])
+                    (self.cutout_size, self.cutout_size, self.num_bands)
                 )
                 .reshape(3, -1)
                 .T
@@ -126,20 +126,19 @@ class Deblend:
             indices[:, 1] += int(starting_pos_y)
 
             residual_field = tf.tensor_scatter_nd_sub(
-                residual_field, indices, tf.cast(tf.reshape(reconstruction, -1), tf.float64)
+                residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
             )
 
         return residual_field
 
-    # @tf.function
-    def gradient_tape_loss(self, z, postage_stamp):
+    @tf.function
+    def gradient_tape_loss(self, z, postage_stamp, sig):
         with tf.GradientTape() as tape:
 
             reconstructions = self.flow_vae_net.decoder(z).mean()
 
             residual_field = self.compute_residual(postage_stamp, reconstructions)
 
-            sig = tf.math.reduce_std(residual_field)
             reconstruction_loss = tf.cast(
                 tf.math.reduce_sum(tf.square(residual_field)), tf.float32
             ) / tf.cast(tf.square(sig), tf.float32)
@@ -160,11 +159,10 @@ class Deblend:
                 loss = reconstruction_loss
 
             grad = tape.gradient(loss, [z])
-            print(grad)
 
             self.optimizer.apply_gradients(zip(grad, [z]))
         
-            return grad, loss, reconstruction_loss, log_likelihood
+            return grad, loss, reconstruction_loss, log_likelihood, residual_field
 
     def gradient_decent(self, optimizer=None, initZ=None):
         """
@@ -219,10 +217,8 @@ class Deblend:
             print(i)
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            grad, loss, reconstruction_loss, log_likelihood = self.gradient_tape_loss(z, self.postage_stamp)
-            print("log prob flow:" + str(log_likelihood.numpy()))
-            print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            print(loss)
+            grad, loss, reconstruction_loss, log_likelihood, residual_field = self.gradient_tape_loss(z, self.postage_stamp, sig)
+            sig = tf.math.reduce_std(residual_field)
             
             
             
