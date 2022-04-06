@@ -1,5 +1,6 @@
 import logging
 import time
+from turtle import pos
 
 import numpy as np
 import tensorflow as tf
@@ -60,6 +61,10 @@ class Deblend:
         self.channel_last = channel_last
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
+        if channel_last: 
+            self.num_bands = np.shape(postage_stamp)[-1]
+        else:
+            self.num_bands = np.shape(postage_stamp)[0]
 
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
@@ -75,6 +80,7 @@ class Deblend:
         # self.flow_vae_net.flow_model.trainable = False
 
         # self.flow_vae_net.vae_model.summary()
+        self.optimizer=None
         self.gradient_decent(initZ)
 
     def get_components(self):
@@ -86,17 +92,15 @@ class Deblend:
         if self.channel_last:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
-        
 
-    def compute_residual(self, reconstructions=None):
+    @tf.function
+    def compute_residual(self, postage_stamp=None, reconstructions=None):
         if reconstructions is None:
             reconstructions = self.components
         if self.channel_last:
-            residual_field = self.postage_stamp.copy()
+            residual_field = postage_stamp
         else:
-            residual_field = np.transpose(self.postage_stamp, axes=(1, 2, 0)).copy()
-
-        residual_field = tf.Variable(residual_field, dtype=tf.float32)
+            residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
         for i in range(self.num_components):
             detected_position = self.detected_positions[i]
@@ -111,7 +115,7 @@ class Deblend:
 
             indices = (
                 np.indices(
-                    (self.cutout_size, self.cutout_size, tf.shape(reconstruction)[2])
+                    (self.cutout_size, self.cutout_size, self.num_bands)
                 )
                 .reshape(3, -1)
                 .T
@@ -119,19 +123,23 @@ class Deblend:
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
 
+            #print(reconstruction.shape)  # (59, 59, 6)
+            #print(tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)]))  # (59*59*6)
+            #print(indices.shape)
             residual_field = tf.tensor_scatter_nd_sub(
-                residual_field, indices, tf.reshape(reconstruction, -1)
+                residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
             )
 
         return residual_field
 
-    @tf.function(jit_compile=True)
-    def gradient_tape_loss(self, z, optimizer):
+    @tf.function
+    def gradient_tape_loss(self, z, postage_stamp):
+        postage_stamp = tf.cast(postage_stamp, tf.float32)
         with tf.GradientTape() as tape:
 
             reconstructions = self.flow_vae_net.decoder(z).mean()
 
-            residual_field = self.compute_residual(reconstructions)
+            residual_field = self.compute_residual(postage_stamp, reconstructions)
 
             sig = tf.math.reduce_std(residual_field)
             reconstruction_loss = tf.cast(
@@ -152,7 +160,7 @@ class Deblend:
                 loss = tf.math.subtract(reconstruction_loss, log_likelihood)
             else:
                 loss = reconstruction_loss
-            self.gradient_tape_loss()
+
             grad = tape.gradient(loss, [z])
             grads_and_vars = [(grad, [z])]
             self.optimizer.apply_gradients(zip(grad, [z]))
@@ -193,7 +201,7 @@ class Deblend:
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
-        optimizer = tf.keras.optimizers.Adam(lr=self.lr)
+        self.optimizer = tf.keras.optimizers.Adam(lr=self.lr)
 
         sig = tf.math.reduce_std(X)
 
@@ -204,15 +212,17 @@ class Deblend:
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
+
         for i in range(self.max_iter):
 
-            
+            print(i)
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
             #print(loss)
-            loss = self.gradient_tape_loss(z, optimizer)
+            loss = self.gradient_tape_loss(z, self.postage_stamp)
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
-        self.components = self.flow_vae_net.decoder(z).numpy()
+        print(z)
+        self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
