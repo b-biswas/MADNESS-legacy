@@ -60,6 +60,10 @@ class Deblend:
         self.channel_last = channel_last
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
+        if channel_last: 
+            self.num_bands = np.shape(postage_stamp)[-1]
+        else:
+            self.num_bands = np.shape(postage_stamp)[0]
 
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
@@ -75,6 +79,7 @@ class Deblend:
         # self.flow_vae_net.flow_model.trainable = False
 
         # self.flow_vae_net.vae_model.summary()
+        self.optimizer=None
         self.gradient_decent(initZ)
 
     def get_components(self):
@@ -86,46 +91,100 @@ class Deblend:
         if self.channel_last:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
-        
 
-    def compute_residual(self, reconstructions=None):
+    @tf.function
+    def compute_residual(self, postage_stamp, reconstructions=None, index_pos_to_sub=None):
+
         if reconstructions is None:
             reconstructions = self.components
         if self.channel_last:
-            residual_field = self.postage_stamp.copy()
+            residual_field = postage_stamp
         else:
-            residual_field = np.transpose(self.postage_stamp, axes=(1, 2, 0)).copy()
+            residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
-        residual_field = tf.Variable(residual_field, dtype=tf.float32)
+        residual_field = tf.cast(residual_field, tf.float32)
 
         for i in range(self.num_components):
-            detected_position = self.detected_positions[i]
+            if index_pos_to_sub is None:
+                detected_position = self.detected_positions[i]
 
-            # TODO: make this optional
+                starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+                starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
-            # cutout prediction
+                indices = (
+                    np.indices(
+                        (self.cutout_size, self.cutout_size, self.num_bands)
+                    )
+                    .reshape(3, -1)
+                    .T
+                )
+                indices[:, 0] += int(starting_pos_x)
+                indices[:, 1] += int(starting_pos_y)
+            else:
+                indices = index_pos_to_sub[i]
+
             reconstruction = reconstructions[i]
+
+            residual_field = tf.tensor_scatter_nd_sub(
+                residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+            )
+
+        return residual_field
+
+    @tf.function
+    def gradient_descent_step(self, z, postage_stamp, sig, index_pos_to_sub):
+        with tf.GradientTape() as tape:
+
+            reconstructions = self.flow_vae_net.decoder(z).mean()
+
+            residual_field = self.compute_residual(postage_stamp, reconstructions, index_pos_to_sub)
+
+            reconstruction_loss = tf.cast(
+                tf.math.reduce_sum(tf.square(residual_field)), tf.float32
+            ) / tf.cast(tf.square(sig), tf.float32)
+
+            reconstruction_loss = tf.divide(reconstruction_loss, 2)
+
+            log_likelihood = tf.cast(
+                tf.math.reduce_sum(
+                    self.flow_vae_net.flow(
+                        tf.reshape(z, (self.num_components, self.latent_dim))
+                    )
+                ),
+                tf.float32,
+            )
+            if self.use_likelihood:
+                loss = tf.math.subtract(reconstruction_loss, log_likelihood)
+            else:
+                loss = reconstruction_loss
+
+            grad = tape.gradient(loss, [z])
+            self.optimizer.apply_gradients(zip(grad, [z]))
+        
+            return grad, loss, reconstruction_loss, log_likelihood, residual_field
+
+    def get_index_pos_to_sub(self):
+        index_list = []
+        for i in range(self.num_components):
+            detected_position = self.detected_positions[i]
 
             starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
             starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
             indices = (
                 np.indices(
-                    (self.cutout_size, self.cutout_size, tf.shape(reconstruction)[2])
+                    (self.cutout_size, self.cutout_size, self.num_bands)
                 )
                 .reshape(3, -1)
                 .T
             )
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
+            index_list.append(indices)
 
-            residual_field = tf.tensor_scatter_nd_sub(
-                residual_field, indices, tf.reshape(reconstruction, -1)
-            )
+        return np.array(index_list)
 
-        return residual_field
-
-    def gradient_decent(self, optimizer=None, initZ=None):
+    def gradient_decent(self, initZ=None):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -161,7 +220,7 @@ class Deblend:
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
-        optimizer = tf.keras.optimizers.Adam(lr=self.lr)
+        self.optimizer = tf.keras.optimizers.Adam(lr=self.lr)
 
         sig = tf.math.reduce_std(X)
 
@@ -172,43 +231,16 @@ class Deblend:
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
+        index_pos_to_sub = self.get_index_pos_to_sub()
         for i in range(self.max_iter):
-
-            with tf.GradientTape() as tape:
-
-                reconstructions = self.flow_vae_net.decoder(z).mean()
-
-                residual_field = self.compute_residual(reconstructions)
-
-                reconstruction_loss = tf.cast(
-                    tf.math.reduce_sum(tf.square(residual_field)), tf.float32
-                ) / tf.cast(tf.square(sig), tf.float32)
-
-                reconstruction_loss = tf.divide(reconstruction_loss, 2)
-
-                log_likelihood = tf.cast(
-                    tf.math.reduce_sum(
-                        self.flow_vae_net.flow(
-                            tf.reshape(z, (self.num_components, self.latent_dim))
-                        )
-                    ),
-                    tf.float32,
-                )
-                if self.use_likelihood:
-                    loss = tf.math.subtract(reconstruction_loss, log_likelihood)
-                else:
-                    loss = reconstruction_loss
-
-                sig = tf.math.reduce_std(residual_field)
-
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            #print(loss)
-            grad = tape.gradient(loss, [z])
-            grads_and_vars = [(grad, [z])]
-            optimizer.apply_gradients(zip(grad, [z]))
+            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, sig, index_pos_to_sub)
+            sig = tf.math.reduce_std(residual_field)
+
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
-        self.components = reconstructions.numpy()
+
+        self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
