@@ -1,6 +1,5 @@
 import logging
 import time
-from turtle import pos
 
 import numpy as np
 import tensorflow as tf
@@ -93,15 +92,17 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    @tf.function
-    def compute_residual(self, postage_stamp=None, reconstructions=None):
-        postage_stamp = tf.cast(postage_stamp, tf.float32)
+    #@tf.function
+    def compute_residual(self, postage_stamp, reconstructions=None):
+
         if reconstructions is None:
             reconstructions = self.components
         if self.channel_last:
             residual_field = postage_stamp
         else:
-            residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
+            residual_field = np.transpose(postage_stamp, axes=(1, 2, 0))
+
+        residual_field = tf.Variable(residual_field)
 
         for i in range(self.num_components):
             detected_position = self.detected_positions[i]
@@ -116,7 +117,7 @@ class Deblend:
 
             indices = (
                 np.indices(
-                    (self.cutout_size, self.cutout_size, self.num_bands)
+                    (self.cutout_size, self.cutout_size, tf.shape(reconstruction)[2])
                 )
                 .reshape(3, -1)
                 .T
@@ -124,16 +125,13 @@ class Deblend:
             indices[:, 0] += int(starting_pos_x)
             indices[:, 1] += int(starting_pos_y)
 
-            #print(reconstruction.shape)  # (59, 59, 6)
-            #print(tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)]))  # (59*59*6)
-            #print(indices.shape)
             residual_field = tf.tensor_scatter_nd_sub(
-                residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+                residual_field, indices, tf.cast(tf.reshape(reconstruction, -1), tf.float64)
             )
 
         return residual_field
 
-    @tf.function
+    # @tf.function
     def gradient_tape_loss(self, z, postage_stamp):
         with tf.GradientTape() as tape:
 
@@ -162,6 +160,9 @@ class Deblend:
                 loss = reconstruction_loss
 
             grad = tape.gradient(loss, [z])
+            print(grad)
+
+            self.optimizer.apply_gradients(zip(grad, [z]))
         
             return grad, loss, reconstruction_loss, log_likelihood
 
@@ -222,8 +223,8 @@ class Deblend:
             print("log prob flow:" + str(log_likelihood.numpy()))
             print("reconstruction loss"+str(reconstruction_loss.numpy()))
             print(loss)
-
-            self.optimizer.apply_gradients(zip(grad, [z]))
+            
+            
             
 
         LOG.info("--- Gradient descent complete ---")
