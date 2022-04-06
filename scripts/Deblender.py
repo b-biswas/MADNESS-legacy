@@ -95,6 +95,7 @@ class Deblend:
 
     @tf.function
     def compute_residual(self, postage_stamp=None, reconstructions=None):
+        postage_stamp = tf.cast(postage_stamp, tf.float32)
         if reconstructions is None:
             reconstructions = self.components
         if self.channel_last:
@@ -134,7 +135,6 @@ class Deblend:
 
     @tf.function
     def gradient_tape_loss(self, z, postage_stamp):
-        postage_stamp = tf.cast(postage_stamp, tf.float32)
         with tf.GradientTape() as tape:
 
             reconstructions = self.flow_vae_net.decoder(z).mean()
@@ -162,8 +162,8 @@ class Deblend:
                 loss = reconstruction_loss
 
             grad = tape.gradient(loss, [z])
-            grads_and_vars = [(grad, [z])]
-            self.optimizer.apply_gradients(zip(grad, [z]))
+        
+            return grad, loss, reconstruction_loss, log_likelihood
 
     def gradient_decent(self, optimizer=None, initZ=None):
         """
@@ -218,8 +218,13 @@ class Deblend:
             print(i)
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            #print(loss)
-            loss = self.gradient_tape_loss(z, self.postage_stamp)
+            grad, loss, reconstruction_loss, log_likelihood = self.gradient_tape_loss(z, self.postage_stamp)
+            print("log prob flow:" + str(log_likelihood.numpy()))
+            print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            print(loss)
+
+            self.optimizer.apply_gradients(zip(grad, [z]))
+            
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
