@@ -1,5 +1,6 @@
 import logging
 import time
+import functools
 
 import numpy as np
 import tensorflow as tf
@@ -15,6 +16,12 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
+
+def make_val_and_grad_fn(value_fn):
+  @functools.wraps(value_fn)
+  def val_and_grad(x):
+    return tfp.math.value_and_gradient(value_fn, x)
+  return val_and_grad
 
 class Deblend:
     def __init__(
@@ -111,11 +118,11 @@ class Deblend:
             reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
             # tf.where(mask, tf.zeros_like(tensor), tensor)
             residual_field = tf.subtract(residual_field, reconstruction)
-            return tf.add(i,1, dtype=tf.int32), residual_field
+            return tf.add(i,1), residual_field
         
-        c = lambda i, _: i<self.num_components
+        c = lambda i, *_ : i<self.num_components
 
-        tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
+        _, residual_field = tf.while_loop(c, one_step, [tf.constant(0, dtype=tf.int32), residual_field])
         return residual_field
 
     @tf.function
@@ -152,7 +159,8 @@ class Deblend:
     def gradient_descent_step(self, z, postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
         with tf.GradientTape() as tape:
 
-            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(
+                z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
             grad = tape.gradient(loss, [z])
             self.optimizer.apply_gradients(zip(grad, [z]))
@@ -251,3 +259,10 @@ class Deblend:
 
         self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
+
+    def generate_loss_value_and_grad(self, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+        @make_val_and_grad_fn
+        def value_and_gradients_function(z):
+            return self.compute_loss(
+                z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+        return value_and_gradients_function
