@@ -122,7 +122,7 @@ class Deblend:
         
         c = lambda i, *_ : i<self.num_components
 
-        _, residual_field = tf.while_loop(c, one_step, [tf.constant(0, dtype=tf.int32), residual_field])
+        _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
         return residual_field
 
     @tf.function
