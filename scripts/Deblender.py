@@ -106,38 +106,16 @@ class Deblend:
 
         residual_field = tf.cast(residual_field, tf.float32)
 
-        for i in range(self.num_components):
-            if use_scatter_and_sub:
-                if index_pos_to_sub is None:
-                    detected_position = self.detected_positions[i]
+        def one_step(i, residual_field):
+            padding = tf.cast(padding_infos[i], tf.int32)
+            reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
+            # tf.where(mask, tf.zeros_like(tensor), tensor)
+            residual_field = tf.subtract(residual_field, reconstruction)
+            return tf.add(i,1, dtype=tf.int32), residual_field
+        
+        c = lambda i, _: i<self.num_components
 
-                    starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-                    starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
-
-                    indices = (
-                        np.indices(
-                            (self.cutout_size, self.cutout_size, self.num_bands)
-                        )
-                        .reshape(3, -1)
-                        .T
-                    )
-                    indices[:, 0] += int(starting_pos_x)
-                    indices[:, 1] += int(starting_pos_y)
-                else:
-                    indices = index_pos_to_sub[i]
-
-                reconstruction = reconstructions[i]
-
-                residual_field = tf.tensor_scatter_nd_sub(
-                    residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
-                )
-            else:
-                
-                padding = tf.cast(padding_infos[i], tf.int32)
-                reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
-
-                residual_field = tf.subtract(residual_field, reconstruction)
-
+        tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
         return residual_field
 
     @tf.function
