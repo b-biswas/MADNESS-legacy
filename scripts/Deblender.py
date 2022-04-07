@@ -111,11 +111,11 @@ class Deblend:
             reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
             # tf.where(mask, tf.zeros_like(tensor), tensor)
             residual_field = tf.subtract(residual_field, reconstruction)
-            return tf.add(i,1, dtype=tf.int32), residual_field
+            return tf.add(i,1), residual_field
         
         c = lambda i, _: i<self.num_components
 
-        tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
+        _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
         return residual_field
 
     @tf.function
