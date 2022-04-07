@@ -141,10 +141,16 @@ class Deblend:
         return residual_field
 
     @tf.function
-    def compute_loss(self, z, postage_stamp, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def compute_loss(self, z, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
-        residual_field = self.compute_residual(postage_stamp, reconstructions, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+        residual_field = self.compute_residual(postage_stamp, 
+                                                reconstructions, 
+                                                use_scatter_and_sub=use_scatter_and_sub, 
+                                                index_pos_to_sub=index_pos_to_sub, 
+                                                padding_infos=padding_infos)
+
+        sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
 
         reconstruction_loss = tf.cast(
             tf.math.reduce_sum(tf.square(residual_field)), tf.float32
@@ -165,10 +171,10 @@ class Deblend:
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
 
     @tf.function
-    def gradient_descent_step(self, z, postage_stamp, sig, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
+    def gradient_descent_step(self, z, postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
         with tf.GradientTape() as tape:
 
-            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, sig=sig, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
             grad = tape.gradient(loss, [z])
             self.optimizer.apply_gradients(zip(grad, [z]))
@@ -260,9 +266,7 @@ class Deblend:
         for i in range(self.max_iter):
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, sig, use_scatter_and_sub=False, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-        sig = tf.math.reduce_std(residual_field)
-
+            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=False, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
