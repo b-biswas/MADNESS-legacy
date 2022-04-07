@@ -62,8 +62,10 @@ class Deblend:
         self.cutout_size = cutout_size
         if channel_last: 
             self.num_bands = np.shape(postage_stamp)[-1]
+            self.field_size = np.shape(postage_stamp)[1]
         else:
             self.num_bands = np.shape(postage_stamp)[0]
+            self.field_size = np.shape(postage_stamp)[1]
 
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
@@ -93,7 +95,7 @@ class Deblend:
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
     @tf.function(experimental_compile=True)
-    def compute_residual(self, postage_stamp, reconstructions=None, index_pos_to_sub=None):
+    def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
 
         if reconstructions is None:
             reconstructions = self.components
@@ -105,37 +107,44 @@ class Deblend:
         residual_field = tf.cast(residual_field, tf.float32)
 
         for i in range(self.num_components):
-            if index_pos_to_sub is None:
-                detected_position = self.detected_positions[i]
+            if use_scatter_and_sub:
+                if index_pos_to_sub is None:
+                    detected_position = self.detected_positions[i]
 
-                starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-                starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+                    starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+                    starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
-                indices = (
-                    np.indices(
-                        (self.cutout_size, self.cutout_size, self.num_bands)
+                    indices = (
+                        np.indices(
+                            (self.cutout_size, self.cutout_size, self.num_bands)
+                        )
+                        .reshape(3, -1)
+                        .T
                     )
-                    .reshape(3, -1)
-                    .T
+                    indices[:, 0] += int(starting_pos_x)
+                    indices[:, 1] += int(starting_pos_y)
+                else:
+                    indices = index_pos_to_sub[i]
+
+                reconstruction = reconstructions[i]
+
+                residual_field = tf.tensor_scatter_nd_sub(
+                    residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
                 )
-                indices[:, 0] += int(starting_pos_x)
-                indices[:, 1] += int(starting_pos_y)
             else:
-                indices = index_pos_to_sub[i]
+                
+                padding = tf.cast(padding_infos[i], tf.int64)
+                reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
 
-            reconstruction = reconstructions[i]
-
-            residual_field = tf.tensor_scatter_nd_sub(
-                residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
-            )
+                residual_field = tf.subtract(residual_field, reconstruction)
 
         return residual_field
 
     @tf.function 
-    def compute_loss(self, z, postage_stamp, sig, index_pos_to_sub):
+    def compute_loss(self, z, postage_stamp, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
-        residual_field = self.compute_residual(postage_stamp, reconstructions, index_pos_to_sub)
+        residual_field = self.compute_residual(postage_stamp, reconstructions, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
         reconstruction_loss = tf.cast(
             tf.math.reduce_sum(tf.square(residual_field)), tf.float32
@@ -156,10 +165,10 @@ class Deblend:
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
 
     @tf.function
-    def gradient_descent_step(self, z, postage_stamp, sig, index_pos_to_sub):
+    def gradient_descent_step(self, z, postage_stamp, sig, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
         with tf.GradientTape() as tape:
 
-            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, sig=sig, index_pos_to_sub=index_pos_to_sub)
+            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(z=z, postage_stamp=postage_stamp, sig=sig, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
             grad = tape.gradient(loss, [z])
             self.optimizer.apply_gradients(zip(grad, [z]))
@@ -186,6 +195,18 @@ class Deblend:
             index_list.append(indices)
 
         return np.array(index_list)
+
+    def get_padding_infos(self):
+        padding_infos_list = []
+        for detected_position in self.detected_positions:
+
+            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+
+            padding = [[starting_pos_x, self.field_size - (starting_pos_x+int(self.cutout_size))], [starting_pos_y, self.field_size - (starting_pos_y + int(self.cutout_size))], [0, 0]]
+
+            padding_infos_list.append(padding)
+        return np.array(padding_infos_list)
 
     def gradient_decent(self, initZ=None):
         """
@@ -235,10 +256,11 @@ class Deblend:
 
         t0 = time.time()
         index_pos_to_sub = self.get_index_pos_to_sub()
+        padding_infos = self.get_padding_infos()
         for i in range(self.max_iter):
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, sig, index_pos_to_sub)
+            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, sig, use_scatter_and_sub=False, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
             sig = tf.math.reduce_std(residual_field)
 
 
