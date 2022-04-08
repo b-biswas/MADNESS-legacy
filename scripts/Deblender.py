@@ -100,7 +100,7 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    #@tf.function(autograph=False)
+    @tf.function(autograph=False)
     def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=False, index_pos_to_sub=None, padding_infos=None):
 
         if reconstructions is None:
@@ -287,20 +287,33 @@ class Deblend:
         index_pos_to_sub = self.get_index_pos_to_sub()
         padding_infos = self.get_padding_infos()
         
-        tfp.optimizer.bfgs_minimize(
+        input_z = tf.reshape(z, self.num_components * self.latent_dim)
+        output = tfp.optimizer.lbfgs_minimize(
             self.generate_loss_value_and_grad(
                 postage_stamp=self.postage_stamp, 
                 use_scatter_and_sub=False, 
                 index_pos_to_sub=index_pos_to_sub,
                 padding_infos=padding_infos,
                 ), 
-            initial_position=z,
+            initial_position=input_z,
         )
+
         #for i in range(self.max_iter):
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
         #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+        
+        LOG.info(f"Final loss {output.objective_value.numpy()}")
+        LOG.info("converged "+ str(output.converged.numpy()))
+        LOG.info("converged "+ str(output.num_iterations.numpy()))
 
+        z_flatten = output.position
+        z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim])
+        #for i in range(self.max_iter):
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+        #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+        
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
@@ -309,12 +322,14 @@ class Deblend:
 
     def generate_loss_value_and_grad(self, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         @make_val_and_grad_fn
-        def gradients_and_value_function(z):
-            return self.compute_loss(
+        def gradients_and_value_function(input_z):
+            z = tf.reshape(input_z, [self.num_components, self.latent_dim])
+            loss, *_ = self.compute_loss(
                 z=z, 
                 postage_stamp=postage_stamp, 
                 use_scatter_and_sub=use_scatter_and_sub, 
                 index_pos_to_sub=index_pos_to_sub,
                 padding_infos=padding_infos,
             )
+            return loss
         return gradients_and_value_function
