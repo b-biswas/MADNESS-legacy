@@ -16,7 +16,6 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-
 def make_val_and_grad_fn(value_fn):
   @functools.wraps(value_fn)
   def val_and_grad(x):
@@ -101,8 +100,8 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    @tf.function(autograph=False)
-    def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
+    #@tf.function(autograph=False)
+    def compute_residual(self, postage_stamp, reconstructions=None, padding_infos=None):
 
         if reconstructions is None:
             reconstructions = self.components
@@ -125,14 +124,12 @@ class Deblend:
         _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
         return residual_field
 
-    @tf.function
-    def compute_loss(self, z, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    #@tf.function
+    def compute_loss(self, z, postage_stamp, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(postage_stamp, 
-                                                reconstructions, 
-                                                use_scatter_and_sub=use_scatter_and_sub, 
-                                                index_pos_to_sub=index_pos_to_sub, 
+                                                reconstructions,
                                                 padding_infos=padding_infos)
 
         sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
@@ -155,7 +152,7 @@ class Deblend:
             return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
 
-    @tf.function
+    #@tf.function
     def gradient_descent_step(self, z, postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
         with tf.GradientTape() as tape:
 
@@ -236,9 +233,7 @@ class Deblend:
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
-        self.optimizer = tf.keras.optimizers.Adam(lr=self.lr)
-
-        sig = tf.math.reduce_std(X)
+        #self.optimizer = tf.keras.optimizers.Adam(lr=self.lr)
 
         LOG.info("\n--- Starting gradient descent in the latent space ---")
         LOG.info("Number of iterations: " + str(self.max_iter))
@@ -249,10 +244,8 @@ class Deblend:
         t0 = time.time()
         index_pos_to_sub = self.get_index_pos_to_sub()
         padding_infos = self.get_padding_infos()
-        for i in range(self.max_iter):
-            #print("log prob flow:" + str(log_likelihood.numpy()))
-            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            _, _, _, _, residual_field = self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=False, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+        
+        tfp.optimizer.bfgs_minimize(self.generate_loss_value_and_grad(postage_stamp=self.postage_stamp, padding_infos=padding_infos), initial_position=z)
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
@@ -260,9 +253,8 @@ class Deblend:
         self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
 
-    def generate_loss_value_and_grad(self, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def generate_loss_value_and_grad(self, postage_stamp, padding_infos):
         @make_val_and_grad_fn
-        def value_and_gradients_function(z):
-            return self.compute_loss(
-                z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-        return value_and_gradients_function
+        def gradients_and_value_function(z):
+            return self.compute_loss(z=z, postage_stamp=postage_stamp, padding_infos=padding_infos)
+        return gradients_and_value_function
