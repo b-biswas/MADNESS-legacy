@@ -101,7 +101,7 @@ class Deblend:
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
     #@tf.function(autograph=False)
-    def compute_residual(self, postage_stamp, reconstructions=None, padding_infos=None):
+    def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=False, index_pos_to_sub=None, padding_infos=None):
 
         if reconstructions is None:
             reconstructions = self.components
@@ -112,20 +112,62 @@ class Deblend:
 
         residual_field = tf.cast(residual_field, tf.float32)
 
-        def one_step(i, residual_field):
-            padding = tf.cast(padding_infos[i], tf.int32)
-            reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
-            # tf.where(mask, tf.zeros_like(tensor), tensor)
-            residual_field = tf.subtract(residual_field, reconstruction)
-            return tf.add(i,1), residual_field
-        
-        c = lambda i, *_ : i<self.num_components
+        if use_scatter_and_sub:
 
-        _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
+            if index_pos_to_sub is not None:
+                def one_step(i, residual_field):
+                    indices = index_pos_to_sub[i]
+
+                    reconstruction = reconstructions[i]
+
+                    residual_field = tf.tensor_scatter_nd_sub(
+                        residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+                    )
+
+                    return tf.add(i,1), residual_field
+
+                c = lambda i, *_: i<self.num_components
+
+                _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field), maximum_iterations=self.num_components)
+            
+            else:
+                for i in range(self.num_components):
+                    detected_position = self.detected_positions[i]
+
+                    starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
+                    starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+
+                    indices = (
+                        np.indices(
+                            (self.cutout_size, self.cutout_size, self.num_bands)
+                        )
+                        .reshape(3, -1)
+                        .T
+                    )
+                    indices[:, 0] += int(starting_pos_x)
+                    indices[:, 1] += int(starting_pos_y)
+
+                    reconstruction = reconstructions[i]
+
+                    residual_field = tf.tensor_scatter_nd_sub(
+                        residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+                    )
+
+        else:
+            def one_step(i, residual_field):
+                padding = tf.cast(padding_infos[i], tf.int32)
+                reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
+                # tf.where(mask, tf.zeros_like(tensor), tensor)
+                residual_field = tf.subtract(residual_field, reconstruction)
+                return tf.add(i,1), residual_field
+            
+            c = lambda i, _: i<self.num_components
+
+            _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
         return residual_field
 
-    #@tf.function
-    def compute_loss(self, z, postage_stamp, padding_infos):
+    @tf.function(autograph=False)
+    def compute_loss(self, z, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(postage_stamp, 
@@ -152,7 +194,7 @@ class Deblend:
             return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
 
-    #@tf.function
+    @tf.function(autograph=False)
     def gradient_descent_step(self, z, postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
         with tf.GradientTape() as tape:
 
@@ -245,7 +287,19 @@ class Deblend:
         index_pos_to_sub = self.get_index_pos_to_sub()
         padding_infos = self.get_padding_infos()
         
-        tfp.optimizer.bfgs_minimize(self.generate_loss_value_and_grad(postage_stamp=self.postage_stamp, padding_infos=padding_infos), initial_position=z)
+        tfp.optimizer.bfgs_minimize(
+            self.generate_loss_value_and_grad(
+                postage_stamp=self.postage_stamp, 
+                use_scatter_and_sub=False, 
+                index_pos_to_sub=index_pos_to_sub,
+                padding_infos=padding_infos,
+                ), 
+            initial_position=z,
+        )
+        #for i in range(self.max_iter):
+            #print("log prob flow:" + str(log_likelihood.numpy()))
+            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+        #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
@@ -253,8 +307,14 @@ class Deblend:
         self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
 
-    def generate_loss_value_and_grad(self, postage_stamp, padding_infos):
+    def generate_loss_value_and_grad(self, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         @make_val_and_grad_fn
         def gradients_and_value_function(z):
-            return self.compute_loss(z=z, postage_stamp=postage_stamp, padding_infos=padding_infos)
+            return self.compute_loss(
+                z=z, 
+                postage_stamp=postage_stamp, 
+                use_scatter_and_sub=use_scatter_and_sub, 
+                index_pos_to_sub=index_pos_to_sub,
+                padding_infos=padding_infos,
+            )
         return gradients_and_value_function
