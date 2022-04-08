@@ -287,6 +287,8 @@ class Deblend:
         def trace_fn(traceable_quantities):
             return {'loss': traceable_quantities.loss}
 
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.lr, decay_steps=10, decay_rate=0.8, staircase=True)
+
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
                 z=z, 
@@ -297,9 +299,10 @@ class Deblend:
             ), 
             trainable_variables=[z],
             num_steps=self.max_iter, 
-            optimizer=tf.keras.optimizers.RMSprop(learning_rate=self.lr),
+            optimizer=tf.keras.optimizers.RMSprop(learning_rate=lr_schedule),
             convergence_criterion=(
-            tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.000015*500*500*6, window_size=10)),
+                tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.000015*500*500*6, window_size=10)
+            ),
         )
 
         #for i in range(self.max_iter):
