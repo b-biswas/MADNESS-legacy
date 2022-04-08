@@ -3,6 +3,7 @@ import time
 import functools
 
 import numpy as np
+from platformdirs import user_documents_path
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -15,12 +16,6 @@ tfd = tfp.distributions
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
-
-def make_val_and_grad_fn(value_fn):
-  @functools.wraps(value_fn)
-  def val_and_grad(x):
-    return tfp.math.value_and_gradient(value_fn, x)
-  return val_and_grad
 
 class Deblend:
     def __init__(
@@ -88,7 +83,7 @@ class Deblend:
 
         # self.flow_vae_net.vae_model.summary()
         self.optimizer=None
-        self.gradient_decent(initZ)
+        self.results = self.gradient_decent(initZ)
 
     def get_components(self):
         """
@@ -117,18 +112,17 @@ class Deblend:
             if index_pos_to_sub is not None:
                 def one_step(i, residual_field):
                     indices = index_pos_to_sub[i]
-
                     reconstruction = reconstructions[i]
 
                     residual_field = tf.tensor_scatter_nd_sub(
                         residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
                     )
 
-                    return tf.add(i,1), residual_field
+                    return i + 1, residual_field
 
                 c = lambda i, *_: i<self.num_components
 
-                _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field), maximum_iterations=self.num_components)
+                _, residual_field = tf.while_loop(c, one_step, (0, residual_field), maximum_iterations=self.num_components)
             
             else:
                 for i in range(self.num_components):
@@ -155,15 +149,19 @@ class Deblend:
 
         else:
             def one_step(i, residual_field):
-                padding = tf.cast(padding_infos[i], tf.int32)
-                reconstruction = tf.pad(reconstructions[i], padding, "CONSTANT")
+                padding = tf.cast(padding_infos[i], dtype=tf.int32)
+                reconstruction = tf.pad(tf.gather(reconstructions, i), padding, "CONSTANT", name="padding")
                 # tf.where(mask, tf.zeros_like(tensor), tensor)
                 residual_field = tf.subtract(residual_field, reconstruction)
                 return tf.add(i,1), residual_field
             
             c = lambda i, _: i<self.num_components
 
-            _, residual_field = tf.while_loop(c, one_step, (tf.constant(0, dtype=tf.int32), residual_field))
+            _, residual_field = tf.while_loop(
+                c, 
+                one_step, 
+                (tf.constant(0, dtype=tf.int32), residual_field), 
+                maximum_iterations=self.num_components)
         return residual_field
 
     @tf.function(autograph=False)
@@ -172,6 +170,8 @@ class Deblend:
 
         residual_field = self.compute_residual(postage_stamp, 
                                                 reconstructions,
+                                                use_scatter_and_sub=use_scatter_and_sub, 
+                                                index_pos_to_sub=index_pos_to_sub,
                                                 padding_infos=padding_infos)
 
         sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
@@ -193,18 +193,6 @@ class Deblend:
         if self.use_likelihood:
             return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
-
-    @tf.function(autograph=False)
-    def gradient_descent_step(self, z, postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=None, padding_infos=None):
-        with tf.GradientTape() as tape:
-
-            loss, reconstruction_loss, log_likelihood, residual_field = self.compute_loss(
-                z=z, postage_stamp=postage_stamp, use_scatter_and_sub=use_scatter_and_sub, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-
-            grad = tape.gradient(loss, [z])
-            self.optimizer.apply_gradients(zip(grad, [z]))
-        
-            return grad, loss, reconstruction_loss, log_likelihood, residual_field
 
     def get_index_pos_to_sub(self):
         index_list = []
@@ -284,18 +272,34 @@ class Deblend:
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
+
         index_pos_to_sub = self.get_index_pos_to_sub()
+        #index_pos_to_sub = tf.TensorArray(
+        #   tf.int32,
+        #   size=np.shape(index_pos_to_sub)[0],
+        #   clear_after_read=False).unstack(index_pos_to_sub)
+
         padding_infos = self.get_padding_infos()
-        
-        input_z = tf.reshape(z, self.num_components * self.latent_dim)
-        output = tfp.optimizer.lbfgs_minimize(
-            self.generate_loss_value_and_grad(
+        #padding_infos = tf.TensorArray(
+        #   tf.int32,
+        #   size=np.shape(padding_infos)[0],
+        #   clear_after_read=False).unstack(padding_infos)
+        def trace_fn(traceable_quantities):
+            return {'loss': traceable_quantities.loss}
+
+        results = tfp.math.minimize(
+            loss_fn=self.generate_grad_step_loss(
+                z=z, 
                 postage_stamp=self.postage_stamp, 
                 use_scatter_and_sub=False, 
-                index_pos_to_sub=index_pos_to_sub,
+                index_pos_to_sub=index_pos_to_sub, 
                 padding_infos=padding_infos,
-                ), 
-            initial_position=input_z,
+            ), 
+            trainable_variables=[z],
+            num_steps=self.max_iter, 
+            optimizer=tf.keras.optimizers.RMSprop(learning_rate=self.lr),
+            convergence_criterion=(
+            tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.000015*500*500*6, window_size=10)),
         )
 
         #for i in range(self.max_iter):
@@ -303,12 +307,12 @@ class Deblend:
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
         #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
         
-        LOG.info(f"Final loss {output.objective_value.numpy()}")
+        """ LOG.info(f"Final loss {output.objective_value.numpy()}")
         LOG.info("converged "+ str(output.converged.numpy()))
         LOG.info("converged "+ str(output.num_iterations.numpy()))
 
         z_flatten = output.position
-        z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim])
+        z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
         #for i in range(self.max_iter):
             #print("log prob flow:" + str(log_likelihood.numpy()))
             #print("reconstruction loss"+str(reconstruction_loss.numpy()))
@@ -320,10 +324,10 @@ class Deblend:
         self.components = self.flow_vae_net.decoder(z).mean().numpy()
         #print(self.components)
 
-    def generate_loss_value_and_grad(self, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
-        @make_val_and_grad_fn
-        def gradients_and_value_function(input_z):
-            z = tf.reshape(input_z, [self.num_components, self.latent_dim])
+        return results
+
+    def generate_grad_step_loss(self, z, postage_stamp, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+        def training_loss():
             loss, *_ = self.compute_loss(
                 z=z, 
                 postage_stamp=postage_stamp, 
@@ -332,4 +336,4 @@ class Deblend:
                 padding_infos=padding_infos,
             )
             return loss
-        return gradients_and_value_function
+        return training_loss
