@@ -124,12 +124,18 @@ class FlowVAEnet:
         LOG.info("Encoder status: " + str(train_encoder))
         LOG.info("Decoder status: " + str(train_decoder))
         # LOG.info("Initial learning rate: " + str(lr))
+
+        # Custom metric to display the KL divergence during training
+        def kl_metric(y_true, y_pred):
+            return K.sum(self.vae_model.losses)
+
         LOG.info("Number of epochs: " + str(epochs))
         terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": vae_loss_fn},
-            experimental_run_tf_function=False,
+            experimental_run_tf_function=True,
+            metrics=["mse", kl_metric],
         )
         hist = self.vae_model.fit(
             x=train_generator,
