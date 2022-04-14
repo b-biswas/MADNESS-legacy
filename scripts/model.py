@@ -220,8 +220,10 @@ def create_flow(latent_dim=32, num_nf_layers=6):
 def create_model_fvae(
     input_shape,
     latent_dim,
-    filters,
-    kernels,
+    filters_encoder,
+    kernels_encoder,
+    filters_decoder,
+    kernels_decoder,
     num_nf_layers=6,
 ):
     """
@@ -261,16 +263,16 @@ def create_model_fvae(
     encoder = create_encoder(
         input_shape,
         latent_dim,
-        filters,
-        kernels,
+        filters_encoder,
+        kernels_encoder,
     )
 
     # create the decoder
     decoder = create_decoder(
         input_shape,
         latent_dim,
-        filters,
-        kernels,
+        filters_decoder,
+        kernels_decoder,
     )
 
     # create the flow transformation

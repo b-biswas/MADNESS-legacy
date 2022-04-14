@@ -27,10 +27,12 @@ def flow_loss_fn(x, output):
 class FlowVAEnet:
     def __init__(
         self,
-        input_shape=[59, 59, 6],
-        latent_dim=32,
-        filters=[32, 64, 128, 256],
-        kernels=[3, 3, 3, 3],
+        input_shape=[45, 45, 6],
+        latent_dim=10,
+        filters_encoder=[50, 100, 200, 400],
+        filters_decoder=[50, 100, 200, 300],
+        kernels_encoder=[3, 3, 3, 3],
+        kernels_decoder=[3, 3, 3, 3],
         num_nf_layers=6,
     ):
         """
@@ -53,8 +55,12 @@ class FlowVAEnet:
         self.input_shape = input_shape
         self.latent_dim = latent_dim
 
-        self.filters = filters
-        self.kernels = kernels
+        self.filters_encoder = filters_encoder
+        self.kernels_encoder = kernels_encoder
+
+        self.filters_decoder = filters_decoder
+        self.kernels_decoder = kernels_decoder
+
         self.nb_of_bands = input_shape[2]
         self.num_nf_layers = num_nf_layers
 
