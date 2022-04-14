@@ -1,3 +1,4 @@
-# FlowDeblender
+# MADNESS
 
-building proof-of-concept architecture to estimate isolated galaxy priors for deblending.
+Maximum A posteriori with Deep NEural networks
+for Source Separation
