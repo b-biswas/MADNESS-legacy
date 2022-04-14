@@ -244,3 +244,9 @@ class FlowVAEnet:
         if is_folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.flow_model.load_weights(weights_path).expect_partial()
+
+    def randomize_encoder(self):
+        new_encoder = create_encoder(
+        input_shape=self.input_shape, latent_dim=self.latent_dim, filters=self.filters_encoder, kernels=self.kernels_encoder
+        )
+        self.encoder.set_weights(new_encoder.get_weights())
