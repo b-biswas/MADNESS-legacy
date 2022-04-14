@@ -22,7 +22,7 @@ class Deblend:
         self,
         postage_stamp,
         detected_positions,
-        cutout_size=59,
+        cutout_size=45,
         num_components=1,
         max_iter=60,
         lr=0.3,
@@ -72,10 +72,10 @@ class Deblend:
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
         self.flow_vae_net.load_flow_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim_small_sig/fvae/"
+            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos10d/flow/val_loss"
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim_small_sig/deblender/val_loss"
+            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos10d/deblender/val_loss"
         )
 
         # self.flow_vae_net.vae_model.trainable = False
@@ -287,7 +287,7 @@ class Deblend:
         def trace_fn(traceable_quantities):
             return {'loss': traceable_quantities.loss}
 
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.lr, decay_steps=10, decay_rate=0.8, staircase=True)
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.lr, decay_steps=10, decay_rate=0.75, staircase=True)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
@@ -301,7 +301,7 @@ class Deblend:
             num_steps=self.max_iter, 
             optimizer=tf.keras.optimizers.RMSprop(learning_rate=lr_schedule),
             convergence_criterion=(
-                tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.000015*500*500*6, window_size=10)
+                tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.0000015*45*45*6*49, window_size=10)
             ),
         )
 

@@ -48,7 +48,7 @@ def create_encoder(
 
     # Input layer
     input_layer = Input(shape=(input_shape))
-
+    
     # Define the model
     h = BatchNormalization(name="batchnorm1")(input_layer)
     for i in range(len(filters)):
@@ -148,13 +148,13 @@ def create_decoder(
         make_distribution_fn=lambda t: tfd.Normal(
             loc=t[..., : input_shape[-1]], scale=1e-3 + t[..., input_shape[-1] :]
         ),
-        convert_to_tensor_fn=tfp.distributions.Distribution.sample,
+        convert_to_tensor_fn=tfp.distributions.Distribution.mean,
     )(h)
 
     return Model(input_layer, h, name="decoder")
 
 
-def create_flow(latent_dim=32, num_nf_layers=6):
+def create_flow(latent_dim=10, num_nf_layers=6):
     """
     Create the Flow model that takes as input a point in latent space and returns the log_prob
 
@@ -287,10 +287,10 @@ def create_model_fvae(
     x_input = Input(shape=(input_shape))
     z = tfp.layers.MultivariateNormalTriL(
         latent_dim,
-        activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=0.01),
+        activity_regularizer=tfp.layers.KLDivergenceRegularizer(prior, weight=1),
     )(encoder(x_input))
 
-    vae_model = Model(inputs=x_input, outputs=[decoder(z), z])
+    vae_model = Model(inputs=x_input, outputs=decoder(z))
     flow_model = Model(
         inputs=x_input, outputs=flow(z.sample())
     )  # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'

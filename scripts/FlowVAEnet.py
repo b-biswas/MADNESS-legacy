@@ -3,6 +3,7 @@ import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
 from scripts.model import create_model_fvae
+from scripts.model import create_encoder
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -13,13 +14,13 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-
+#@tf.function(autograph=False)
 def vae_loss_fn(x, x_decoded_mean):
     return -tf.math.reduce_mean(
         tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3])
     )
 
-
+#@tf.function(autograph=False)
 def flow_loss_fn(x, output):
     return -tf.math.reduce_mean(output)
 
@@ -74,8 +75,10 @@ class FlowVAEnet:
         ) = create_model_fvae(
             input_shape=self.input_shape,
             latent_dim=self.latent_dim,
-            filters=self.filters,
-            kernels=self.kernels,
+            filters_encoder=self.filters_encoder,
+            kernels_encoder=self.kernels_encoder,
+            filters_decoder=self.filters_decoder,
+            kernels_decoder=self.kernels_decoder,
             num_nf_layers=self.num_nf_layers,
         )
 
@@ -125,6 +128,10 @@ class FlowVAEnet:
 
         self.encoder.trainable = train_encoder
         self.decoder.trainable = train_decoder
+
+        if train_encoder is False:
+            self.encoder.get_layer("batchnorm1").trainable = False
+
         self.vae_model.summary()
         LOG.info("\n--- Training only VAE network ---")
         LOG.info("Encoder status: " + str(train_encoder))
@@ -136,7 +143,6 @@ class FlowVAEnet:
             return K.sum(self.vae_model.losses)
 
         LOG.info("Number of epochs: " + str(epochs))
-        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": vae_loss_fn},
@@ -160,9 +166,8 @@ class FlowVAEnet:
         train_generator,
         validation_generator,
         callbacks,
-        optimizer=tf.keras.optimizers.Adam(1e-3),
+        optimizer=tf.keras.optimizers.Adam(1e-4),
         epochs=35,
-        num_scheduler_epochs=30,
         verbose=1,
     ):
         """
@@ -199,7 +204,7 @@ class FlowVAEnet:
         self.flow_model.compile(
             optimizer=optimizer,
             loss={"flow": flow_loss_fn},
-            experimental_run_tf_function=False,
+            experimental_run_tf_function=True,
         )
         self.flow_model.summary()
 
@@ -219,6 +224,7 @@ class FlowVAEnet:
         )
 
         return hist
+
     def load_vae_weights(self, weights_path, is_folder=True):
         """
         Parameters
