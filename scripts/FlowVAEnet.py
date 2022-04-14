@@ -131,16 +131,17 @@ class FlowVAEnet:
             loss={"decoder": vae_loss_fn},
             experimental_run_tf_function=False,
         )
-        self.vae_model.fit_generator(
-            generator=train_generator,
+        hist = self.vae_model.fit(
+            x=train_generator,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,
             validation_data=validation_generator,
-            callbacks=callbacks + terminate_on_nan,
-            workers=0,
+            callbacks=callbacks,
+            workers=8,
             use_multiprocessing=True,
         )
+        return hist
 
     def train_flow(
         self,
@@ -189,33 +190,23 @@ class FlowVAEnet:
             experimental_run_tf_function=False,
         )
         self.flow_model.summary()
-        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
-
-        def scheduler(epoch, lr):
-            if (epoch + 1) % num_scheduler_epochs != 0:
-                return lr
-            else:
-                return lr * tf.math.exp(-1.0)
 
         LOG.info("\n--- Training only FLOW network ---")
         # LOG.info("Initial learning rate: " + str(lr))
         LOG.info("Number of epochs: " + str(epochs))
-        LOG.info("Number of scheduler epocs: " + str(num_scheduler_epochs))
 
-        lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
-
-        callbacks += [lr_scheduler]
-        self.flow_model.fit_generator(
-            generator=train_generator,
+        hist = self.flow_model.fit(
+            x=train_generator,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,
             validation_data=validation_generator,
-            callbacks=callbacks + terminate_on_nan,
+            callbacks=callbacks,
             workers=8,
             use_multiprocessing=True,
         )
 
+        return hist
     def load_vae_weights(self, weights_path, is_folder=True):
         """
         Parameters
