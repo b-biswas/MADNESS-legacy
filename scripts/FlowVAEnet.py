@@ -14,11 +14,34 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-#@tf.function(autograph=False)
-def vae_loss_fn(x, x_decoded_mean):
-    return -tf.math.reduce_mean(
-        tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3])
-    )
+@tf.function(autograph=False)
+def vae_loss_fn(x, predicted_distribution):
+    log_prob = predicted_distribution.log_prob(x)
+
+    weight = tf.add(tf.math.sqrt(x), .1)
+    loss = tf.math.multiply(log_prob, weight)
+    #loss = log_prob
+
+    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+
+    return objective
+
+@tf.function(autograph=False)
+def vae_loss_fn(x, predicted_distribution):
+    mean = predicted_distribution.mean()
+
+    diff = tf.subtract(mean, x)
+    diff_square = tf.square(diff)
+    mse = tf.math.sqrt(tf.math.reduce_mean(diff_square, axis=[1, 2, 3]))
+
+    objective = tf.math.reduce_mean(mse)
+
+    return objective
+
+def deblender_loss_fn(x, predicted_distribution):
+    loss = predicted_distribution.log_prob(x)
+    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+    return objective
 
 #@tf.function(autograph=False)
 def flow_loss_fn(x, output):
