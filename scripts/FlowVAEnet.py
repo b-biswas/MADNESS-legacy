@@ -3,6 +3,7 @@ import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
 from scripts.model import create_model_fvae
+from scripts.model import create_encoder
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -13,13 +14,37 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
+@tf.function(autograph=False)
+def vae_loss_fn(x, predicted_distribution):
+    log_prob = predicted_distribution.log_prob(x)
 
-def vae_loss_fn(x, x_decoded_mean):
-    return -tf.math.reduce_mean(
-        tf.math.reduce_sum(x_decoded_mean.log_prob(x), axis=[1, 2, 3])
-    )
+    weight = tf.add(tf.math.sqrt(x), .1)
+    loss = tf.math.multiply(log_prob, weight)
+    #loss = log_prob
 
+    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
 
+    return objective
+
+@tf.function(autograph=False)
+def vae_loss_fn_mse(x, predicted_distribution):
+    mean = predicted_distribution.mean()
+
+    diff = tf.subtract(mean, x)
+    pixel_mse = tf.divide(tf.square(diff), tf.add(x, 0.001))
+    mse = tf.math.reduce_sum(pixel_mse, axis=[1, 2, 3])
+
+    objective = tf.math.reduce_mean(mse)
+
+    return objective
+
+@tf.function(autograph=False)
+def deblender_loss_fn(x, predicted_distribution):
+    loss = predicted_distribution.log_prob(x)
+    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+    return objective
+
+@tf.function(autograph=False)
 def flow_loss_fn(x, output):
     return -tf.math.reduce_mean(output)
 
@@ -27,11 +52,15 @@ def flow_loss_fn(x, output):
 class FlowVAEnet:
     def __init__(
         self,
-        input_shape=[59, 59, 6],
-        latent_dim=32,
-        filters=[32, 64, 128, 256],
-        kernels=[3, 3, 3, 3],
-        num_nf_layers=6,
+        input_shape=[45, 45, 6],
+        latent_dim=10,
+        filters_encoder=[32, 64, 128, 256],
+        filters_decoder=[128, 64, 32],
+        kernels_encoder=[3, 3, 3, 3],
+        kernels_decoder=[3, 3, 3, 3],
+        num_nf_layers=8,
+        kl_prior=None,
+        kl_weight=None,
     ):
         """
         Creates the required models according to the specifications.
@@ -53,8 +82,12 @@ class FlowVAEnet:
         self.input_shape = input_shape
         self.latent_dim = latent_dim
 
-        self.filters = filters
-        self.kernels = kernels
+        self.filters_encoder = filters_encoder
+        self.kernels_encoder = kernels_encoder
+
+        self.filters_decoder = filters_decoder
+        self.kernels_decoder = kernels_decoder
+
         self.nb_of_bands = input_shape[2]
         self.num_nf_layers = num_nf_layers
 
@@ -68,9 +101,13 @@ class FlowVAEnet:
         ) = create_model_fvae(
             input_shape=self.input_shape,
             latent_dim=self.latent_dim,
-            filters=self.filters,
-            kernels=self.kernels,
+            filters_encoder=self.filters_encoder,
+            kernels_encoder=self.kernels_encoder,
+            filters_decoder=self.filters_decoder,
+            kernels_decoder=self.kernels_decoder,
             num_nf_layers=self.num_nf_layers,
+            kl_prior=kl_prior,
+            kl_weight=kl_weight,
         )
 
         self.optimizer = None
@@ -84,8 +121,10 @@ class FlowVAEnet:
         train_encoder=True,
         train_decoder=True,
         optimizer=tf.keras.optimizers.Adam(1e-4),
+        track_kl = False,
         epochs=35,
         verbose=1,
+        loss_function=None,
     ):
         """
         trains only the vae model. (both the encoder and the decoder)
@@ -119,37 +158,51 @@ class FlowVAEnet:
 
         self.encoder.trainable = train_encoder
         self.decoder.trainable = train_decoder
+
+
         self.vae_model.summary()
         LOG.info("\n--- Training only VAE network ---")
         LOG.info("Encoder status: " + str(train_encoder))
         LOG.info("Decoder status: " + str(train_decoder))
         # LOG.info("Initial learning rate: " + str(lr))
+
+        metrics=["mse"]
+        # Custom metric to display the KL divergence during training
+        def kl_metric(y_true, y_pred):
+            return K.sum(self.vae_model.losses)
+
+        if track_kl:
+             metrics+=[kl_metric]
+
         LOG.info("Number of epochs: " + str(epochs))
-        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
+
+        if loss_function is None:
+            loss_function=vae_loss_fn
         self.vae_model.compile(
             optimizer=optimizer,
-            loss={"decoder": vae_loss_fn},
+            loss={"decoder": loss_function},
             experimental_run_tf_function=False,
+            metrics=metrics,
         )
-        self.vae_model.fit_generator(
-            generator=train_generator,
+        hist = self.vae_model.fit(
+            x=train_generator,
             epochs=epochs,
             verbose=verbose,
-            shuffle=True,
+            shuffle=False,
             validation_data=validation_generator,
-            callbacks=callbacks + terminate_on_nan,
-            workers=0,
+            callbacks=callbacks,
+            workers=4,
             use_multiprocessing=True,
         )
+        return hist
 
     def train_flow(
         self,
         train_generator,
         validation_generator,
         callbacks,
-        optimizer=tf.keras.optimizers.Adam(1e-3),
+        optimizer=tf.keras.optimizers.Adam(1e-4),
         epochs=35,
-        num_scheduler_epochs=30,
         verbose=1,
     ):
         """
@@ -181,40 +234,29 @@ class FlowVAEnet:
         """
         self.flow.trainable = True
         self.encoder.trainable = False
-        # TODO: find a better way to fix all batchnorm layers
-        self.encoder.get_layer("batchnorm1").trainable = False
         self.flow_model.compile(
             optimizer=optimizer,
             loss={"flow": flow_loss_fn},
             experimental_run_tf_function=False,
         )
         self.flow_model.summary()
-        terminate_on_nan = [tf.keras.callbacks.TerminateOnNaN()]
-
-        def scheduler(epoch, lr):
-            if (epoch + 1) % num_scheduler_epochs != 0:
-                return lr
-            else:
-                return lr * tf.math.exp(-1.0)
 
         LOG.info("\n--- Training only FLOW network ---")
         # LOG.info("Initial learning rate: " + str(lr))
         LOG.info("Number of epochs: " + str(epochs))
-        LOG.info("Number of scheduler epocs: " + str(num_scheduler_epochs))
 
-        lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
-
-        callbacks += [lr_scheduler]
-        self.flow_model.fit_generator(
-            generator=train_generator,
+        hist = self.flow_model.fit(
+            x=train_generator,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,
             validation_data=validation_generator,
-            callbacks=callbacks + terminate_on_nan,
-            workers=8,
+            callbacks=callbacks,
+            workers=4,
             use_multiprocessing=True,
         )
+
+        return hist
 
     def load_vae_weights(self, weights_path, is_folder=True):
         """
@@ -247,3 +289,9 @@ class FlowVAEnet:
         if is_folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.flow_model.load_weights(weights_path).expect_partial()
+
+    def randomize_encoder(self):
+        new_encoder = create_encoder(
+        input_shape=self.input_shape, latent_dim=self.latent_dim, filters=self.filters_encoder, kernels=self.kernels_encoder
+        )
+        self.encoder.set_weights(new_encoder.get_weights())

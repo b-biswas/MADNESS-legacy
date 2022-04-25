@@ -1,16 +1,18 @@
 import os
 
+import numpy as np
+
 import tensorflow as tf
 from debvader.batch_generator import COSMOSsequence
 from debvader.normalize import LinearNormCosmos
+from debvader.train import define_callbacks
 
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.utils import listdir_fullpath
 
 # define the parameters
 batch_size = 200
-linear_norm = True
-flow_epochs = 200
+flow_epochs = 125
 latent_dim = 10
 num_iter_per_epoch = None
 
@@ -19,7 +21,7 @@ f_net = FlowVAEnet(latent_dim=latent_dim)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 
 # Keras Callbacks
-path_weights = "/pbs/throng/lsst/users/bbiswas/train_debvader/cosmos/updated_cosmos10dim_small_sig/"
+path_weights = "data/cosmos10d/"
 
 ######## List of data samples
 def listdir_fullpath(d):
@@ -51,24 +53,18 @@ validation_generator = COSMOSsequence(
 )
 
 # load the vae weights for encoder
-f_net.load_vae_weights(os.path.join(path_weights, "vae/val_loss"))
+f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.load_flow_weights(os.path.join(path_weights, "fvae"))
 
 ######## Define all used callbacks
-checkpointer_flow_loss = tf.keras.callbacks.ModelCheckpoint(
-    filepath=os.path.join(path_weights, "fvae", "weights_isolated.ckpt"),
-    monitor="val_loss",
-    verbose=1,
-    save_best_only=True,
-    save_weights_only=True,
-    mode="min",
-    period=1,
-)
+callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=15)
 
 # now train the model
-f_net.train_flow(
+hist_flow = f_net.train_flow(
     train_generator,
     validation_generator,
-    callbacks=[checkpointer_flow_loss],
+    callbacks=callbacks,
     epochs=flow_epochs,
 )
+
+np.save(path_weights + '/train_vae_history.npy',hist_flow.history)
