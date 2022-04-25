@@ -27,23 +27,24 @@ def vae_loss_fn(x, predicted_distribution):
     return objective
 
 @tf.function(autograph=False)
-def vae_loss_fn(x, predicted_distribution):
+def vae_loss_fn_mse(x, predicted_distribution):
     mean = predicted_distribution.mean()
 
     diff = tf.subtract(mean, x)
-    diff_square = tf.square(diff)
-    mse = tf.math.sqrt(tf.math.reduce_mean(diff_square, axis=[1, 2, 3]))
+    pixel_mse = tf.divide(tf.square(diff), tf.add(x, 0.001))
+    mse = tf.math.reduce_sum(pixel_mse, axis=[1, 2, 3])
 
     objective = tf.math.reduce_mean(mse)
 
     return objective
 
+@tf.function(autograph=False)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
     objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
     return objective
 
-#@tf.function(autograph=False)
+@tf.function(autograph=False)
 def flow_loss_fn(x, output):
     return -tf.math.reduce_mean(output)
 
