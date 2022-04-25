@@ -225,7 +225,7 @@ class Deblend:
 
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
-
+    
     def run_debvader(self):
 
         X = self.postage_stamp
