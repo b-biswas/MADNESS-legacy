@@ -226,6 +226,25 @@ class Deblend:
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
 
+    def run_debvader(self):
+
+        X = self.postage_stamp
+        if not self.channel_last:
+            X = np.transpose(X, axes=(1, 2, 0))
+
+        m, n, b = np.shape(X)
+
+        distances_to_center = list(
+            np.array(self.detected_positions) - int((m - 1) / 2)
+        )
+        cutouts = extract_cutouts(
+            X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
+        )
+        z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
+            self.flow_vae_net.encoder(cutouts)
+        )
+        self.components = self.flow_vae_net.decoder(z).mean().numpy()
+
     def gradient_decent(self, initZ=None, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075):
         """
         perform the gradient descent step to separate components (galaxies)
