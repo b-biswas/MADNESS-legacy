@@ -1,5 +1,6 @@
 import logging
 import time
+import sys
 import functools
 
 import numpy as np
@@ -25,9 +26,7 @@ class Deblend:
         cutout_size=45,
         num_components=1,
         max_iter=60,
-        lr=0.3,
         latent_dim=10,
-        initZ=None,
         use_likelihood=True,
         channel_last=False,
     ):
@@ -42,8 +41,6 @@ class Deblend:
             number of galaxies present in the image.
         max_iter: int
             number of iterations in the deblending step
-        lr: float
-            learning rate for the gradient descent in the latent space.
         initZ: np.ndarry
             initial value for the latent space
         use_likelihood: bool
@@ -54,7 +51,6 @@ class Deblend:
 
         self.postage_stamp = postage_stamp
         self.max_iter = max_iter
-        self.lr = lr
         self.num_components = num_components
         self.use_likelihood = use_likelihood
         self.components = None
@@ -83,7 +79,10 @@ class Deblend:
 
         # self.flow_vae_net.vae_model.summary()
         self.optimizer=None
-        self.results = self.gradient_decent(initZ)
+
+    def __call__(self, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075):
+        tf.config.run_functions_eagerly(False)
+        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_deblender=use_deblender, optimizer=optimizer, lr=lr)
 
     def get_components(self):
         """
@@ -227,7 +226,7 @@ class Deblend:
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
 
-    def gradient_decent(self, initZ=None):
+    def gradient_decent(self, initZ=None, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -244,9 +243,9 @@ class Deblend:
 
         m, n, b = np.shape(X)
 
-        if initZ is not None:
+        if not use_deblender:
             # check constraint parameter over here
-            z = tf.Variable(initial_value=initZ, name="z")
+            z = tf.Variable(self.flow_vae_net.td.sample(self.num_components))
 
         else:
             # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
@@ -263,11 +262,17 @@ class Deblend:
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
-        #self.optimizer = tf.keras.optimizers.Adam(lr=self.lr)
+        #self.optimizer = tf.keras.optimizers.Adam(lr=lr)
+
+        if optimizer is None:
+            if isinstance(lr, tf.keras.optimizers.schedules):
+                lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(lr, decay_steps=12, decay_rate=0.75, staircase=True)
+
+            optimizer=tf.keras.optimizers.RMSprop(learning_rate=lr_scheduler)
 
         LOG.info("\n--- Starting gradient descent in the latent space ---")
-        LOG.info("Number of iterations: " + str(self.max_iter))
-        LOG.info("Learning rate: " + str(self.lr))
+        LOG.info("Maximum number of iterations: " + str(self.max_iter))
+        #LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
         LOG.info("Number of Galaxies: " + str(self.num_components))
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
@@ -287,7 +292,7 @@ class Deblend:
         def trace_fn(traceable_quantities):
             return {'loss': traceable_quantities.loss}
 
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.lr, decay_steps=10, decay_rate=0.75, staircase=True)
+        
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
@@ -299,10 +304,8 @@ class Deblend:
             ), 
             trainable_variables=[z],
             num_steps=self.max_iter, 
-            optimizer=tf.keras.optimizers.RMSprop(learning_rate=lr_schedule),
-            convergence_criterion=(
-                tfp.optimizer.convergence_criteria.LossNotDecreasing(atol=.0000015*45*45*6*49, window_size=10)
-            ),
+            optimizer=optimizer,
+            convergence_criterion=convergence_criterion,
         )
 
         #for i in range(self.max_iter):
