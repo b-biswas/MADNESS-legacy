@@ -58,7 +58,9 @@ class FlowVAEnet:
         filters_decoder=[128, 64, 32],
         kernels_encoder=[3, 3, 3, 3],
         kernels_decoder=[3, 3, 3, 3],
-        num_nf_layers=6,
+        num_nf_layers=8,
+        kl_prior=None,
+        kl_weight=None,
     ):
         """
         Creates the required models according to the specifications.
@@ -104,6 +106,8 @@ class FlowVAEnet:
             filters_decoder=self.filters_decoder,
             kernels_decoder=self.kernels_decoder,
             num_nf_layers=self.num_nf_layers,
+            kl_prior=kl_prior,
+            kl_weight=kl_weight,
         )
 
         self.optimizer = None
@@ -117,8 +121,10 @@ class FlowVAEnet:
         train_encoder=True,
         train_decoder=True,
         optimizer=tf.keras.optimizers.Adam(1e-4),
+        track_kl = False,
         epochs=35,
         verbose=1,
+        loss_function=None,
     ):
         """
         trains only the vae model. (both the encoder and the decoder)
@@ -153,8 +159,6 @@ class FlowVAEnet:
         self.encoder.trainable = train_encoder
         self.decoder.trainable = train_decoder
 
-        if train_encoder is False:
-            self.encoder.get_layer("batchnorm1").trainable = False
 
         self.vae_model.summary()
         LOG.info("\n--- Training only VAE network ---")
@@ -162,25 +166,32 @@ class FlowVAEnet:
         LOG.info("Decoder status: " + str(train_decoder))
         # LOG.info("Initial learning rate: " + str(lr))
 
+        metrics=["mse"]
         # Custom metric to display the KL divergence during training
         def kl_metric(y_true, y_pred):
             return K.sum(self.vae_model.losses)
 
+        if track_kl:
+             metrics+=[kl_metric]
+
         LOG.info("Number of epochs: " + str(epochs))
+
+        if loss_function is None:
+            loss_function=vae_loss_fn
         self.vae_model.compile(
             optimizer=optimizer,
-            loss={"decoder": vae_loss_fn},
-            experimental_run_tf_function=True,
-            metrics=["mse", kl_metric],
+            loss={"decoder": loss_function},
+            experimental_run_tf_function=False,
+            metrics=metrics,
         )
         hist = self.vae_model.fit(
             x=train_generator,
             epochs=epochs,
             verbose=verbose,
-            shuffle=True,
+            shuffle=False,
             validation_data=validation_generator,
             callbacks=callbacks,
-            workers=8,
+            workers=4,
             use_multiprocessing=True,
         )
         return hist
@@ -223,12 +234,10 @@ class FlowVAEnet:
         """
         self.flow.trainable = True
         self.encoder.trainable = False
-        # TODO: find a better way to fix all batchnorm layers
-        self.encoder.get_layer("batchnorm1").trainable = False
         self.flow_model.compile(
             optimizer=optimizer,
             loss={"flow": flow_loss_fn},
-            experimental_run_tf_function=True,
+            experimental_run_tf_function=False,
         )
         self.flow_model.summary()
 
@@ -243,7 +252,7 @@ class FlowVAEnet:
             shuffle=True,
             validation_data=validation_generator,
             callbacks=callbacks,
-            workers=8,
+            workers=4,
             use_multiprocessing=True,
         )
 
