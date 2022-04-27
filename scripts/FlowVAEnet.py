@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 def vae_loss_fn(x, predicted_distribution):
     log_prob = predicted_distribution.log_prob(x)
 
-    weight = tf.add(tf.math.sqrt(x), .1)
+    weight = tf.add(tf.math.sqrt(x), .01)
     loss = tf.math.multiply(log_prob, weight)
     #loss = log_prob
 
@@ -53,9 +53,9 @@ class FlowVAEnet:
     def __init__(
         self,
         input_shape=[45, 45, 6],
-        latent_dim=10,
+        latent_dim=8,
         filters_encoder=[32, 64, 128, 256],
-        filters_decoder=[128, 64, 32],
+        filters_decoder=[32, 64, 128],
         kernels_encoder=[3, 3, 3, 3],
         kernels_decoder=[3, 3, 3, 3],
         num_nf_layers=8,
