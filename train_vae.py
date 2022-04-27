@@ -21,10 +21,10 @@ batch_size = 100
 vae_epochs = 80
 flow_epochs = 125
 deblender_epochs = 80
-latent_dim = 10
+latent_dim = 8
 
 prior = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1)
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=.01)
 
 ######## List of data samples
 def listdir_fullpath(d):
@@ -37,7 +37,7 @@ train_path = datalist[:700]
 validation_path = datalist[700:]
 
 # Keras Callbacks
-path_weights = "data/" + "cosmos10d_smallkl/"
+path_weights = "data/" + "cosmos8d/"
 
 ######## Define the generators
 
@@ -67,6 +67,8 @@ hist_vae = f_net.train_vae(
 
 np.save(path_weights + '/train_vae_history.npy',hist_vae.history)
 
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
+f_net.load_vae_weights(os.path.join(path_weights, "vae" , "val_loss"))
 
 ######## Define all used callbacks
 callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=10)
@@ -87,7 +89,7 @@ deblend_prior.trainable=False
 print(f_net.flow.trainable_variables)
 
 
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=1)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae" , "val_loss"))
 #f_net.randomize_encoder()
 
