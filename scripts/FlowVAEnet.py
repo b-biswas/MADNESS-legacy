@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 def vae_loss_fn(x, predicted_distribution):
     log_prob = predicted_distribution.log_prob(x)
 
-    weight = tf.add(tf.math.sqrt(x), .1)
+    weight = tf.add(tf.math.sqrt(x), .01)
     loss = tf.math.multiply(log_prob, weight)
     #loss = log_prob
 
