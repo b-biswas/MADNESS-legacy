@@ -68,10 +68,10 @@ class Deblend:
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
         self.flow_vae_net.load_flow_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos10d/flow/val_loss"
+            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/flow/val_loss"
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos10d/deblender/val_loss"
+            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/vae/val_loss"
         )
 
         # self.flow_vae_net.vae_model.trainable = False
