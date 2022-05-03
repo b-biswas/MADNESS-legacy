@@ -238,7 +238,7 @@ class Deblend:
             np.array(self.detected_positions) - int((m - 1) / 2)
         )
         cutouts = extract_cutouts(
-            X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
+            X, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
         )
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
@@ -273,7 +273,7 @@ class Deblend:
                 np.array(self.detected_positions) - int((m - 1) / 2)
             )
             cutouts = extract_cutouts(
-                X, m, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
+                X, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
