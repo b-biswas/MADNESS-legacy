@@ -173,11 +173,17 @@ class Deblend:
                                                 index_pos_to_sub=index_pos_to_sub,
                                                 padding_infos=padding_infos)
 
-        sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
+        # sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
 
-        reconstruction_loss = tf.cast(
-            tf.math.reduce_sum(tf.square(residual_field)), tf.float32
-        ) / tf.cast(tf.square(sig), tf.float32)
+        # reconstruction_loss = tf.cast(
+        #     tf.math.reduce_sum(tf.square(residual_field)), tf.float32
+        # ) / tf.cast(tf.square(sig), tf.float32)
+
+        sig = tf.stop_gradient(tf.math.reduce_std(residual_field, axis=[0, 1]))
+
+        reconstruction_loss = tf.divide(tf.math.reduce_sum(tf.square(residual_field), axis=[0, 1]), tf.square(sig))
+
+        reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
         reconstruction_loss = tf.divide(reconstruction_loss, 2)
 
