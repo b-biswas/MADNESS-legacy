@@ -8,7 +8,7 @@ LOG = logging.getLogger(__name__)
 
 
 def extract_cutouts(
-    field_image, field_size, galaxy_distances_to_center, cutout_size=59, nb_of_bands=6
+    field_image, galaxy_distances_to_center, cutout_size=59, nb_of_bands=6, channel_last=False,
 ):
     """
     Extract the cutouts around particular galaxies in the field
@@ -24,6 +24,8 @@ def extract_cutouts(
     list_idx = []
     flag = False
 
+    field_size = np.shape(field_image)[1]
+
     for i in range(len(galaxy_distances_to_center)):
         try:
             x_shift = galaxy_distances_to_center[i][0]
@@ -34,8 +36,12 @@ def extract_cutouts(
 
             y_start = -int(cutout_size / 2) + int(y_shift) + int(field_size / 2)
             y_end = int(cutout_size / 2) + int(y_shift) + int(field_size / 2) + 1
+            if channel_last:
+                cutout_images[i] = field_image[x_start:x_end, y_start:y_end]
+            else:
+                cutout_regions = field_image[:, x_start:x_end, y_start:y_end]
+                cutout_images[i] = np.transpose(cutout_regions, axes=(1, 2, 0))
 
-            cutout_images[i] = field_image[x_start:x_end, y_start:y_end]
             list_idx.append(i)
 
         except ValueError:
