@@ -83,9 +83,9 @@ class Deblend:
         self.optimizer=None
         self.noise_sigma=noise_sigma
 
-    def __call__(self, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075):
+    def __call__(self, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
         tf.config.run_functions_eagerly(False)
-        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_deblender=use_deblender, optimizer=optimizer, lr=lr)
+        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_deblender=use_deblender, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
 
     def get_components(self):
         """
@@ -167,7 +167,7 @@ class Deblend:
         return residual_field
 
     @tf.function(autograph=False)
-    def compute_loss(self, z, postage_stamp, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(postage_stamp, 
@@ -178,14 +178,16 @@ class Deblend:
 
         # sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
 
+        
         # reconstruction_loss = tf.cast(
         #     tf.math.reduce_sum(tf.square(residual_field)), tf.float32
         # ) / tf.cast(tf.square(sig), tf.float32)
 
-        # sig = tf.stop_gradient(tf.math.reduce_std(residual_field, axis=[0, 1]))
+        if compute_sig_dynamically:
+            sig = tf.stop_gradient(tf.math.reduce_std(residual_field, axis=[0, 1]))
 
         reconstruction_loss = tf.divide(tf.math.reduce_sum(tf.square(residual_field), axis=[0, 1]), tf.square(sig))
-        # tf.print(sig, output_stream=sys.stdout)
+        #tf.print(sig, output_stream=sys.stdout)
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
@@ -200,8 +202,8 @@ class Deblend:
             tf.float32,
         )
 
-        tf.print(reconstruction_loss, output_stream=sys.stdout)
-        tf.print(log_likelihood, output_stream=sys.stdout)
+        # tf.print(reconstruction_loss, output_stream=sys.stdout)
+        # tf.print(log_likelihood, output_stream=sys.stdout)
         if self.use_likelihood:
             return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
@@ -268,7 +270,7 @@ class Deblend:
                 sig.append(sep.Background(self.postage_stamp[i]).globalrms)
         return sig
 
-    def gradient_decent(self, initZ=None, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075):
+    def gradient_decent(self, initZ=None, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075, compute_sig_dynamically=False):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -341,6 +343,7 @@ class Deblend:
             loss_fn=self.generate_grad_step_loss(
                 z=z, 
                 postage_stamp=self.postage_stamp,
+                compute_sig_dynamically=compute_sig_dynamically,
                 sig=sig,
                 use_scatter_and_sub=False, 
                 index_pos_to_sub=index_pos_to_sub, 
@@ -376,11 +379,12 @@ class Deblend:
 
         return results
 
-    def generate_grad_step_loss(self, z, postage_stamp, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def generate_grad_step_loss(self, z, postage_stamp, compute_sig_dynamically, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         def training_loss():
             loss, *_ = self.compute_loss(
                 z=z, 
                 postage_stamp=postage_stamp, 
+                compute_sig_dynamically=compute_sig_dynamically,
                 sig=sig,
                 use_scatter_and_sub=use_scatter_and_sub, 
                 index_pos_to_sub=index_pos_to_sub,
