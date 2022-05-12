@@ -4,7 +4,6 @@ import sys
 import functools
 
 import numpy as np
-from platformdirs import user_documents_path
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -73,7 +72,7 @@ class Deblend:
             weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/flow/val_loss"
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/vae/val_loss"
+            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/deblender/val_loss"
         )
 
         # self.flow_vae_net.vae_model.trainable = False
