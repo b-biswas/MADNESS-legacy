@@ -53,7 +53,7 @@ validation_generator_vae = COSMOSsequence(validation_path, 'isolated_gal_stamps'
 
 ######## Define all used callbacks
 callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=10)
-
+"""
 hist_vae = f_net.train_vae(
     train_generator_vae,
     validation_generator_vae,
@@ -82,7 +82,7 @@ hist_flow = f_net.train_flow(
 )
 
 np.save(os.path.join(path_weights, 'train_vae_history.npy'), hist_flow.history)
-
+"""
 f_net.flow.trainable = False
 deblend_prior = f_net.td
 deblend_prior.trainable=False
@@ -114,6 +114,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-4),
+    loss_function=vae_loss_fn_mse,
 )
 
 np.save(path_weights + '/train_deblender_history.npy', hist_deblender.history)
