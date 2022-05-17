@@ -28,10 +28,10 @@ def vae_loss_fn(x, predicted_distribution):
 
 @tf.function(autograph=False)
 def vae_loss_fn_mse(x, predicted_distribution):
-    mean = predicted_distribution.mean()
+    mean = predicted_distribution.sample()
 
     diff = tf.subtract(mean, x)
-    pixel_mse = tf.divide(tf.square(diff), tf.add(x, 0.001))
+    pixel_mse = tf.square(diff)
     mse = tf.math.reduce_sum(pixel_mse, axis=[1, 2, 3])
 
     objective = tf.math.reduce_mean(mse)
