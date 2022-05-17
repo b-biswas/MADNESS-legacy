@@ -82,9 +82,9 @@ class Deblend:
         self.optimizer=None
         self.noise_sigma=noise_sigma
 
-    def __call__(self, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
+    def __call__(self, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
         tf.config.run_functions_eagerly(False)
-        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_deblender=use_deblender, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
+        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_debvader=use_debvader, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
 
     def get_components(self):
         """
@@ -203,6 +203,7 @@ class Deblend:
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
+        
         if self.use_likelihood:
             return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
@@ -243,16 +244,15 @@ class Deblend:
     def run_debvader(self):
 
         X = self.postage_stamp
-        if not self.channel_last:
-            X = np.transpose(X, axes=(1, 2, 0))
-
-        m, n, b = np.shape(X)
-
+        if self.channel_last:
+            m, n, b = np.shape(self.postage_stamp)
+        else:
+            b, m, n = np.shape(self.postage_stamp)
         distances_to_center = list(
             np.array(self.detected_positions) - int((m - 1) / 2)
         )
         cutouts = extract_cutouts(
-            X, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
+            self.postage_stamp, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b, channel_last=self.channel_last,
         )
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
@@ -269,7 +269,7 @@ class Deblend:
                 sig.append(sep.Background(self.postage_stamp[i]).globalrms)
         return sig
 
-    def gradient_decent(self, initZ=None, convergence_criterion=None, use_deblender=False, optimizer=None, lr=0.075, compute_sig_dynamically=False):
+    def gradient_decent(self, initZ=None, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=False):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -280,13 +280,15 @@ class Deblend:
         initZ: np.ndarray
             initial value of the latent space.
         """
-        X = self.postage_stamp
-        if not self.channel_last:
-            X = np.transpose(X, axes=(1, 2, 0))
+        # X = self.postage_stamp
+        # if not self.channel_last:
+        #     X = np.transpose(X, axes=(1, 2, 0))
+        if self.channel_last:
+            m, n, b = np.shape(self.postage_stamp)
+        else:
+            b, m, n = np.shape(self.postage_stamp)
 
-        m, n, b = np.shape(X)
-
-        if not use_deblender:
+        if not use_debvader:
             # check constraint parameter over here
             z = tf.Variable(self.flow_vae_net.td.sample(self.num_components))
 
@@ -297,7 +299,7 @@ class Deblend:
                 np.array(self.detected_positions) - int((m - 1) / 2)
             )
             cutouts = extract_cutouts(
-                X, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b
+                self.postage_stamp, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b, channel_last=self.channel_last,
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
