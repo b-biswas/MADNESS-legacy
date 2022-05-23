@@ -90,7 +90,7 @@ class Deblend:
     def __call__(self, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
         tf.config.run_functions_eagerly(False)
 
-        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_debvader=use_debvader, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically, )
+        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_debvader=use_debvader, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
 
     def get_components(self):
         """
@@ -106,9 +106,9 @@ class Deblend:
     def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=False, index_pos_to_sub=None, padding_infos=None):
 
         if reconstructions is None:
-            reconstructions = self.components
+            reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
         if self.channel_last:
-            residual_field = postage_stamp
+            residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
         else:
             residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
@@ -288,8 +288,6 @@ class Deblend:
         # X = self.postage_stamp
         # if not self.channel_last:
         #     X = np.transpose(X, axes=(1, 2, 0))
-        if linear_norm_coef is None: 
-            linear_norm_coef = 1
         if self.channel_last:
             m, n, b = np.shape(self.postage_stamp)
         else:
@@ -347,7 +345,7 @@ class Deblend:
         if self.noise_sigma is None:
             noise_level = self.compute_noise_sigma()
 
-        sig_sq = np.sauqre(noise_level)
+        sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
@@ -384,7 +382,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()
+        self.components = self.flow_vae_net.decoder(z).mean().numpy()*self.linear_norm_coeff
         #print(self.components)
 
         return results
