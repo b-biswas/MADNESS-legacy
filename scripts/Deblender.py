@@ -345,6 +345,9 @@ class Deblend:
         if self.noise_sigma is None:
             noise_level = self.compute_noise_sigma()
 
+        # Calculate sigma^2 with gaussian approximation to poisson noise. 
+        # Note here that self.postage stamp is normalized but it must be divided again 
+        # to encure that the loglikelihood does not change due to scaling/normalizing
         if self.channel_last:
             sig_sq = tf.convert_to_tensor(np.add(self.postage_stamp/self.linear_norm_coeff, np.square(noise_level)), dtype=tf.float32)
         else:
