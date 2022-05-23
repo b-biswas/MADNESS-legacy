@@ -30,6 +30,7 @@ class Deblend:
         latent_dim=10,
         use_likelihood=True,
         channel_last=False,
+        linear_norm_coeff=None,
     ):
         """
         Parameters
@@ -49,8 +50,11 @@ class Deblend:
         channel_last: bool
             if channel is the last column of the postage_stamp
         """
+        if linear_norm_coeff is None:
+            linear_norm_coeff = 1
 
-        self.postage_stamp = postage_stamp
+        self.linear_norm_coeff=linear_norm_coeff
+        self.postage_stamp = postage_stamp/linear_norm_coeff
         self.max_iter = max_iter
         self.num_components = num_components
         self.use_likelihood = use_likelihood
@@ -58,6 +62,7 @@ class Deblend:
         self.channel_last = channel_last
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
+        
         if channel_last: 
             self.num_bands = np.shape(postage_stamp)[-1]
             self.field_size = np.shape(postage_stamp)[1]
@@ -84,6 +89,7 @@ class Deblend:
 
     def __call__(self, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
         tf.config.run_functions_eagerly(False)
+
         self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_debvader=use_debvader, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
 
     def get_components(self):
@@ -100,9 +106,9 @@ class Deblend:
     def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=False, index_pos_to_sub=None, padding_infos=None):
 
         if reconstructions is None:
-            reconstructions = self.components
+            reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
         if self.channel_last:
-            residual_field = postage_stamp
+            residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
         else:
             residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
@@ -166,7 +172,7 @@ class Deblend:
         return residual_field
 
     @tf.function(autograph=False)
-    def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(postage_stamp, 
@@ -183,10 +189,10 @@ class Deblend:
         # ) / tf.cast(tf.square(sig), tf.float32)
 
         if compute_sig_dynamically:
-            sig = tf.stop_gradient(tf.math.reduce_std(residual_field, axis=[0, 1]))
+            sig_sq = tf.stop_gradient(tf.square(tf.math.reduce_std(residual_field, axis=[0, 1])))
 
-        reconstruction_loss = tf.divide(tf.math.reduce_sum(tf.square(residual_field), axis=[0, 1]), tf.square(sig))
-        #tf.print(sig, output_stream=sys.stdout)
+        reconstruction_loss = tf.divide(tf.math.reduce_sum(tf.square(residual_field), axis=[0, 1]), sig_sq)
+        #tf.print(sig_sq, output_stream=sys.stdout)
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
@@ -243,7 +249,6 @@ class Deblend:
     
     def run_debvader(self):
 
-        X = self.postage_stamp
         if self.channel_last:
             m, n, b = np.shape(self.postage_stamp)
         else:
@@ -338,14 +343,16 @@ class Deblend:
             return {'loss': traceable_quantities.loss}
 
         if self.noise_sigma is None:
-            sig = self.compute_noise_sigma()
+            noise_level = self.compute_noise_sigma()
+
+        sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
                 z=z, 
                 postage_stamp=self.postage_stamp,
                 compute_sig_dynamically=compute_sig_dynamically,
-                sig=sig,
+                sig_sq=sig_sq,
                 use_scatter_and_sub=False, 
                 index_pos_to_sub=index_pos_to_sub, 
                 padding_infos=padding_infos,
@@ -375,18 +382,18 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()
+        self.components = self.flow_vae_net.decoder(z).mean().numpy()*self.linear_norm_coeff
         #print(self.components)
 
         return results
 
-    def generate_grad_step_loss(self, z, postage_stamp, compute_sig_dynamically, sig, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def generate_grad_step_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
         def training_loss():
             loss, *_ = self.compute_loss(
                 z=z, 
                 postage_stamp=postage_stamp, 
                 compute_sig_dynamically=compute_sig_dynamically,
-                sig=sig,
+                sig_sq=sig_sq,
                 use_scatter_and_sub=use_scatter_and_sub, 
                 index_pos_to_sub=index_pos_to_sub,
                 padding_infos=padding_infos,
