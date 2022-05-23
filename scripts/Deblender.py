@@ -191,7 +191,7 @@ class Deblend:
         if compute_sig_dynamically:
             sig_sq = tf.stop_gradient(tf.square(tf.math.reduce_std(residual_field, axis=[0, 1])))
 
-        reconstruction_loss = tf.divide(tf.math.reduce_sum(tf.square(residual_field), axis=[0, 1]), sig_sq)
+        reconstruction_loss = tf.divide(tf.square(residual_field), sig_sq)
         #tf.print(sig_sq, output_stream=sys.stdout)
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
@@ -345,7 +345,11 @@ class Deblend:
         if self.noise_sigma is None:
             noise_level = self.compute_noise_sigma()
 
-        sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
+        if self.channel_last:
+            sig_sq = tf.convert_to_tensor(np.add(self.postage_stamp/self.linear_norm_coeff, np.square(noise_level)), dtype=tf.float32)
+        else:
+            sig_sq = tf.convert_to_tensor(np.add(np.transpose(self.postage_stamp/self.linear_norm_coeff, axes=[1, 2, 0]), np.square(noise_level)), dtype=tf.float32)
+            # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
