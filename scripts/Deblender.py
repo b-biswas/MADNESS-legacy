@@ -173,7 +173,7 @@ class Deblend:
 
     @tf.function(autograph=False)
     def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
-        reconstructions = self.flow_vae_net.decoder(z).mean()
+        reconstructions = self.flow_vae_net.decoder(z)
 
         residual_field = self.compute_residual(postage_stamp, 
                                                 reconstructions,
@@ -262,7 +262,7 @@ class Deblend:
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()
+        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
 
     def compute_noise_sigma(self):
         
@@ -360,7 +360,7 @@ class Deblend:
                 postage_stamp=self.postage_stamp,
                 compute_sig_dynamically=compute_sig_dynamically,
                 sig_sq=sig_sq,
-                use_scatter_and_sub=False, 
+                use_scatter_and_sub=True, 
                 index_pos_to_sub=index_pos_to_sub, 
                 padding_infos=padding_infos,
             ), 
@@ -389,7 +389,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()*self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
         #print(self.components)
 
         return results
