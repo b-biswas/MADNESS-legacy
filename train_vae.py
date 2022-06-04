@@ -52,7 +52,7 @@ validation_generator_vae = COSMOSsequence(validation_path_isolated_gal, 'blended
                                  normalizer=normalizer)
 
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=20)
+callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=25)
 
 hist_vae = f_net.train_vae(
     train_generator_vae,
@@ -71,7 +71,7 @@ f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae" , "val_loss"))
 
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=20)
+callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=25)
 
 # now train the model
 hist_flow = f_net.train_flow(
@@ -106,7 +106,7 @@ validation_generator_deblender = COSMOSsequence(validation_path_blended_gal, 'bl
                                  batch_size=batch_size, num_iterations_per_epoch=100, 
                                  normalizer=normalizer)
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "deblender"), lr_scheduler_epochs=20)
+callbacks = define_callbacks(os.path.join(path_weights, "deblender"), lr_scheduler_epochs=25)
 
 #f_net.vae_model.get_layer("latent_space").activity_regularizer=None
 
