@@ -14,17 +14,23 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-@tf.function(autograph=False)
-def vae_loss_fn(x, predicted_distribution):
-    log_prob = predicted_distribution.log_prob(x)
+def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
+    if sigma is None:
+        sigma = [0.0004904385423287749, 0.0019302727887406945, 0.004438500851392746, 0.0053316932171583176, 0.006229500751942396, 0.006669720634818077]
 
-    weight = tf.add(tf.math.sqrt(x), .01)
-    loss = tf.math.multiply(log_prob, weight)
-    #loss = log_prob
+    @tf.function
+    def vae_loss_fn(x, predicted_galaxy):
+        # predicted_galaxies = predicted_distribution.mean()
 
-    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+        weight = tf.add(tf.divide(predicted_galaxy, linear_norm_coeff), tf.square(sigma))
+        mse = tf.square(tf.subtract(predicted_galaxy, x))
+        loss = tf.math.divide(mse, weight)
+        #loss = log_prob
 
-    return objective
+        objective = tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+
+        return objective
+    return vae_loss_fn
 
 @tf.function(autograph=False)
 def vae_loss_fn_mse(x, predicted_distribution):
@@ -177,7 +183,7 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:
-            loss_function=vae_loss_fn
+            loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": loss_function},
@@ -191,7 +197,7 @@ class FlowVAEnet:
             shuffle=False,
             validation_data=validation_generator,
             callbacks=callbacks,
-            workers=4,
+            workers=8,
             use_multiprocessing=True,
         )
         return hist
@@ -252,7 +258,7 @@ class FlowVAEnet:
             shuffle=True,
             validation_data=validation_generator,
             callbacks=callbacks,
-            workers=4,
+            workers=8,
             use_multiprocessing=True,
         )
 

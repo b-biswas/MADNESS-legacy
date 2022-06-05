@@ -11,16 +11,16 @@ from debvader.normalize import LinearNormCosmos
 
 from scripts.FlowVAEnet import FlowVAEnet
 from scripts.utils import listdir_fullpath
-from scripts.FlowVAEnet import deblender_loss_fn, vae_loss_fn_mse
+from scripts.FlowVAEnet import vae_loss_fn_wrapper
 from debvader.train import define_callbacks
 
 tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 80
+vae_epochs = 120
 flow_epochs = 125
-deblender_epochs = 80
+deblender_epochs = 120
 latent_dim = 8
 
 prior = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1)
@@ -31,10 +31,10 @@ def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d) if not f.endswith("metadata.npy")]
 
 
-datalist = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk/")
+datalist_isolated = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated/")
 
-train_path = datalist[:700]
-validation_path = datalist[700:]
+train_path_isolated_gal = datalist_isolated[:700]
+validation_path_isolated_gal = datalist_isolated[700:]
 
 # Keras Callbacks
 path_weights = "data/" + "cosmos8d/"
@@ -43,17 +43,17 @@ path_weights = "data/" + "cosmos8d/"
 
 normalizer = LinearNormCosmos()
 
-train_generator_vae = COSMOSsequence(train_path, 'isolated_gal_stamps', 'isolated_gal_stamps', 
+train_generator_vae = COSMOSsequence(train_path_isolated_gal, 'blended_gal_stamps', 'blended_gal_stamps', 
                                  batch_size=batch_size, num_iterations_per_epoch=400,
                                  normalizer=normalizer)
 
-validation_generator_vae = COSMOSsequence(validation_path, 'isolated_gal_stamps', 'isolated_gal_stamps', 
+validation_generator_vae = COSMOSsequence(validation_path_isolated_gal, 'blended_gal_stamps', 'blended_gal_stamps', 
                                  batch_size=batch_size, num_iterations_per_epoch=100, 
                                  normalizer=normalizer)
 
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=10)
-"""
+callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=25)
+
 hist_vae = f_net.train_vae(
     train_generator_vae,
     validation_generator_vae,
@@ -62,7 +62,7 @@ hist_vae = f_net.train_vae(
     train_encoder=True,
     train_decoder=True,
     track_kl = True,
-    optimizer=tf.keras.optimizers.Adam(5e-4),
+    optimizer=tf.keras.optimizers.Adam(2e-4),
 )
 
 np.save(path_weights + '/train_vae_history.npy',hist_vae.history)
@@ -71,7 +71,7 @@ f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae" , "val_loss"))
 
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=10)
+callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=25)
 
 # now train the model
 hist_flow = f_net.train_flow(
@@ -82,7 +82,7 @@ hist_flow = f_net.train_flow(
 )
 
 np.save(os.path.join(path_weights, 'train_vae_history.npy'), hist_flow.history)
-"""
+
 f_net.flow.trainable = False
 deblend_prior = f_net.td
 deblend_prior.trainable=False
@@ -93,15 +93,20 @@ f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae" , "val_loss"))
 #f_net.randomize_encoder()
 
-train_generator_deblender = COSMOSsequence(train_path, 'blended_gal_stamps', 'isolated_gal_stamps', 
+datalist_blended = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk/")
+
+train_path_blended_gal = datalist_blended[:700]
+validation_path_blended_gal = datalist_blended[700:]
+
+train_generator_deblender = COSMOSsequence(train_path_blended_gal, 'blended_gal_stamps', 'isolated_gal_stamps', 
                                  batch_size=batch_size, num_iterations_per_epoch=400,
                                  normalizer=normalizer)
 
-validation_generator_deblender = COSMOSsequence(validation_path, 'blended_gal_stamps', 'isolated_gal_stamps', 
+validation_generator_deblender = COSMOSsequence(validation_path_blended_gal, 'blended_gal_stamps', 'isolated_gal_stamps', 
                                  batch_size=batch_size, num_iterations_per_epoch=100, 
                                  normalizer=normalizer)
 ######## Define all used callbacks
-callbacks = define_callbacks(os.path.join(path_weights, "deblender"), lr_scheduler_epochs=20)
+callbacks = define_callbacks(os.path.join(path_weights, "deblender"), lr_scheduler_epochs=25)
 
 #f_net.vae_model.get_layer("latent_space").activity_regularizer=None
 
@@ -114,7 +119,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-4),
-    loss_function=vae_loss_fn_mse,
+    loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000),
 )
 
 np.save(path_weights + '/train_deblender_history.npy', hist_deblender.history)

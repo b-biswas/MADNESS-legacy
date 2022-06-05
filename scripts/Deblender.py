@@ -173,7 +173,7 @@ class Deblend:
 
     @tf.function(autograph=False)
     def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
-        reconstructions = self.flow_vae_net.decoder(z).mean()
+        reconstructions = self.flow_vae_net.decoder(z)
 
         residual_field = self.compute_residual(postage_stamp, 
                                                 reconstructions,
@@ -262,7 +262,7 @@ class Deblend:
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()
+        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
 
     def compute_noise_sigma(self):
         
@@ -345,6 +345,9 @@ class Deblend:
         if self.noise_sigma is None:
             noise_level = self.compute_noise_sigma()
 
+        # Calculate sigma^2 with gaussian approximation to poisson noise. 
+        # Note here that self.postage stamp is normalized but it must be divided again 
+        # to encure that the loglikelihood does not change due to scaling/normalizing
         if self.channel_last:
             sig_sq = tf.convert_to_tensor(np.add(self.postage_stamp/self.linear_norm_coeff, np.square(noise_level)), dtype=tf.float32)
         else:
@@ -357,7 +360,7 @@ class Deblend:
                 postage_stamp=self.postage_stamp,
                 compute_sig_dynamically=compute_sig_dynamically,
                 sig_sq=sig_sq,
-                use_scatter_and_sub=False, 
+                use_scatter_and_sub=True, 
                 index_pos_to_sub=index_pos_to_sub, 
                 padding_infos=padding_infos,
             ), 
@@ -386,7 +389,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).mean().numpy()*self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
         #print(self.components)
 
         return results

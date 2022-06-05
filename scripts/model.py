@@ -117,7 +117,8 @@ def create_decoder(
         h = PReLU()(h)
 
     # keep the output of the last layer as relu as we want only positive flux values.
-    h = Conv2DTranspose(input_shape[-1] * 2, (3, 3), activation="relu", padding="same")(h)
+    # h = Conv2DTranspose(input_shape[-1] * 2, (3, 3), activation="relu", padding="same")(h)
+    h = Conv2DTranspose(input_shape[-1], (3, 3), activation="relu", padding="same")(h)
 
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
     cropping = int(h.get_shape()[1] - input_shape[0])
@@ -129,13 +130,13 @@ def create_decoder(
                 ((cropping // 2, cropping // 2 + 1), (cropping // 2, cropping // 2 + 1))
             )(h)
 
-    # Build the encoder only
-    h = tfp.layers.DistributionLambda(
-        make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=1e-3 + t[..., input_shape[-1] :]
-        ),
-        convert_to_tensor_fn=tfp.distributions.Distribution.mean,
-    )(h)
+    # # Build the encoder only
+    # h = tfp.layers.DistributionLambda(
+    #     make_distribution_fn=lambda t: tfd.Normal(
+    #         loc=t[..., : input_shape[-1]], scale=1e-3 + t[..., input_shape[-1] :]
+    #     ),
+    #     convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+    # )(h)
 
     return Model(input_layer, h, name="decoder")
 
