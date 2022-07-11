@@ -1,7 +1,6 @@
 import tensorflow as tf
-from debvader.batch_generator import COSMOSsequence
-from debvader.normalize import LinearNormCosmos
 
+from maddeb.batch_generator import COSMOSsequence
 from maddeb.FlowVAEnet import FlowVAEnet
 from maddeb.utils import listdir_fullpath
 
@@ -36,7 +35,7 @@ train_generator = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    normalizer=LinearNormCosmos(),
+    linear_norm_coeff=80000,
 )
 
 validation_generator = COSMOSsequence(
@@ -45,7 +44,7 @@ validation_generator = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    normalizer=LinearNormCosmos(),
+    linear_norm_coeff=80000,
 )
 # Define all used callbacks
 checkpointer_vae_loss = tf.keras.callbacks.ModelCheckpoint(

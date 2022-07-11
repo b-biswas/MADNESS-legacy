@@ -2,11 +2,10 @@ import os
 
 import numpy as np
 import tensorflow as tf
-from debvader.batch_generator import COSMOSsequence
-from debvader.normalize import LinearNormCosmos
-from debvader.train import define_callbacks
 
+from maddeb.batch_generator import COSMOSsequence
 from maddeb.FlowVAEnet import FlowVAEnet
+from maddeb.train import define_callbacks
 from maddeb.utils import listdir_fullpath
 
 # define the parameters
@@ -34,7 +33,7 @@ train_generator = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    normalizer=LinearNormCosmos(),
+    linear_norm_coeff=80000,
 )
 
 validation_generator = COSMOSsequence(
@@ -43,7 +42,7 @@ validation_generator = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    normalizer=LinearNormCosmos(),
+    linear_norm_coeff=80000,
 )
 
 # load the vae weights for encoder
