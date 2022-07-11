@@ -4,6 +4,7 @@ import os
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
+
 def get_data_dir_path():
     """Function to return path to the data folder of kndetect
     Returns

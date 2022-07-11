@@ -1,35 +1,46 @@
+import logging
+
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
-from maddeb.model import create_model_fvae, create_encoder
+from maddeb.model import create_encoder, create_model_fvae
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
-
-import logging
-
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
+
 def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
     if sigma is None:
-        sigma = [0.0004904385423287749, 0.0019302727887406945, 0.004438500851392746, 0.0053316932171583176, 0.006229500751942396, 0.006669720634818077]
+        sigma = [
+            0.0004904385423287749,
+            0.0019302727887406945,
+            0.004438500851392746,
+            0.0053316932171583176,
+            0.006229500751942396,
+            0.006669720634818077,
+        ]
 
     @tf.function
     def vae_loss_fn(x, predicted_galaxy):
         # predicted_galaxies = predicted_distribution.mean()
 
-        weight = tf.add(tf.divide(predicted_galaxy, linear_norm_coeff), tf.square(sigma))
+        weight = tf.add(
+            tf.divide(predicted_galaxy, linear_norm_coeff), tf.square(sigma)
+        )
         mse = tf.square(tf.subtract(predicted_galaxy, x))
         loss = tf.math.divide(mse, weight)
-        #loss = log_prob
+        # loss = log_prob
 
         objective = tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
 
         return objective
+
     return vae_loss_fn
+
 
 @tf.function(autograph=False)
 def vae_loss_fn_mse(x, predicted_distribution):
@@ -43,11 +54,13 @@ def vae_loss_fn_mse(x, predicted_distribution):
 
     return objective
 
+
 @tf.function(autograph=False)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
     objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
     return objective
+
 
 @tf.function(autograph=False)
 def flow_loss_fn(x, output):
@@ -126,7 +139,7 @@ class FlowVAEnet:
         train_encoder=True,
         train_decoder=True,
         optimizer=tf.keras.optimizers.Adam(1e-4),
-        track_kl = False,
+        track_kl=False,
         epochs=35,
         verbose=1,
         loss_function=None,
@@ -164,25 +177,25 @@ class FlowVAEnet:
         self.encoder.trainable = train_encoder
         self.decoder.trainable = train_decoder
 
-
         self.vae_model.summary()
         LOG.info("\n--- Training only VAE network ---")
         LOG.info("Encoder status: " + str(train_encoder))
         LOG.info("Decoder status: " + str(train_decoder))
         # LOG.info("Initial learning rate: " + str(lr))
 
-        metrics=["mse"]
+        metrics = ["mse"]
+
         # Custom metric to display the KL divergence during training
         def kl_metric(y_true, y_pred):
             return K.sum(self.vae_model.losses)
 
         if track_kl:
-             metrics+=[kl_metric]
+            metrics += [kl_metric]
 
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:
-            loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
+            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": loss_function},
@@ -297,6 +310,9 @@ class FlowVAEnet:
 
     def randomize_encoder(self):
         new_encoder = create_encoder(
-        input_shape=self.input_shape, latent_dim=self.latent_dim, filters=self.filters_encoder, kernels=self.kernels_encoder
+            input_shape=self.input_shape,
+            latent_dim=self.latent_dim,
+            filters=self.filters_encoder,
+            kernels=self.kernels_encoder,
         )
         self.encoder.set_weights(new_encoder.get_weights())

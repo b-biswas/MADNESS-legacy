@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-
 import tensorflow as tf
 from debvader.batch_generator import COSMOSsequence
 from debvader.normalize import LinearNormCosmos
@@ -23,17 +22,12 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 # Keras Callbacks
 path_weights = "data/cosmos10d/"
 
-######## List of data samples
-def listdir_fullpath(d):
-    return [os.path.join(d, f) for f in os.listdir(d) if not f.endswith("metadata.npy")]
-
-
 datalist = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk/")
 
 train_path = datalist[:800]
 validation_path = datalist[800:]
 
-######## Define the generators
+# Define the generators
 train_generator = COSMOSsequence(
     train_path,
     "isolated_gal_stamps",
@@ -56,7 +50,7 @@ validation_generator = COSMOSsequence(
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.load_flow_weights(os.path.join(path_weights, "fvae"))
 
-######## Define all used callbacks
+# Define all used callbacks
 callbacks = define_callbacks(os.path.join(path_weights, "flow"), lr_scheduler_epochs=15)
 
 # now train the model
@@ -67,4 +61,4 @@ hist_flow = f_net.train_flow(
     epochs=flow_epochs,
 )
 
-np.save(path_weights + '/train_vae_history.npy',hist_flow.history)
+np.save(path_weights + "/train_vae_history.npy", hist_flow.history)

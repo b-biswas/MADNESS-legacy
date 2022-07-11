@@ -23,7 +23,7 @@ repos:
      additional_dependencies: [flake8-typing-imports==1.7.0]
      args: ['--ignore=E501,E203,E731,W503']
 - repo: https://github.com/psf/black
-  rev: 22.1.0
+  rev: 22.3.0
   hooks:
     - id: black
 - repo: https://github.com/kynan/nbstripout
@@ -32,4 +32,3 @@ repos:
     - id: nbstripout
       args:
             - --keep-output
-
