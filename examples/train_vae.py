@@ -3,11 +3,10 @@ import os
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from debvader.batch_generator import COSMOSsequence
-from debvader.normalize import LinearNormCosmos
-from debvader.train import define_callbacks
 
+from maddeb.batch_generator import COSMOSsequence
 from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper
+from maddeb.train import define_callbacks
 from maddeb.utils import listdir_fullpath
 
 tfd = tfp.distributions
@@ -36,15 +35,13 @@ path_weights = "data/" + "cosmos8d/"
 
 # Define the generators
 
-normalizer = LinearNormCosmos()
-
 train_generator_vae = COSMOSsequence(
     train_path_isolated_gal,
     "blended_gal_stamps",
     "blended_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    normalizer=normalizer,
+    linear_norm_coeff=80000,
 )
 
 validation_generator_vae = COSMOSsequence(
@@ -53,7 +50,7 @@ validation_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    normalizer=normalizer,
+    linear_norm_coeff=80000,
 )
 
 # Define all used callbacks
@@ -109,7 +106,7 @@ train_generator_deblender = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    normalizer=normalizer,
+    linear_norm_coeff=80000,
 )
 
 validation_generator_deblender = COSMOSsequence(
@@ -118,7 +115,7 @@ validation_generator_deblender = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    normalizer=normalizer,
+    linear_norm_coeff=80000,
 )
 # Define all used callbacks
 callbacks = define_callbacks(
