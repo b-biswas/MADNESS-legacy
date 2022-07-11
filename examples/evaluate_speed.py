@@ -1,24 +1,20 @@
 import sys
+import time
 
-sys.path.insert(0, "../")
-
-import os
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from scripts.Deblender import Deblend
-from scripts.utils import denorm, listdir_fullpath, norm
-
-bands = [4, 5, 6, 7, 8, 9]
-
-import astropy.table
 import btk
 import btk.catalog
 import btk.draw_blends
 import btk.plot_utils
 import btk.sampling_functions
 import btk.survey
+import galsim
+import numpy as np
+
+from maddeb.Deblender import Deblend
+
+sys.path.insert(0, "../")
+
+bands = [4, 5, 6, 7, 8, 9]
 
 COSMOS_CATALOG_PATHS = [
     "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2.fits",
@@ -34,7 +30,6 @@ catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("Rubin")
 seed = 17
 
-import galsim
 
 galsim_catalog = galsim.COSMOSCatalog(
     COSMOS_CATALOG_PATHS[0], exclusion_level="marginal"
@@ -57,8 +52,6 @@ draw_generator = btk.draw_blends.CosmosGenerator(
     seed=seed,
 )
 
-
-import time
 
 nb_gal = []
 time_per_itr = []

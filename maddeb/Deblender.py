@@ -1,8 +1,9 @@
 import logging
-import time
 import os
+import time
 
 import numpy as np
+import sep
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -10,14 +11,13 @@ from maddeb.extraction import extract_cutouts
 from maddeb.FlowVAEnet import FlowVAEnet
 from maddeb.utils import get_data_dir_path
 
-import sep
-
 tfd = tfp.distributions
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
+
 
 class Deblend:
     def __init__(
@@ -54,8 +54,8 @@ class Deblend:
         if linear_norm_coeff is None:
             linear_norm_coeff = 1
 
-        self.linear_norm_coeff=linear_norm_coeff
-        self.postage_stamp = postage_stamp/linear_norm_coeff
+        self.linear_norm_coeff = linear_norm_coeff
+        self.postage_stamp = postage_stamp / linear_norm_coeff
         self.max_iter = max_iter
         self.num_components = num_components
         self.use_likelihood = use_likelihood
@@ -63,8 +63,8 @@ class Deblend:
         self.channel_last = channel_last
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
-        
-        if channel_last: 
+
+        if channel_last:
             self.num_bands = np.shape(postage_stamp)[-1]
             self.field_size = np.shape(postage_stamp)[1]
         else:
@@ -86,17 +86,30 @@ class Deblend:
         # self.flow_vae_net.flow_model.trainable = False
 
         # self.flow_vae_net.vae_model.summary()
-        self.optimizer=None
-        self.noise_sigma=noise_sigma
+        self.optimizer = None
+        self.noise_sigma = noise_sigma
 
-    def __call__(self, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=True):
+    def __call__(
+        self,
+        convergence_criterion=None,
+        use_debvader=False,
+        optimizer=None,
+        lr=0.075,
+        compute_sig_dynamically=True,
+    ):
         tf.config.run_functions_eagerly(False)
 
-        self.results = self.gradient_decent(convergence_criterion=convergence_criterion, use_debvader=use_debvader, optimizer=optimizer, lr=lr, compute_sig_dynamically=compute_sig_dynamically)
+        self.results = self.gradient_decent(
+            convergence_criterion=convergence_criterion,
+            use_debvader=use_debvader,
+            optimizer=optimizer,
+            lr=lr,
+            compute_sig_dynamically=compute_sig_dynamically,
+        )
 
     def get_components(self):
         """
-        Function to return the predicted components. 
+        Function to return the predicted components.
 
         The final returned image has same value of channel_last as input image.
         """
@@ -105,7 +118,14 @@ class Deblend:
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
     @tf.function(autograph=False)
-    def compute_residual(self, postage_stamp, reconstructions=None, use_scatter_and_sub=False, index_pos_to_sub=None, padding_infos=None):
+    def compute_residual(
+        self,
+        postage_stamp,
+        reconstructions=None,
+        use_scatter_and_sub=False,
+        index_pos_to_sub=None,
+        padding_infos=None,
+    ):
 
         if reconstructions is None:
             reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
@@ -119,31 +139,43 @@ class Deblend:
         if use_scatter_and_sub:
 
             if index_pos_to_sub is not None:
+
                 def one_step(i, residual_field):
                     indices = index_pos_to_sub[i]
                     reconstruction = reconstructions[i]
 
                     residual_field = tf.tensor_scatter_nd_sub(
-                        residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+                        residual_field,
+                        indices,
+                        tf.reshape(
+                            reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
+                        ),
                     )
 
                     return i + 1, residual_field
 
-                c = lambda i, *_: i<self.num_components
+                c = lambda i, *_: i < self.num_components
 
-                _, residual_field = tf.while_loop(c, one_step, (0, residual_field), maximum_iterations=self.num_components)
-            
+                _, residual_field = tf.while_loop(
+                    c,
+                    one_step,
+                    (0, residual_field),
+                    maximum_iterations=self.num_components,
+                )
+
             else:
                 for i in range(self.num_components):
                     detected_position = self.detected_positions[i]
 
-                    starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-                    starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+                    starting_pos_x = int(
+                        detected_position[0] - (self.cutout_size - 1) / 2
+                    )
+                    starting_pos_y = int(
+                        detected_position[1] - (self.cutout_size - 1) / 2
+                    )
 
                     indices = (
-                        np.indices(
-                            (self.cutout_size, self.cutout_size, self.num_bands)
-                        )
+                        np.indices((self.cutout_size, self.cutout_size, self.num_bands))
                         .reshape(3, -1)
                         .T
                     )
@@ -153,48 +185,68 @@ class Deblend:
                     reconstruction = reconstructions[i]
 
                     residual_field = tf.tensor_scatter_nd_sub(
-                        residual_field, indices, tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)])
+                        residual_field,
+                        indices,
+                        tf.reshape(
+                            reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
+                        ),
                     )
 
         else:
+
             def one_step(i, residual_field):
                 padding = tf.cast(padding_infos[i], dtype=tf.int32)
-                reconstruction = tf.pad(tf.gather(reconstructions, i), padding, "CONSTANT", name="padding")
+                reconstruction = tf.pad(
+                    tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
+                )
                 # tf.where(mask, tf.zeros_like(tensor), tensor)
                 residual_field = tf.subtract(residual_field, reconstruction)
-                return tf.add(i,1), residual_field
-            
-            c = lambda i, _: i<self.num_components
+                return tf.add(i, 1), residual_field
+
+            c = lambda i, _: i < self.num_components
 
             _, residual_field = tf.while_loop(
-                c, 
-                one_step, 
-                (tf.constant(0, dtype=tf.int32), residual_field), 
-                maximum_iterations=self.num_components)
+                c,
+                one_step,
+                (tf.constant(0, dtype=tf.int32), residual_field),
+                maximum_iterations=self.num_components,
+            )
         return residual_field
 
     @tf.function(autograph=False)
-    def compute_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def compute_loss(
+        self,
+        z,
+        postage_stamp,
+        compute_sig_dynamically,
+        sig_sq,
+        use_scatter_and_sub,
+        index_pos_to_sub,
+        padding_infos,
+    ):
         reconstructions = self.flow_vae_net.decoder(z)
 
-        residual_field = self.compute_residual(postage_stamp, 
-                                                reconstructions,
-                                                use_scatter_and_sub=use_scatter_and_sub, 
-                                                index_pos_to_sub=index_pos_to_sub,
-                                                padding_infos=padding_infos)
+        residual_field = self.compute_residual(
+            postage_stamp,
+            reconstructions,
+            use_scatter_and_sub=use_scatter_and_sub,
+            index_pos_to_sub=index_pos_to_sub,
+            padding_infos=padding_infos,
+        )
 
         # sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
 
-        
         # reconstruction_loss = tf.cast(
         #     tf.math.reduce_sum(tf.square(residual_field)), tf.float32
         # ) / tf.cast(tf.square(sig), tf.float32)
 
         if compute_sig_dynamically:
-            sig_sq = tf.stop_gradient(tf.square(tf.math.reduce_std(residual_field, axis=[0, 1])))
+            sig_sq = tf.stop_gradient(
+                tf.square(tf.math.reduce_std(residual_field, axis=[0, 1]))
+            )
 
         reconstruction_loss = tf.divide(tf.square(residual_field), sig_sq)
-        #tf.print(sig_sq, output_stream=sys.stdout)
+        # tf.print(sig_sq, output_stream=sys.stdout)
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
@@ -211,9 +263,14 @@ class Deblend:
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
-        
+
         if self.use_likelihood:
-            return tf.math.subtract(reconstruction_loss, log_likelihood), reconstruction_loss, log_likelihood, residual_field
+            return (
+                tf.math.subtract(reconstruction_loss, log_likelihood),
+                reconstruction_loss,
+                log_likelihood,
+                residual_field,
+            )
         return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
 
     def get_index_pos_to_sub(self):
@@ -225,9 +282,7 @@ class Deblend:
             starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
             indices = (
-                np.indices(
-                    (self.cutout_size, self.cutout_size, self.num_bands)
-                )
+                np.indices((self.cutout_size, self.cutout_size, self.num_bands))
                 .reshape(3, -1)
                 .T
             )
@@ -244,30 +299,42 @@ class Deblend:
             starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
             starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
 
-            padding = [[starting_pos_x, self.field_size - (starting_pos_x+int(self.cutout_size))], [starting_pos_y, self.field_size - (starting_pos_y + int(self.cutout_size))], [0, 0]]
+            padding = [
+                [
+                    starting_pos_x,
+                    self.field_size - (starting_pos_x + int(self.cutout_size)),
+                ],
+                [
+                    starting_pos_y,
+                    self.field_size - (starting_pos_y + int(self.cutout_size)),
+                ],
+                [0, 0],
+            ]
 
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
-    
+
     def run_debvader(self):
 
         if self.channel_last:
             m, n, b = np.shape(self.postage_stamp)
         else:
             b, m, n = np.shape(self.postage_stamp)
-        distances_to_center = list(
-            np.array(self.detected_positions) - int((m - 1) / 2)
-        )
+        distances_to_center = list(np.array(self.detected_positions) - int((m - 1) / 2))
         cutouts = extract_cutouts(
-            self.postage_stamp, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b, channel_last=self.channel_last,
+            self.postage_stamp,
+            distances_to_center,
+            cutout_size=self.cutout_size,
+            nb_of_bands=b,
+            channel_last=self.channel_last,
         )
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
 
     def compute_noise_sigma(self):
-        
+
         sig = []
         for i in range(6):
             if self.channel_last:
@@ -276,7 +343,15 @@ class Deblend:
                 sig.append(sep.Background(self.postage_stamp[i]).globalrms)
         return sig
 
-    def gradient_decent(self, initZ=None, convergence_criterion=None, use_debvader=False, optimizer=None, lr=0.075, compute_sig_dynamically=False):
+    def gradient_decent(
+        self,
+        initZ=None,
+        convergence_criterion=None,
+        use_debvader=False,
+        optimizer=None,
+        lr=0.075,
+        compute_sig_dynamically=False,
+    ):
         """
         perform the gradient descent step to separate components (galaxies)
 
@@ -306,7 +381,11 @@ class Deblend:
                 np.array(self.detected_positions) - int((m - 1) / 2)
             )
             cutouts = extract_cutouts(
-                self.postage_stamp, distances_to_center, cutout_size=self.cutout_size, nb_of_bands=b, channel_last=self.channel_last,
+                self.postage_stamp,
+                distances_to_center,
+                cutout_size=self.cutout_size,
+                nb_of_bands=b,
+                channel_last=self.channel_last,
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
@@ -314,98 +393,124 @@ class Deblend:
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
 
-        #self.optimizer = tf.keras.optimizers.Adam(lr=lr)
+        # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
 
         if optimizer is None:
             if isinstance(lr, tf.keras.optimizers.schedules):
-                lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(lr, decay_steps=12, decay_rate=0.75, staircase=True)
+                lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
+                    lr, decay_steps=12, decay_rate=0.75, staircase=True
+                )
 
-            optimizer=tf.keras.optimizers.RMSprop(learning_rate=lr_scheduler)
+            optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr_scheduler)
 
         LOG.info("\n--- Starting gradient descent in the latent space ---")
         LOG.info("Maximum number of iterations: " + str(self.max_iter))
-        #LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
+        # LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
         LOG.info("Number of Galaxies: " + str(self.num_components))
         LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
         t0 = time.time()
 
         index_pos_to_sub = self.get_index_pos_to_sub()
-        #index_pos_to_sub = tf.TensorArray(
+        # index_pos_to_sub = tf.TensorArray(
         #   tf.int32,
         #   size=np.shape(index_pos_to_sub)[0],
         #   clear_after_read=False).unstack(index_pos_to_sub)
 
         padding_infos = self.get_padding_infos()
-        #padding_infos = tf.TensorArray(
+        # padding_infos = tf.TensorArray(
         #   tf.int32,
         #   size=np.shape(padding_infos)[0],
         #   clear_after_read=False).unstack(padding_infos)
+
         def trace_fn(traceable_quantities):
-            return {'loss': traceable_quantities.loss}
+            return {"loss": traceable_quantities.loss}
 
         if self.noise_sigma is None:
             noise_level = self.compute_noise_sigma()
 
-        # Calculate sigma^2 with gaussian approximation to poisson noise. 
-        # Note here that self.postage stamp is normalized but it must be divided again 
+        # Calculate sigma^2 with gaussian approximation to poisson noise.
+        # Note here that self.postage stamp is normalized but it must be divided again
         # to encure that the loglikelihood does not change due to scaling/normalizing
         if self.channel_last:
-            sig_sq = tf.convert_to_tensor(np.add(self.postage_stamp/self.linear_norm_coeff, np.square(noise_level)), dtype=tf.float32)
+            sig_sq = tf.convert_to_tensor(
+                np.add(
+                    self.postage_stamp / self.linear_norm_coeff, np.square(noise_level)
+                ),
+                dtype=tf.float32,
+            )
         else:
-            sig_sq = tf.convert_to_tensor(np.add(np.transpose(self.postage_stamp/self.linear_norm_coeff, axes=[1, 2, 0]), np.square(noise_level)), dtype=tf.float32)
+            sig_sq = tf.convert_to_tensor(
+                np.add(
+                    np.transpose(
+                        self.postage_stamp / self.linear_norm_coeff, axes=[1, 2, 0]
+                    ),
+                    np.square(noise_level),
+                ),
+                dtype=tf.float32,
+            )
             # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
-                z=z, 
+                z=z,
                 postage_stamp=self.postage_stamp,
                 compute_sig_dynamically=compute_sig_dynamically,
                 sig_sq=sig_sq,
-                use_scatter_and_sub=True, 
-                index_pos_to_sub=index_pos_to_sub, 
+                use_scatter_and_sub=True,
+                index_pos_to_sub=index_pos_to_sub,
                 padding_infos=padding_infos,
-            ), 
+            ),
             trainable_variables=[z],
-            num_steps=self.max_iter, 
+            num_steps=self.max_iter,
             optimizer=optimizer,
             convergence_criterion=convergence_criterion,
         )
 
-        #for i in range(self.max_iter):
-            #print("log prob flow:" + str(log_likelihood.numpy()))
-            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+        # for i in range(self.max_iter):
+        # print("log prob flow:" + str(log_likelihood.numpy()))
+        # print("reconstruction loss"+str(reconstruction_loss.numpy()))
         #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-        
+
         """ LOG.info(f"Final loss {output.objective_value.numpy()}")
         LOG.info("converged "+ str(output.converged.numpy()))
         LOG.info("converged "+ str(output.num_iterations.numpy()))
 
         z_flatten = output.position
         z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
-        #for i in range(self.max_iter):
-            #print("log prob flow:" + str(log_likelihood.numpy()))
-            #print("reconstruction loss"+str(reconstruction_loss.numpy()))
+        # for i in range(self.max_iter):
+        # print("log prob flow:" + str(log_likelihood.numpy()))
+        # print("reconstruction loss"+str(reconstruction_loss.numpy()))
         #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-        
+
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).numpy()*self.linear_norm_coeff
-        #print(self.components)
+        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
+        # print(self.components)
 
         return results
 
-    def generate_grad_step_loss(self, z, postage_stamp, compute_sig_dynamically, sig_sq, use_scatter_and_sub, index_pos_to_sub, padding_infos):
+    def generate_grad_step_loss(
+        self,
+        z,
+        postage_stamp,
+        compute_sig_dynamically,
+        sig_sq,
+        use_scatter_and_sub,
+        index_pos_to_sub,
+        padding_infos,
+    ):
         def training_loss():
             loss, *_ = self.compute_loss(
-                z=z, 
-                postage_stamp=postage_stamp, 
+                z=z,
+                postage_stamp=postage_stamp,
                 compute_sig_dynamically=compute_sig_dynamically,
                 sig_sq=sig_sq,
-                use_scatter_and_sub=use_scatter_and_sub, 
+                use_scatter_and_sub=use_scatter_and_sub,
                 index_pos_to_sub=index_pos_to_sub,
                 padding_infos=padding_infos,
             )
             return loss
+
         return training_loss
