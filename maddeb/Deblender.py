@@ -31,7 +31,7 @@ class Deblend:
         latent_dim=10,
         use_likelihood=True,
         channel_last=False,
-        linear_norm_coeff=None,
+        linear_norm_coeff=1,
     ):
         """
         Parameters
@@ -51,8 +51,6 @@ class Deblend:
         channel_last: bool
             if channel is the last column of the postage_stamp
         """
-        if linear_norm_coeff is None:
-            linear_norm_coeff = 1
 
         self.linear_norm_coeff = linear_norm_coeff
         self.postage_stamp = postage_stamp / linear_norm_coeff
