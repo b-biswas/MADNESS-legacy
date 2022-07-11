@@ -8,7 +8,11 @@ LOG = logging.getLogger(__name__)
 
 
 def extract_cutouts(
-    field_image, galaxy_distances_to_center, cutout_size=59, nb_of_bands=6, channel_last=False,
+    field_image,
+    galaxy_distances_to_center,
+    cutout_size=59,
+    nb_of_bands=6,
+    channel_last=False,
 ):
     """
     Extract the cutouts around particular galaxies in the field

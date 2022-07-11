@@ -2,17 +2,14 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.keras.layers import (
-    BatchNormalization,
     Conv2D,
     Conv2DTranspose,
     Cropping2D,
     Dense,
     Flatten,
     Input,
-    LeakyReLU,
     PReLU,
     Reshape,
-    concatenate,
 )
 from tensorflow.keras.models import Model
 
@@ -50,7 +47,7 @@ def create_encoder(
     input_layer = Input(shape=(input_shape))
     h = input_layer
     # Define the model
-    #h = BatchNormalization(name="batchnorm1")(input_layer)
+    # h = BatchNormalization(name="batchnorm1")(input_layer)
     for i in range(len(filters)):
         h = Conv2D(
             filters[i],
@@ -162,7 +159,7 @@ def create_flow(latent_dim=10, num_nf_layers=6):
 
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=0.5), reinterpreted_batch_ndims=1
     )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
@@ -268,19 +265,19 @@ def create_model_fvae(
     flow, td = create_flow(latent_dim=latent_dim, num_nf_layers=num_nf_layers)
 
     # Define the prior for the latent space
-    activity_regularizer=None
+    activity_regularizer = None
     if kl_prior is not None:
-        #prior = tfd.Independent(
+        # prior = tfd.Independent(
         #    tfd.Normal(loc=tf.zeros(latent_dim), scale=.5), reinterpreted_batch_ndims=1
-        #)
-        activity_regularizer=tfp.layers.KLDivergenceRegularizer(kl_prior, weight=.01 if kl_weight is None else kl_weight)
-        
+        # )
+        activity_regularizer = tfp.layers.KLDivergenceRegularizer(
+            kl_prior, weight=0.01 if kl_weight is None else kl_weight
+        )
+
     # Build the model
     x_input = Input(shape=(input_shape))
     z = tfp.layers.MultivariateNormalTriL(
-        latent_dim,
-        activity_regularizer=activity_regularizer,
-        name="latent_space"
+        latent_dim, activity_regularizer=activity_regularizer, name="latent_space"
     )(encoder(x_input))
 
     vae_model = Model(inputs=x_input, outputs=decoder(z))

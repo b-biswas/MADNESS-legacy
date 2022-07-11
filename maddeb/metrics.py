@@ -1,16 +1,16 @@
-
-import skimage
 import numpy as np
+import skimage
+
 
 def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=True):
     """
-    calculates reconsurction metrics such as: 
-    mean squared error, peak signal to noise ratio, ssim, 
+    calculates reconsurction metrics such as:
+    mean squared error, peak signal to noise ratio, ssim,
 
-    args: 
+    args:
     predicted_images:
     ground_truth:
-    
+
     """
 
     msr_results = []
@@ -20,14 +20,12 @@ def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=
     for i in range(len(predicted_images)):
 
         msr_results.append(
-            skimage.metrics.mean_squared_error(
-                predicted_images[i], ground_truth[i]
-            )
+            skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
         )
 
         psnr_results.append(
             skimage.metrics.peak_signal_noise_ratio(
-                predicted_images[i], 
+                predicted_images[i],
                 ground_truth[i],
                 data_range=np.max(ground_truth[i]),
             )
@@ -42,6 +40,6 @@ def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=
             )
         )
 
-    results_dict = {"mse": msr_results, "psnr": psnr_results,"ssim": ssim_results}
-    
+    results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
+
     return results_dict
