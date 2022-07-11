@@ -1,14 +1,15 @@
 import logging
 import time
-import sys
-import functools
+import os
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from scripts.extraction import extract_cutouts
-from scripts.FlowVAEnet import FlowVAEnet
+from maddeb.extraction import extract_cutouts
+from maddeb.FlowVAEnet import FlowVAEnet
+from maddeb.utils import get_data_dir_path
+
 import sep
 
 tfd = tfp.distributions
@@ -73,11 +74,12 @@ class Deblend:
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
+        data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/flow/val_loss"
+            weights_path=os.path.join(data_dir_path, "cosmos8d/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path="/pbs/throng/lsst/users/bbiswas/FlowDeblender/data/cosmos8d/deblender/val_loss"
+            weights_path=os.path.join(data_dir_path, "cosmos8d/deblender/val_loss")
         )
 
         # self.flow_vae_net.vae_model.trainable = False

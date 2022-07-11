@@ -2,8 +2,7 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
-from scripts.model import create_model_fvae
-from scripts.model import create_encoder
+from maddeb.model import create_model_fvae, create_encoder
 
 tfd = tfp.distributions
 tfb = tfp.bijectors

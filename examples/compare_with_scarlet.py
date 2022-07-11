@@ -16,8 +16,8 @@ import btk
 import scarlet.psf
 from scarlet.psf import ImagePSF
 
-from scripts.extraction import extract_cutouts
-from scripts.Deblender import Deblend
+from maddeb.extraction import extract_cutouts
+from maddeb.Deblender import Deblend
 import time
 
 # logging level set to INFO
