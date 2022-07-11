@@ -7,8 +7,8 @@ from debvader.batch_generator import COSMOSsequence
 from debvader.normalize import LinearNormCosmos
 from debvader.train import define_callbacks
 
-from scripts.FlowVAEnet import FlowVAEnet
-from scripts.utils import listdir_fullpath
+from maddeb.FlowVAEnet import FlowVAEnet
+from maddeb.utils import listdir_fullpath
 
 # define the parameters
 batch_size = 200

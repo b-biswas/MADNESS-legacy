@@ -9,9 +9,9 @@ import tensorflow_probability as tfp
 from debvader.batch_generator import COSMOSsequence
 from debvader.normalize import LinearNormCosmos
 
-from scripts.FlowVAEnet import FlowVAEnet
-from scripts.utils import listdir_fullpath
-from scripts.FlowVAEnet import vae_loss_fn_wrapper
+from maddeb.FlowVAEnet import FlowVAEnet
+from maddeb.utils import listdir_fullpath
+from maddeb.FlowVAEnet import vae_loss_fn_wrapper
 from debvader.train import define_callbacks
 
 tfd = tfp.distributions
