@@ -7,8 +7,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from scripts.extraction import extract_cutouts
-from scripts.FlowVAEnet import FlowVAEnet
+from maddeb.extraction import extract_cutouts
+from maddeb.FlowVAEnet import FlowVAEnet
 import sep
 
 tfd = tfp.distributions
