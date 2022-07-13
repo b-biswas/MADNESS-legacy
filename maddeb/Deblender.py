@@ -165,11 +165,11 @@ class Deblend:
                 for i in range(self.num_components):
                     detected_position = self.detected_positions[i]
 
-                    starting_pos_x = int(
-                        detected_position[0] - (self.cutout_size - 1) / 2
+                    starting_pos_x = round(detected_position[0]) - int(
+                        (self.cutout_size - 1) / 2
                     )
-                    starting_pos_y = int(
-                        detected_position[1] - (self.cutout_size - 1) / 2
+                    starting_pos_y = round(detected_position[1]) - int(
+                        (self.cutout_size - 1) / 2
                     )
 
                     indices = (
@@ -276,8 +276,12 @@ class Deblend:
         for i in range(self.num_components):
             detected_position = self.detected_positions[i]
 
-            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+            starting_pos_x = round(detected_position[0]) - int(
+                (self.cutout_size - 1) / 2
+            )
+            starting_pos_y = round(detected_position[1]) - int(
+                (self.cutout_size - 1) / 2
+            )
 
             indices = (
                 np.indices((self.cutout_size, self.cutout_size, self.num_bands))
@@ -294,8 +298,12 @@ class Deblend:
         padding_infos_list = []
         for detected_position in self.detected_positions:
 
-            starting_pos_x = int(detected_position[0] - (self.cutout_size - 1) / 2)
-            starting_pos_y = int(detected_position[1] - (self.cutout_size - 1) / 2)
+            starting_pos_x = round(detected_position[0]) - int(
+                (self.cutout_size - 1) / 2
+            )
+            starting_pos_y = round(detected_position[1]) - int(
+                (self.cutout_size - 1) / 2
+            )
 
             padding = [
                 [
