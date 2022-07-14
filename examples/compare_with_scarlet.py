@@ -456,5 +456,5 @@ plt.hist(
 )
 
 plt.legend(fontsize=20)
-print("yes its done")
+
 plt.savefig("aperturephoto")
