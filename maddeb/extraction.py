@@ -35,11 +35,15 @@ def extract_cutouts(
             x_shift = galaxy_distances_to_center[i][0]
             y_shift = galaxy_distances_to_center[i][1]
 
-            x_start = -int(cutout_size / 2) + int(x_shift) + int(field_size / 2)
-            x_end = int(cutout_size / 2) + int(x_shift) + int(field_size / 2) + 1
+            x_start = -int((cutout_size - 1) / 2) + round(x_shift) + int(field_size / 2)
+            x_end = (
+                int((cutout_size - 1) / 2) + round(x_shift) + int(field_size / 2) + 1
+            )
 
-            y_start = -int(cutout_size / 2) + int(y_shift) + int(field_size / 2)
-            y_end = int(cutout_size / 2) + int(y_shift) + int(field_size / 2) + 1
+            y_start = -int((cutout_size - 1) / 2) + round(y_shift) + int(field_size / 2)
+            y_end = (
+                int((cutout_size - 1) / 2) + round(y_shift) + int(field_size / 2) + 1
+            )
             if channel_last:
                 cutout_images[i] = field_image[x_start:x_end, y_start:y_end]
             else:
