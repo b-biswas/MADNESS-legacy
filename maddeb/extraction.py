@@ -9,8 +9,9 @@ LOG = logging.getLogger(__name__)
 
 def extract_cutouts(
     field_image,
-    galaxy_distances_to_center,
-    cutout_size=59,
+    pos,
+    distances_to_center=False,
+    cutout_size=41,
     nb_of_bands=6,
     channel_last=False,
 ):
@@ -22,28 +23,26 @@ def extract_cutouts(
         galaxy_distances_to_center: distances of the galaxies to deblend from the center of the field. In pixels.
         cutout_size: size of the stamps
     """
-    cutout_images = np.zeros(
-        (len(galaxy_distances_to_center), cutout_size, cutout_size, nb_of_bands)
-    )
+    cutout_images = np.zeros((len(pos), cutout_size, cutout_size, nb_of_bands))
     list_idx = []
     flag = False
 
     field_size = np.shape(field_image)[1]
 
-    for i in range(len(galaxy_distances_to_center)):
+    if distances_to_center:
+
+        pos = list(np.array(pos) + int((field_size - 1) / 2))
+
+    for i in range(len(pos)):
         try:
-            x_shift = galaxy_distances_to_center[i][0]
-            y_shift = galaxy_distances_to_center[i][1]
+            x_shift = pos[i][0]
+            y_shift = pos[i][1]
 
-            x_start = -int((cutout_size - 1) / 2) + round(x_shift) + int(field_size / 2)
-            x_end = (
-                int((cutout_size - 1) / 2) + round(x_shift) + int(field_size / 2) + 1
-            )
+            x_start = -int((cutout_size - 1) / 2) + round(x_shift)
+            x_end = int((cutout_size - 1) / 2) + round(x_shift) + 1
 
-            y_start = -int((cutout_size - 1) / 2) + round(y_shift) + int(field_size / 2)
-            y_end = (
-                int((cutout_size - 1) / 2) + round(y_shift) + int(field_size / 2) + 1
-            )
+            y_start = -int((cutout_size - 1) / 2) + round(y_shift)
+            y_end = int((cutout_size - 1) / 2) + round(y_shift) + 1
             if channel_last:
                 cutout_images[i] = field_image[x_start:x_end, y_start:y_end]
             else:

@@ -326,10 +326,10 @@ class Deblend:
             m, n, b = np.shape(self.postage_stamp)
         else:
             b, m, n = np.shape(self.postage_stamp)
-        distances_to_center = list(np.array(self.detected_positions) - int(m / 2))
+
         cutouts = extract_cutouts(
             self.postage_stamp,
-            distances_to_center,
+            pos=self.detected_positions,
             cutout_size=self.cutout_size,
             nb_of_bands=b,
             channel_last=self.channel_last,
@@ -383,10 +383,9 @@ class Deblend:
         else:
             # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
             # use the encoder to find a good starting point.
-            distances_to_center = list(np.array(self.detected_positions) - int(m / 2))
             cutouts = extract_cutouts(
                 self.postage_stamp,
-                distances_to_center,
+                pos=self.detected_positions,
                 cutout_size=self.cutout_size,
                 nb_of_bands=b,
                 channel_last=self.channel_last,
