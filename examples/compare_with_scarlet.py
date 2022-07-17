@@ -246,12 +246,9 @@ for blend_number in range(len(field_images)):
                 blends_meta_data["x_peak"][galaxy_number],
             ]
         ]
-        distances_to_center = list(
-            np.array(detected_position) - int((np.shape(field_images[0])[1] - 1) / 2)
-        )
         cutout_galaxy, idx = extract_cutouts(
             isolated_images[blend_number][galaxy_number],
-            distances_to_center,
+            pos=detected_position,
             cutout_size=45,
         )
         # print(idx)
