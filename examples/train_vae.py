@@ -19,9 +19,9 @@ deblender_epochs = 120
 latent_dim = 8
 
 prior = tfd.Independent(
-    tfd.Normal(loc=tf.zeros(latent_dim), scale=0.5), reinterpreted_batch_ndims=1
+    tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=0.01)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=1)
 
 datalist_isolated = listdir_fullpath(
     "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated/"
