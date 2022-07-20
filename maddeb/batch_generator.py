@@ -12,8 +12,8 @@ class COSMOSsequence(Sequence):
         y_col_name,
         batch_size,
         num_iterations_per_epoch,
-        linear_norm_coeff=80000,
-        channel_last=False,
+        linear_norm_coeff=1,
+        # channel_last=False,
     ):
         """
         initializes the Data generator
@@ -34,7 +34,7 @@ class COSMOSsequence(Sequence):
         self.num_iterations_per_epoch = num_iterations_per_epoch
 
         self.linear_norm_coeff = linear_norm_coeff
-        self.channel_last = channel_last
+        # self.channel_last = channel_last
 
     def __len__(self):
         return self.num_iterations_per_epoch
@@ -51,25 +51,38 @@ class COSMOSsequence(Sequence):
         x = np.array(x.tolist())
         y = np.array(y.tolist())
 
-        if self.normalizer is not None:
+        if self.linear_norm_coeff is not None:
             x = x / self.linear_norm_coeff
             y = y / self.linear_norm_coeff
 
-        #  flip : flipping the image array
+        rand = np.random.randint(4)
+        if rand == 1:
+            x = np.flip(x, axis=1)
+            y = np.flip(y, axis=1)
+
+        if rand == 2:
+            x = np.flip(x, axis=2)
+            y = np.flip(y, axis=2)
+
+        if rand == 3:
+            x = np.flip(np.flip(x, axis=1), axis=2)
+            y = np.flip(np.flip(y, axis=1), axis=2)
+
+        # flip : flipping the image array
         # if not self.channel_last:
-        #    rand = np.random.randint(4)
-        #    if rand == 1:
-        #        x = np.flip(x, axis=-1)
-        #        y = np.flip(y, axis=-1)
-        #    elif rand == 2 :
-        #        x = np.swapaxes(x, -1, -2)
-        #        y = np.swapaxes(y, -1, -2)
-        #    elif rand == 3:
-        #        x = np.swapaxes(np.flip(x, axis=-1), -1, -2)
-        #        y = np.swapaxes(np.flip(y, axis=-1), -1, -2)
+        # rand = np.random.randint(4)
+        # if rand == 1:
+        #     x = np.flip(x, axis=-1)
+        #     y = np.flip(y, axis=-1)
+        # elif rand == 2:
+        #     x = np.swapaxes(x, -1, -2)
+        #     y = np.swapaxes(y, -1, -2)
+        # elif rand == 3:
+        #     x = np.swapaxes(np.flip(x, axis=-1), -1, -2)
+        #     y = np.swapaxes(np.flip(y, axis=-1), -1, -2)
 
         # Change the shape of inputs and targets to feed the network
-        x = np.transpose(x, axes=(0, 2, 3, 1))
-        y = np.transpose(y, axes=(0, 2, 3, 1))
+        # x = np.transpose(x, axes=(0, 2, 3, 1))
+        # y = np.transpose(y, axes=(0, 2, 3, 1))
 
         return x, y
