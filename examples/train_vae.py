@@ -7,7 +7,7 @@ import tensorflow_probability as tfp
 from maddeb.batch_generator import COSMOSsequence
 from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper
 from maddeb.train import define_callbacks
-from maddeb.utils import listdir_fullpath
+from maddeb.utils import get_data_dir_path, listdir_fullpath
 
 tfd = tfp.distributions
 
@@ -19,19 +19,20 @@ deblender_epochs = 120
 latent_dim = 8
 
 prior = tfd.Independent(
-    tfd.Normal(loc=tf.zeros(latent_dim), scale=0.5), reinterpreted_batch_ndims=1
+    tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=0.01)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=1)
 
 datalist_isolated = listdir_fullpath(
     "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated/"
 )
 
-train_path_isolated_gal = datalist_isolated[:700]
-validation_path_isolated_gal = datalist_isolated[700:]
+train_path_isolated_gal = datalist_isolated[:250]
+validation_path_isolated_gal = datalist_isolated[250:]
 
 # Keras Callbacks
-path_weights = "data/" + "cosmos8d/"
+data_path = get_data_dir_path()
+path_weights = os.path.join(data_path, "cosmos8d")
 
 # Define the generators
 
@@ -95,10 +96,12 @@ f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
-datalist_blended = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk/")
+datalist_blended = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_blended/"
+)
 
-train_path_blended_gal = datalist_blended[:700]
-validation_path_blended_gal = datalist_blended[700:]
+train_path_blended_gal = datalist_blended[:250]
+validation_path_blended_gal = datalist_blended[250:]
 
 train_generator_deblender = COSMOSsequence(
     train_path_blended_gal,
