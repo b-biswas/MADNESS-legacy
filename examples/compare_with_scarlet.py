@@ -11,9 +11,14 @@ import seaborn as sns
 import sep
 import tensorflow as tf
 import tensorflow_probability as tfp
+from scipy.optimize import curve_fit
+from scipy.stats import norm
 
 from maddeb.Deblender import Deblend
-from maddeb.extraction import extract_cutouts
+from maddeb.metrics import (
+    compute_apperture_photomery,
+    compute_pixel_covariance_and_fluxes,
+)
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -25,7 +30,6 @@ COSMOS_CATALOG_PATHS = [
     "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2.fits",
     "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2_fits.fits",
 ]
-
 
 stamp_size = 100.2
 max_number = 150
@@ -61,42 +65,6 @@ blend = next(draw_generator)
 field_images = blend["blend_images"]
 isolated_images = blend["isolated_images"]
 
-
-def compute_pixel_covariance_and_flux(predicted_galaxy, simulated_galaxy, field_image):
-    ground_truth_pixels = []
-    predicted_pixels = []
-    sig = []
-
-    actual_flux = []
-    predicted_flux = []
-
-    for band_number in range(len(bands)):
-        sig.append(sep.Background(field_image[band_number]).globalrms)
-        # print(sig)
-        # print(sig[band_number])
-        mask1 = simulated_galaxy[band_number] > 0 * sig[band_number]
-        mask2 = predicted_galaxy[band_number] > 0 * sig[band_number]
-        mask = np.logical_or(mask1, mask2)
-        #             fig, ax = plt.subplots(1, 2)
-        #             plt.subplot(1,2,1)
-        #             plt.imshow(cutout_galaxy[:, :, band_number])
-        #             plt.subplot(1, 2, 2)
-        #             plt.imshow(madness_predictions[blend_number][galaxy_number][band_number])
-        #             plt.show()
-        ground_truth_pixels.extend(simulated_galaxy[band_number][mask])
-        predicted_pixels.extend(predicted_galaxy[band_number][mask])
-
-        actual_flux.append(np.sum(simulated_galaxy[band_number][mask1]))
-        predicted_flux.append(np.sum(predicted_galaxy[band_number][mask2]))
-
-    pixel_covariance = np.sum(np.multiply(predicted_pixels, ground_truth_pixels)) / (
-        np.sqrt(np.sum(np.square(predicted_pixels)))
-        * np.sqrt(np.sum(np.square(ground_truth_pixels)))
-    )
-
-    return pixel_covariance, actual_flux, predicted_flux
-
-
 psf = np.array(
     [
         p.drawImage(
@@ -110,6 +78,7 @@ bands = [f for f in survey._filters]
 wcs = blend["wcs"]
 
 
+# Define function to make predictions iwth scarlet
 def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters):
     sig = []
     weights = np.ones_like(image)
@@ -181,6 +150,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
 x_pos = blend["blend_list"][0]["y_peak"]
 y_pos = blend["blend_list"][0]["x_peak"]
 
+# Get Scarlet Predictions
 scarlet_predictions = []
 for i, image in enumerate(field_images):
     image = field_images[i]
@@ -197,8 +167,11 @@ for i, image in enumerate(field_images):
     scarlet_predictions.append(predicted_sources)
 
 
+# get MADNESS predictions
 madness_predictions = []
 for i in range(len(blend["blend_list"])):
+
+    current_field_predictions = []
     blends = blend["blend_list"][i]
     # print(blends)
     detected_positions = []
@@ -220,9 +193,9 @@ for i in range(len(blend["blend_list"])):
     )
     # convergence_criterion = None
     lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.08, decay_steps=15, decay_rate=0.8, staircase=True
+        initial_learning_rate=0.08, decay_steps=12, decay_rate=0.9, staircase=True
     )
-    optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr_scheduler)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
     deb(
         convergence_criterion,
@@ -230,51 +203,18 @@ for i in range(len(blend["blend_list"])):
         use_debvader=True,
         compute_sig_dynamically=False,
     )
-    madness_predictions.append(deb.get_components())
+    padding_infos = deb.get_padding_infos()
+    for component_num in range(deb.num_components):
+        prediction = np.pad(deb.components[component_num], padding_infos[component_num])
+        prediction = np.transpose(prediction, axes=(2, 0, 1))
+        current_field_predictions.append(prediction)
+    madness_predictions.append(current_field_predictions)
 
-    cov_madness = []
+
+# Compute covariance, actual and predicted fluxes
+madness_cov = []
 madness_actual_flux = []
 madness_predicted_flux = []
-for blend_number in range(len(field_images)):
-    blends_meta_data = blend["blend_list"][blend_number]
-    # print(blends)
-
-    for galaxy_number in range(len(blends_meta_data)):
-        detected_position = [
-            [
-                blends_meta_data["y_peak"][galaxy_number],
-                blends_meta_data["x_peak"][galaxy_number],
-            ]
-        ]
-        cutout_galaxy, idx = extract_cutouts(
-            isolated_images[blend_number][galaxy_number],
-            pos=detected_position,
-            cutout_size=45,
-        )
-        # print(idx)
-        if idx == []:
-            continue
-        cutout_galaxy = cutout_galaxy[0]
-        cutout_galaxy = np.transpose(cutout_galaxy, axes=(2, 0, 1))
-        # print(np.shape(cutout_galaxy))
-        ground_truth_pixels = []
-        predicted_pixels = []
-        sig = []
-        #        fig, ax = plt.subplots(1, 2)
-        #         plt.subplot(1,2,1)
-        #         plt.imshow(cutout_galaxy[2])
-        #         plt.subplot(1, 2, 2)
-        #         plt.imshow(madness_predictions[blend_number][galaxy_number][2])
-        #         plt.show()
-        cov, actual, predicted = compute_pixel_covariance_and_flux(
-            madness_predictions[blend_number][galaxy_number],
-            cutout_galaxy,
-            field_images[0],
-        )
-
-        cov_madness.append(cov)
-        madness_actual_flux.append(actual)
-        madness_predicted_flux.append(predicted)
 
 scarlet_cov = []
 scarlet_actual_flux = []
@@ -282,91 +222,117 @@ scarlet_predicted_flux = []
 
 for blend_number in range(len(field_images)):
 
-    for galaxy_number in range(len(blend["blend_list"][blend_number])):
+    current_galaxies = isolated_images[blend_number]
 
-        ground_truth_pixels = []
-        predicted_pixels = []
-        sig = []
+    madness_res = compute_pixel_covariance_and_fluxes(
+        madness_predictions[blend_number], current_galaxies, field_images[0]
+    )
+    scarlet_res = compute_pixel_covariance_and_fluxes(
+        scarlet_predictions[blend_number], current_galaxies, field_images[0]
+    )
 
-        current_galaxy = isolated_images[blend_number][galaxy_number]
-        cov, actual, predicted = compute_pixel_covariance_and_flux(
-            scarlet_predictions[blend_number][galaxy_number],
-            current_galaxy,
-            field_images[0],
-        )
+    madness_cov.append(madness_res[0])
+    madness_actual_flux.append(madness_res[1])
+    madness_predicted_flux.append(madness_res[2])
 
-        scarlet_cov.append(cov)
-        scarlet_actual_flux.append(actual)
-        scarlet_predicted_flux.append(predicted)
+    scarlet_cov.append(scarlet_res[0])
+    scarlet_actual_flux.append(scarlet_res[1])
+    scarlet_predicted_flux.append(scarlet_res[2])
 
-scarlet_actual_flux = np.array(scarlet_actual_flux)
-scarlet_predicted_flux = np.array(scarlet_predicted_flux)
-
-scarlet_relative_difference = np.abs(
-    np.divide(scarlet_predicted_flux - scarlet_actual_flux, scarlet_actual_flux)
-)
+bins = np.arange(0.95, 1, 0.001)
+plt.hist(scarlet_cov, bins=bins, alpha=0.5, label="scarlet")
+plt.hist(madness_cov, bins=bins, alpha=0.7, label="MADNESS")
+plt.legend()
+plt.xlim([0.95, 1])
+plt.savefig("cov_results")
 
 madness_actual_flux = np.array(madness_actual_flux)
 madness_predicted_flux = np.array(madness_predicted_flux)
 
-madness_relative_difference = np.abs(
-    np.divide(madness_predicted_flux - madness_actual_flux, madness_actual_flux)
+scarlet_actual_flux = np.array(scarlet_actual_flux)
+scarlet_predicted_flux = np.array(scarlet_predicted_flux)
+
+scarlet_relative_difference = np.divide(
+    scarlet_predicted_flux - scarlet_actual_flux, scarlet_actual_flux
+)
+madness_relative_difference = np.divide(
+    madness_predicted_flux - madness_actual_flux, madness_actual_flux
 )
 
+
 # print(madness_relative_difference[np.logical_not(np.isinf(madness_relative_difference))].reshape(-1))
+
+# Fit Gaussians
+def gauss(x, sig, mu):
+    return 1 / np.sqrt(2.0 * np.pi) / sig * np.exp(-0.5 * (x - mu) ** 2 / sig**2)
+
+
+n_bins = 100
+hist, bin_tmp = np.histogram(madness_relative_difference, n_bins, density=True)
+bins = np.mean((bin_tmp[:-1], bin_tmp[1:]), 0)
+madness_fit = curve_fit(gauss, bins, hist, p0=[np.std(bins), np.mean(bins)])
+
+hist, bin_tmp = np.histogram(scarlet_relative_difference, n_bins, density=True)
+bins = np.mean((bin_tmp[:-1], bin_tmp[1:]), 0)
+scarlet_fit = curve_fit(gauss, bins, hist, p0=[np.std(bins), np.mean(bins)])
+
+
+# Plot relative flux error
 sns.set_theme(
     style={
         "axes.grid": True,
-        "axes.labelcolor": "white",
-        "figure.facecolor": ".15",
-        "xtick.color": "white",
-        "ytick.color": "white",
+        "axes.labelcolor": "black",
+        "figure.facecolor": "1",
+        "xtick.color": "black",
+        "ytick.color": "black",
         "text.color": "black",
         "image.cmap": "viridis",
     }
 )
 plt.figure(figsize=(10, 7))
-bins = plt.hist(
+bins = np.arange(-0.5, 0.5, 0.01)
+plt.hist(
     madness_relative_difference[
         np.logical_not(np.isnan(madness_relative_difference))
     ].reshape(-1),
-    bins=50,
+    bins=bins,
+    density=True,
     alpha=0.7,
+    color="coral",
     label="MADNESS",
 )
+plt.plot(bins, norm.pdf(bins, madness_fit[0][1], madness_fit[0][0]), color="coral")
+LOG.info("Madness mu: " + str(madness_fit[0][1]))
+LOG.info("Madness sig: " + str(madness_fit[0][0]))
 plt.hist(
     scarlet_relative_difference[
         np.logical_not(np.isnan(scarlet_relative_difference))
     ].reshape(-1),
-    bins=bins[1],
+    bins=bins,
+    density=True,
     alpha=0.5,
+    color="cornflowerblue",
     label="scarlet",
 )
+plt.plot(
+    bins, norm.pdf(bins, scarlet_fit[0][1], scarlet_fit[0][0]), color="cornflowerblue"
+)
+LOG.info("Scarlet mu: " + str(scarlet_fit[0][1]))
+LOG.info("Scarlet sig: " + str(scarlet_fit[0][0]))
 plt.legend(fontsize=20)
 ax = plt.gca()
 plt.xlabel("relative flux reconstruction error", fontsize=20)
 ax.tick_params(labelsize=15)
 plt.ylabel("number of galaxies", fontsize=20)
+plt.xlim([-0.5, 0.5])
+plt.savefig("flux_err", transparent=True)
 
-plt.savefig("flux_err")
+# Compare apperture photometry
+
+# Compute the residual fields
 
 
-bkgrms = sep.Background(blend["blend_images"][0][2]).globalrms
-
-np.shape(scarlet_predictions[0])
-
-actual_gal_fluxes = []
-actual_gal_fluxerrs = []
-actual_gal_flags = []
-
-scarlet_gal_fluxes = []
-scarlet_gal_fluxerrs = []
-scarlet_gal_flags = []
-
-madness_gal_fluxes = []
-madness_gal_fluxerrs = []
-madness_gal_flags = []
-
+# ------------- TODO: check if x and y pos are correct
 
 actual_residual_field = blend["blend_images"][0]
 scarlet_residual_field = blend["blend_images"][0]
@@ -380,71 +346,51 @@ madness_residual_field = deb.compute_residual(
     blend["blend_images"][0], use_scatter_and_sub=True
 ).numpy()
 
-for i in range(len(scarlet_predictions[0])):
+bkg_rms = {}
+for band in range(6):
+    bkg_rms[band] = sep.Background(blend["blend_images"][0][band]).globalrms
 
-    # actual galaxy
-    for band in range(6):
+actual_gal_fluxes, actual_gal_fluxerrs, actual_gal_flags = compute_apperture_photomery(
+    residual_field=actual_residual_field,
+    predictions=blend["isolated_images"][0],
+    xpos=blend["blend_list"][0]["x_peak"],
+    ypos=blend["blend_list"][0]["y_peak"],
+    bkg_rms=bkg_rms,
+)
 
-        bkgrms = sep.Background(blend["blend_images"][0][band]).globalrms
+(
+    madness_gal_fluxes,
+    madness_gal_fluxerrs,
+    madness_gal_flags,
+) = compute_apperture_photomery(
+    residual_field=np.transpose(madness_residual_field, axes=(2, 0, 1)),
+    predictions=madness_predictions[0],
+    xpos=blend["blend_list"][0]["x_peak"],
+    ypos=blend["blend_list"][0]["y_peak"],
+    bkg_rms=bkg_rms,
+)
 
-        actual_galaxy = actual_residual_field + blend["isolated_images"][0][i]
-        actual_galaxy = actual_galaxy[band].copy(order="C")
-        flux, fluxerr, flag = sep.sum_circle(
-            actual_galaxy,
-            [blend["blend_list"][0]["x_peak"][i]],
-            [blend["blend_list"][0]["y_peak"][i]],
-            3.0,
-            err=bkgrms,
-        )
-        print(flux)
-        actual_gal_fluxes.extend(flux)
-        actual_gal_fluxerrs.extend(fluxerr)
-        actual_gal_flags.extend(flag)
-
-        # scarlet galaxy
-        scarlet_galaxy = scarlet_residual_field + scarlet_predictions[0][i]
-        scarlet_galaxy = scarlet_galaxy[band].copy(order="C")
-        # plt.imshow(scarlet_galaxy)
-        flux, fluxerr, flag = sep.sum_circle(
-            scarlet_galaxy,
-            [blend["blend_list"][0]["x_peak"][i]],
-            [blend["blend_list"][0]["y_peak"][i]],
-            3.0,
-            err=bkgrms,
-        )
-        print(flux)
-        scarlet_gal_fluxes.extend(flux)
-        scarlet_gal_fluxerrs.extend(fluxerr)
-        scarlet_gal_flags.extend(flag)
-
-        # madness galaxy
-        madness_galaxy = madness_residual_field + np.pad(
-            deb.components[i], padding_infos[i]
-        )
-        madness_galaxy = madness_galaxy[:, :, band].copy(order="C")
-        flux, fluxerr, flag = sep.sum_circle(
-            madness_galaxy,
-            [blend["blend_list"][0]["x_peak"][i]],
-            [blend["blend_list"][0]["y_peak"][i]],
-            3.0,
-            err=bkgrms,
-        )
-        madness_gal_fluxes.extend(flux)
-        madness_gal_fluxerrs.extend(fluxerr)
-        madness_gal_flags.extend(flag)
-
-madness_gal_fluxes = np.asarray(madness_gal_fluxes)
-scarlet_gal_fluxes = np.asarray(scarlet_gal_fluxes)
-actual_gal_fluxes = np.asarray(actual_gal_fluxes)
+(
+    scarlet_gal_fluxes,
+    scarlet_gal_fluxerrs,
+    scarlet_gal_flags,
+) = compute_apperture_photomery(
+    residual_field=scarlet_residual_field,
+    predictions=scarlet_predictions[0],
+    xpos=blend["blend_list"][0]["x_peak"],
+    ypos=blend["blend_list"][0]["y_peak"],
+    bkg_rms=bkg_rms,
+)
 
 plt.figure(figsize=(10, 7))
-bins = np.arange(0, 0.1, 0.001)
+bins = np.arange(0, 1, 0.005)
 plt.hist(
     np.abs((madness_gal_fluxes - actual_gal_fluxes) / actual_gal_fluxes),
     bins=bins,
     alpha=0.5,
     label="MADNESS",
 )
+print(np.shape(scarlet_gal_fluxes))
 plt.hist(
     np.abs((scarlet_gal_fluxes - actual_gal_fluxes) / actual_gal_fluxes),
     bins=bins,
