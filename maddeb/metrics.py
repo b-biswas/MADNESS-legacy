@@ -46,7 +46,38 @@ def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=
     return results_dict
 
 
+def compute_pixel_covariance_and_fluxes(
+    predicted_galaxies, simulated_galaxies, field_image
+):
+    pixel_covriances = []
+    actual_fluxes = []
+    predicted_fluxes = []
+
+    for gal_num in range(len(predicted_galaxies)):
+        (
+            pixel_covriance,
+            actual_flux,
+            predicted_flux,
+        ) = compute_pixel_covariance_and_flux(
+            predicted_galaxy=predicted_galaxies[gal_num],
+            simulated_galaxy=simulated_galaxies[gal_num],
+            field_image=field_image,
+        )
+
+        pixel_covriances.append(pixel_covriance)
+        actual_fluxes.append(actual_flux)
+        predicted_fluxes.append(predicted_flux)
+
+    return (
+        np.array(pixel_covriances),
+        np.array(actual_fluxes),
+        np.array(predicted_fluxes),
+    )
+
+
 def compute_pixel_covariance_and_flux(predicted_galaxy, simulated_galaxy, field_image):
+    """
+    accepts only channel first"""
     ground_truth_pixels = []
     predicted_pixels = []
     sig = []
@@ -86,17 +117,20 @@ def compute_apperture_photomery(residual_field, predictions, xpos, ypos, bkg_rms
     gal_fluxes = []
     gal_fluxerrs = []
     gal_flags = []
-    for i in range(len(predictions)):
+
+    for i in range(len(xpos)):
 
         # actual galaxy
-        actual_galaxy = residual_field + predictions[i]
+
+        galaxy = residual_field + predictions[i]
+        galaxy = galaxy.copy(order="C")
 
         for band in range(6):
 
             flux, fluxerr, flag = sep.sum_circle(
-                actual_galaxy[band],
-                [xpos[0]],
-                [ypos[0]],
+                galaxy[band],
+                [xpos[i]],
+                [ypos[i]],
                 3.0,
                 err=bkg_rms[band],
             )
