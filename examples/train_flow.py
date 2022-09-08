@@ -19,12 +19,14 @@ f_net = FlowVAEnet(latent_dim=latent_dim)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 
 # Keras Callbacks
-path_weights = "data/cosmos10d/"
+path_weights = "data/cosmos + str(latent_dim) + d/"
 
-datalist = listdir_fullpath("/sps/lsst/users/bbiswas/simulations/COSMOS_btk/")
-
-train_path = datalist[:800]
-validation_path = datalist[800:]
+train_path = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_train/"
+)
+validation_path = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_validation/"
+)
 
 # Define the generators
 train_generator = COSMOSsequence(
