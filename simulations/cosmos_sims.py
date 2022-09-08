@@ -20,7 +20,7 @@ COSMOS_CATALOG_PATHS = [
 stamp_size = 15
 max_number = 1  # set to 4 to generate blended scenes
 batch_size = 200
-max_shift = 2
+maxshift = 1.5
 
 dataset = "validation"  # either training or validation
 if dataset == "training":
@@ -34,7 +34,11 @@ catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 
 sampling_function = CustomSampling(
-    index_range=[0, 50000], max_number=max_number, stamp_size=stamp_size, seed=seed
+    index_range=index_range,
+    max_number=max_number,
+    maxshift=maxshift,
+    stamp_size=stamp_size,
+    seed=seed,
 )
 
 draw_generator = btk.draw_blends.CosmosGenerator(
