@@ -13,15 +13,18 @@ tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 120
-flow_epochs = 125
-deblender_epochs = 120
+vae_epochs = 200
+flow_epochs = 150
+deblender_epochs = 200
 latent_dim = 8
+linear_norm_coeff = 1
 
-prior = tfd.Independent(
+kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=1)
+kl_weight = 0.01
+
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight)
 
 train_path_isolated_gal = listdir_fullpath(
     "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_train/"
@@ -32,7 +35,7 @@ validation_path_isolated_gal = listdir_fullpath(
 
 # Keras Callbacks
 data_path = get_data_dir_path()
-path_weights = os.path.join(data_path, "cosmos" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "cosmos" + str(latent_dim) + "d_nonorm")
 
 # Define the generators
 
@@ -42,7 +45,7 @@ train_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    linear_norm_coeff=80000,
+    linear_norm_coeff=linear_norm_coeff,
 )
 
 validation_generator_vae = COSMOSsequence(
@@ -51,7 +54,7 @@ validation_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    linear_norm_coeff=80000,
+    linear_norm_coeff=linear_norm_coeff,
 )
 
 # Define all used callbacks
@@ -92,7 +95,7 @@ deblend_prior.trainable = False
 print(f_net.flow.trainable_variables)
 
 
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight)
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
@@ -109,7 +112,7 @@ train_generator_deblender = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=400,
-    linear_norm_coeff=80000,
+    linear_norm_coeff=linear_norm_coeff,
 )
 
 validation_generator_deblender = COSMOSsequence(
@@ -118,7 +121,7 @@ validation_generator_deblender = COSMOSsequence(
     "isolated_gal_stamps",
     batch_size=batch_size,
     num_iterations_per_epoch=100,
-    linear_norm_coeff=80000,
+    linear_norm_coeff=linear_norm_coeff,
 )
 # Define all used callbacks
 callbacks = define_callbacks(
@@ -136,7 +139,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-4),
-    loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000),
+    loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1),
 )
 
 np.save(path_weights + "/train_deblender_history.npy", hist_deblender.history)
