@@ -23,16 +23,16 @@ prior = tfd.Independent(
 )
 f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=prior, kl_weight=1)
 
-datalist_isolated = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated/"
+train_path_isolated_gal = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_train/"
 )
-
-train_path_isolated_gal = datalist_isolated[:250]
-validation_path_isolated_gal = datalist_isolated[250:]
+validation_path_isolated_gal = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_validation/"
+)
 
 # Keras Callbacks
 data_path = get_data_dir_path()
-path_weights = os.path.join(data_path, "cosmos8d")
+path_weights = os.path.join(data_path, "cosmos" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -96,12 +96,12 @@ f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=None, kl_weight=None)
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
-datalist_blended = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_blended/"
+train_path_blended_gal = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_blended_train/"
 )
-
-train_path_blended_gal = datalist_blended[:250]
-validation_path_blended_gal = datalist_blended[250:]
+validation_path_blended_gal = listdir_fullpath(
+    "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_blended_validation/"
+)
 
 train_generator_deblender = COSMOSsequence(
     train_path_blended_gal,
