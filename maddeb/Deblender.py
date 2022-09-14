@@ -74,10 +74,12 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "cosmos8d/flow/val_loss")
+            weights_path=os.path.join(data_dir_path, "cosmos8d_nonorm/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path=os.path.join(data_dir_path, "cosmos8d/deblender/val_loss")
+            weights_path=os.path.join(
+                data_dir_path, "cosmos8d_nonorm/deblender/val_loss"
+            )
         )
 
         # self.flow_vae_net.vae_model.trainable = False

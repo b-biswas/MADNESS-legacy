@@ -1,5 +1,6 @@
 import logging
 
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
@@ -13,16 +14,21 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
+def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1):
     if sigma is None:
-        sigma = [
-            0.0004904385423287749,
-            0.0019302727887406945,
-            0.004438500851392746,
-            0.0053316932171583176,
-            0.006229500751942396,
-            0.006669720634818077,
-        ]
+        sigma = list(
+            np.array(
+                [
+                    0.0004904385423287749,
+                    0.0019302727887406945,
+                    0.004438500851392746,
+                    0.0053316932171583176,
+                    0.006229500751942396,
+                    0.006669720634818077,
+                ]
+            )
+            * 80000
+        )
 
     @tf.function
     def vae_loss_fn(x, predicted_galaxy):
@@ -195,7 +201,7 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:
-            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
+            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1)
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": loss_function},
