@@ -169,6 +169,7 @@ for i, image in enumerate(field_images):
 
 # get MADNESS predictions
 madness_predictions = []
+linear_norm_coeff = 80000
 for i in range(len(blend["blend_list"])):
 
     current_field_predictions = []
@@ -184,7 +185,7 @@ for i in range(len(blend["blend_list"])):
         latent_dim=8,
         num_components=len(blends),
         use_likelihood=True,
-        linear_norm_coeff=80000,
+        linear_norm_coeff=linear_norm_coeff,
         max_iter=300,
     )
     # tf.config.run_functions_eagerly(False)
