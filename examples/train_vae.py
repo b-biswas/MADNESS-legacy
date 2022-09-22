@@ -36,7 +36,8 @@ validation_path_isolated_gal = listdir_fullpath(
 
 # Keras Callbacks
 data_path = get_data_dir_path()
-path_weights = os.path.join(data_path, "cosmos" + str(latent_dim) + "d_nonorm")
+
+path_weights = os.path.join(data_path, "cosmos" + str(latent_dim) + "d")
 
 # Define the generators
 
