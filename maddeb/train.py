@@ -32,7 +32,7 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
         save_freq="epoch",
     )
 
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=15)
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=40)
 
     callbacks = [checkpointer_val_mse, checkpointer_val_loss, early_stopping]
 
