@@ -14,7 +14,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1):
+def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
     if sigma is None:
         sigma = list(
             np.array(
@@ -201,7 +201,7 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:
-            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1)
+            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": loss_function},
