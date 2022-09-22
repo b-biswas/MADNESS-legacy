@@ -54,6 +54,13 @@ def create_encoder(
             (kernels[i], kernels[i]),
             activation=None,
             padding="same",
+        )(h)
+        h = PReLU()(h)
+        h = Conv2D(
+            filters[i],
+            (kernels[i], kernels[i]),
+            activation=None,
+            padding="same",
             strides=(2, 2),
         )(h)
         h = PReLU()(h)
@@ -159,7 +166,7 @@ def create_flow(latent_dim=10, num_nf_layers=6):
 
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=0.5), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
     )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
