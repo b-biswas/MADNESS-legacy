@@ -27,7 +27,7 @@ def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1):
                     0.006669720634818077,
                 ]
             )
-            * 80000
+            * 80000 / linear_norm_coeff
         )
 
     @tf.function

@@ -166,7 +166,7 @@ def create_flow(latent_dim=10, num_nf_layers=6):
 
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=50), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
     )
     # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 

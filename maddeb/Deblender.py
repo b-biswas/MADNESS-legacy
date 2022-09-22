@@ -31,7 +31,7 @@ class Deblend:
         latent_dim=10,
         use_likelihood=True,
         channel_last=False,
-        linear_norm_coeff=1,
+        linear_norm_coeff=80000,
     ):
         """
         Parameters
@@ -74,11 +74,11 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "cosmos8d_nonorm/flow/val_loss")
+            weights_path=os.path.join(data_dir_path, "cosmos8d/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "cosmos8d_nonorm/deblender/val_loss"
+                data_dir_path, "cosmos8d/deblender/val_loss"
             )
         )
 
@@ -349,7 +349,7 @@ class Deblend:
                 sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
             else:
                 sig.append(sep.Background(self.postage_stamp[i]).globalrms)
-        return sig
+        return np.array(sig)
 
     def gradient_decent(
         self,
@@ -438,20 +438,21 @@ class Deblend:
         # Note here that self.postage stamp is normalized but it must be divided again
         # to encure that the loglikelihood does not change due to scaling/normalizing
         if self.channel_last:
+
+            sig_sq = self.postage_stamp
+
+            # sig_sq[sig_sq <= (5 * noise_level)] = 0
             sig_sq = tf.convert_to_tensor(
-                np.add(
-                    self.postage_stamp / self.linear_norm_coeff, np.square(noise_level)
-                ),
+                np.add(sig_sq, np.square(noise_level)),
                 dtype=tf.float32,
             )
         else:
-            sig_sq = tf.convert_to_tensor(
-                np.add(
-                    np.transpose(
+            sig_sq = np.transpose(
                         self.postage_stamp / self.linear_norm_coeff, axes=[1, 2, 0]
-                    ),
-                    np.square(noise_level),
-                ),
+                    )
+            # sig_sq[sig_sq <= (5 * noise_level)] = 0
+            sig_sq = tf.convert_to_tensor(
+                np.add(sig_sq, np.square(noise_level)), 
                 dtype=tf.float32,
             )
             # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
