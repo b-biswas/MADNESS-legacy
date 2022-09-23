@@ -30,14 +30,14 @@ def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
             * 80000 / linear_norm_coeff
         )
 
-    @tf.function
-    def vae_loss_fn(x, predicted_galaxy):
+    @tf.function(experimental_compile=True)
+    def vae_loss_fn(ground_truth, predicted_galaxy):
         # predicted_galaxies = predicted_distribution.mean()
 
         weight = tf.add(
-            tf.divide(predicted_galaxy, linear_norm_coeff), tf.square(sigma)
+            tf.divide(ground_truth, linear_norm_coeff), tf.square(sigma)
         )
-        mse = tf.square(tf.subtract(predicted_galaxy, x))
+        mse = tf.square(tf.subtract(predicted_galaxy, ground_truth))
         loss = tf.math.divide(mse, weight)
         # loss = log_prob
 
