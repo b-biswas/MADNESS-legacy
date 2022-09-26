@@ -141,7 +141,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(2e-4),
-    loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=1),
+    loss_function=vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=linear_norm_coeff),
 )
 
 np.save(path_weights + "/train_deblender_history.npy", hist_deblender.history)
