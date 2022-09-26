@@ -133,7 +133,7 @@ class Deblend:
         else:
             residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
 
-        # residual_field = tf.cast(residual_field, tf.float32)
+        residual_field = tf.cast(residual_field, tf.float32)
 
         if use_scatter_and_sub:
 
