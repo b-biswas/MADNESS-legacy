@@ -117,7 +117,6 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    @tf.function(autograph=False)
     def compute_residual(
         self,
         postage_stamp,
@@ -195,7 +194,8 @@ class Deblend:
         else:
 
             def one_step(i, residual_field):
-                padding = tf.cast(padding_infos[i], dtype=tf.int32)
+                # padding = tf.cast(padding_infos[i], dtype=tf.int32)
+                padding= padding_infos[i]
                 reconstruction = tf.pad(
                     tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
                 )
@@ -213,7 +213,6 @@ class Deblend:
             )
         return residual_field
 
-    @tf.function(autograph=False)
     def compute_loss(
         self,
         z,
@@ -252,13 +251,10 @@ class Deblend:
 
         reconstruction_loss = tf.divide(reconstruction_loss, 2)
 
-        log_likelihood = tf.cast(
-            tf.math.reduce_sum(
-                self.flow_vae_net.flow(
-                    tf.reshape(z, (self.num_components, self.latent_dim))
-                )
-            ),
-            tf.float32,
+        log_likelihood = tf.math.reduce_sum(
+            self.flow_vae_net.flow(
+                tf.reshape(z, (self.num_components, self.latent_dim))
+            )
         )
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
@@ -460,12 +456,12 @@ class Deblend:
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
                 z=z,
-                postage_stamp=self.postage_stamp,
-                compute_sig_dynamically=compute_sig_dynamically,
-                sig_sq=sig_sq,
-                use_scatter_and_sub=True,
-                index_pos_to_sub=index_pos_to_sub,
-                padding_infos=padding_infos,
+                postage_stamp=tf.convert_to_tensor(self.postage_stamp, dtype=tf.float32),
+                compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
+                sig_sq=tf.convert_to_tensor(sig_sq, dtype=tf.float32),
+                use_scatter_and_sub=tf.convert_to_tensor(True),
+                index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
+                padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
             ),
             trainable_variables=[z],
             num_steps=self.max_iter,
@@ -507,6 +503,8 @@ class Deblend:
         index_pos_to_sub,
         padding_infos,
     ):
+
+        @tf.function(autograph=False)
         def training_loss():
             loss, *_ = self.compute_loss(
                 z=z,
