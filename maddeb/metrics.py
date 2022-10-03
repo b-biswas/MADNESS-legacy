@@ -53,10 +53,8 @@ def compute_pixel_covariance_and_fluxes(
     results = {}
 
     for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-        for property in ["_covariance", "_actual_flux", "_predicted_flux"]:
-            results[band+property] = []
-            results[band+property] = []
-            results[band+property] = []
+        for col_name in ["_covariance", "_actual_flux", "_predicted_flux", "_blendedness"]:
+            results[band + col_name] = []
 
     for gal_num in range(len(predicted_galaxies)):
         # (
@@ -88,9 +86,11 @@ def compute_pixel_covariance_and_fluxes(
             #             plt.show()
             band_actual_flux, band_predicted_flux, pixel_covariance = convariance_and_flux_helper(predicted_galaxy[band_number], simulated_galaxy[band_number], sig)
 
+            blendedness = compute_blendedness(isolated_galaxy_band=simulated_galaxy[band_number], field_band=field_image[band_number])
             results[band + "_actual_flux"].append(band_actual_flux)
             results[band + "_predicted_flux"].append(band_predicted_flux)
             results[band + "_covariance"].append(pixel_covariance)
+            results[band + "_blendedness"].append(blendedness)
 
     return pd.DataFrame(results)
 
@@ -102,12 +102,6 @@ def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, si
     mask1 = simulated_band_galaxy > 0 * sig
     mask2 = predicted_band_galaxy > 0 * sig
     mask = np.logical_or(mask1, mask2)
-    #             fig, ax = plt.subplots(1, 2)
-    #             plt.subplot(1,2,1)
-    #             plt.imshow(cutout_galaxy[:, :, band_number])
-    #             plt.subplot(1, 2, 2)
-    #             plt.imshow(madness_predictions[blend_number][galaxy_number][band_number])
-    #             plt.show()
     ground_truth_pixels = simulated_band_galaxy[mask].flatten()
     predicted_pixels = predicted_band_galaxy[mask].flatten()
 
@@ -122,12 +116,13 @@ def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, si
     return band_actual_flux, band_predicted_flux, pixel_covariance
 
 
-def compute_blendedness(blended_pixels, isolated_pixels):
+@jit
+def compute_blendedness(isolated_galaxy_band, field_band):
 
-    predicted_pixels = np.flatten(predicted_pixels)
-    blended_pixels = np.flatten(isolated_pixels)
+    isolated_pixels = isolated_galaxy_band.flatten()
+    field_pixels = field_band.flatten()
 
-    blendedness = 1 - np.sum(np.multiply(isolated_pixels, isolated_pixels))/np.sum(np.multiply(blended_pixels, isolated_pixels))
+    blendedness = 1 - np.sum(np.multiply(isolated_pixels, isolated_pixels))/np.sum(np.multiply(field_pixels, isolated_pixels))
 
     return blendedness
 
