@@ -48,13 +48,18 @@ def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=
 
 
 def compute_pixel_covariance_and_fluxes(
-    predicted_galaxies, simulated_galaxies, field_image
+    predicted_galaxies, simulated_galaxies, field_image, get_blendedness=True,
 ):
     results = {}
 
+    columns = ["_covariance", "_actual_flux", "_predicted_flux"]
+    if get_blendedness:
+        columns = columns + ["_blendedness"]
+
     for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-        for col_name in ["_covariance", "_actual_flux", "_predicted_flux", "_blendedness"]:
+        for col_name in columns:
             results[band + col_name] = []
+    results["galaxy_num"] = []
 
     for gal_num in range(len(predicted_galaxies)):
         # (
@@ -86,12 +91,15 @@ def compute_pixel_covariance_and_fluxes(
             #             plt.show()
             band_actual_flux, band_predicted_flux, pixel_covariance = convariance_and_flux_helper(predicted_galaxy[band_number], simulated_galaxy[band_number], sig)
 
-            blendedness = compute_blendedness(isolated_galaxy_band=simulated_galaxy[band_number], field_band=field_image[band_number])
+            
             results[band + "_actual_flux"].append(band_actual_flux)
             results[band + "_predicted_flux"].append(band_predicted_flux)
             results[band + "_covariance"].append(pixel_covariance)
-            results[band + "_blendedness"].append(blendedness)
+            if get_blendedness:
+                blendedness = compute_blendedness(isolated_galaxy_band=simulated_galaxy[band_number], field_band=field_image[band_number])
+                results[band + "_blendedness"].append(blendedness)
 
+        results["galaxy_num"].append(gal_num)
     return pd.DataFrame(results)
 
 @jit
@@ -127,12 +135,22 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     return blendedness
 
 
-def compute_apperture_photometry(residual_field, predictions, xpos, ypos, bkg_rms):
-
+def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
+    """
+    field_image:
+    prediction: predictions of model or None
+    """
     results = {}
     for band in ['u', 'g', 'r', 'i', 'z', 'y']:
         for column in ["_flux", "_fluxerrs", "_flags"]:
             results[band + column] = []
+
+    results["galaxy_num"] = []
+
+    residual_field=field_image
+    if predictions is not None:
+        for prediction in predictions:
+            residual_field = residual_field - prediction
 
     for galaxy_num in range(len(xpos)):
 
@@ -157,5 +175,7 @@ def compute_apperture_photometry(residual_field, predictions, xpos, ypos, bkg_rm
             results[band + "_flux"].extend(flux)
             results[band + "_fluxerrs"].extend(fluxerr)
             results[band + "_flags"].extend(flag)
+
+        results["galaxy_num"].append(galaxy_num)
 
     return pd.DataFrame(results)
