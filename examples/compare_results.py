@@ -41,7 +41,7 @@ min_number = 8
 max_number = 15
 batch_size = 20
 maxshift = 15
-num_repetations = 50
+num_repetations = 25
 catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
@@ -66,50 +66,6 @@ draw_generator = btk.draw_blends.CosmosGenerator(
     gal_type="parametric",
     seed=seed,
 )
-
-madness_results = {}
-scarlet_results = {}
-
-for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-    for metric in ["_covariance", "_actual_flux", "_predicted_flux"]:
-        madness_results[band+metric] = []
-        scarlet_results[band+metric] = []
-
-madness_results["field_num"] = []
-scarlet_results["field_num"] = []
-
-madness_results["file_num"] = []
-scarlet_results["file_num"] = []
-
-madness_results = pd.DataFrame(madness_results)
-scarlet_results = pd.DataFrame(scarlet_results)
-
-actual_photometry = {}
-madness_photometry = {}
-scarlet_photometry = {}
-blended_photometry = {}
-
-for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-    for column in ["_flux", "_fluxerrs", "_flags"]:
-        actual_photometry[band + column] = []
-        madness_photometry[band + column] = []
-        scarlet_photometry[band + column] = []
-        blended_photometry[band + column] = []
-        
-actual_photometry["field_num"] = []
-madness_photometry["field_num"] = []
-scarlet_photometry["field_num"] = []
-blended_photometry["field_num"] = []
-
-actual_photometry["file_num"] = []
-madness_photometry["file_num"] = []
-scarlet_photometry["file_num"] = []
-blended_photometry["file_num"] = []
-
-actual_photometry = pd.DataFrame(actual_photometry)
-madness_photometry = pd.DataFrame(madness_photometry)
-scarlet_photometry = pd.DataFrame(scarlet_photometry)
-blended_photometry = pd.DataFrame(blended_photometry)
 
 # Define function to make predictions iwth scarlet
 def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters):
@@ -266,6 +222,50 @@ for file_num in range(num_repetations):
 
     blend["madness_predictions"] = madness_predictions
 
+    madness_results = {}
+    scarlet_results = {}
+
+    for band in ['u', 'g', 'r', 'i', 'z', 'y']:
+        for metric in ["_covariance", "_actual_flux", "_predicted_flux"]:
+            madness_results[band+metric] = []
+            scarlet_results[band+metric] = []
+
+    madness_results["field_num"] = []
+    scarlet_results["field_num"] = []
+
+    madness_results["file_num"] = []
+    scarlet_results["file_num"] = []
+
+    madness_results = pd.DataFrame(madness_results)
+    scarlet_results = pd.DataFrame(scarlet_results)
+
+    actual_photometry = {}
+    madness_photometry = {}
+    scarlet_photometry = {}
+    blended_photometry = {}
+
+    for band in ['u', 'g', 'r', 'i', 'z', 'y']:
+        for column in ["_flux", "_fluxerrs", "_flags"]:
+            actual_photometry[band + column] = []
+            madness_photometry[band + column] = []
+            scarlet_photometry[band + column] = []
+            blended_photometry[band + column] = []
+            
+    actual_photometry["field_num"] = []
+    madness_photometry["field_num"] = []
+    scarlet_photometry["field_num"] = []
+    blended_photometry["field_num"] = []
+
+    actual_photometry["file_num"] = []
+    madness_photometry["file_num"] = []
+    scarlet_photometry["file_num"] = []
+    blended_photometry["file_num"] = []
+
+    actual_photometry = pd.DataFrame(actual_photometry)
+    madness_photometry = pd.DataFrame(madness_photometry)
+    scarlet_photometry = pd.DataFrame(scarlet_photometry)
+    blended_photometry = pd.DataFrame(blended_photometry)
+
     for field_num in range(len(blend["blend_list"])):
 
 
@@ -350,24 +350,24 @@ for file_num in range(num_repetations):
     hickle.dump(blend, save_file_name, mode="w")
     # reconstruction_file.close()
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_reconstruction" + ".hkl")
-hickle.dump(scarlet_results, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_reconstruction" + str(file_num) + ".hkl")
+    hickle.dump(scarlet_results, save_file_name, mode="w")
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_reconstruction" + ".hkl")
-hickle.dump(madness_results, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_reconstruction" + str(file_num) + ".hkl")
+    hickle.dump(madness_results, save_file_name, mode="w")
 
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_photometry" + ".hkl")
-hickle.dump(scarlet_photometry, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_photometry" + str(file_num) + ".hkl")
+    hickle.dump(scarlet_photometry, save_file_name, mode="w")
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_photometry" +  ".hkl")
-hickle.dump(madness_photometry, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_photometry" + str(file_num) +  ".hkl")
+    hickle.dump(madness_photometry, save_file_name, mode="w")
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "actual_photometry" + ".hkl")
-hickle.dump(actual_photometry, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "actual_photometry" + str(file_num) + ".hkl")
+    hickle.dump(actual_photometry, save_file_name, mode="w")
 
-save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "blended_photometry" + ".hkl")
-hickle.dump(blended_photometry, save_file_name, mode="w")
+    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "blended_photometry" + str(file_num) + ".hkl")
+    hickle.dump(blended_photometry, save_file_name, mode="w")
 
 # # Compute covariance, actual and predicted fluxes
 # madness_cov = []
