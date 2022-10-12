@@ -435,7 +435,7 @@ class Deblend:
         # to encure that the loglikelihood does not change due to scaling/normalizing
         if self.channel_last:
 
-            sig_sq = self.postage_stamp
+            sig_sq = self.postage_stamp/self.linear_norm_coeff
 
             # sig_sq[sig_sq <= (5 * noise_level)] = 0
             sig_sq = tf.convert_to_tensor(
