@@ -50,6 +50,10 @@ def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=
 def compute_pixel_covariance_and_fluxes(
     predicted_galaxies, simulated_galaxies, field_image, get_blendedness=True,
 ):
+    noiseless_galaxy_field = np.zeros_like(field_image)
+    for simulated_galaxy in simulated_galaxies:
+        noiseless_galaxy_field += simulated_galaxy
+
     results = {}
 
     columns = ["_covariance", "_actual_flux", "_predicted_flux"]
@@ -96,7 +100,7 @@ def compute_pixel_covariance_and_fluxes(
             results[band + "_predicted_flux"].append(band_predicted_flux)
             results[band + "_covariance"].append(pixel_covariance)
             if get_blendedness:
-                blendedness = compute_blendedness(isolated_galaxy_band=simulated_galaxy[band_number], field_band=field_image[band_number])
+                blendedness = compute_blendedness(isolated_galaxy_band=simulated_galaxy[band_number], field_band=noiseless_galaxy_field[band_number])
                 results[band + "_blendedness"].append(blendedness)
 
         results["galaxy_num"].append(gal_num)

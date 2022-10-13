@@ -41,10 +41,11 @@ min_number = 8
 max_number = 15
 batch_size = 20
 maxshift = 15
-num_repetations = 25
+num_repetations = 15
 catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
+run_name = "test_run"
 
 galsim_catalog = galsim.COSMOSCatalog(
     COSMOS_CATALOG_PATHS[0], exclusion_level="marginal"
@@ -350,23 +351,23 @@ for file_num in range(num_repetations):
     hickle.dump(blend, save_file_name, mode="w")
     # reconstruction_file.close()
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_reconstruction" + str(file_num) + ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name,  "scarlet_reconstruction", str(file_num) + ".hkl")
     hickle.dump(scarlet_results, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_reconstruction" + str(file_num) + ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "madness_reconstruction", str(file_num) + ".hkl")
     hickle.dump(madness_results, save_file_name, mode="w")
 
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "scarlet_photometry" + str(file_num) + ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "scarlet_photometry", str(file_num) + ".hkl")
     hickle.dump(scarlet_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "madness_photometry" + str(file_num) +  ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "madness_photometry", str(file_num) +  ".hkl")
     hickle.dump(madness_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "actual_photometry" + str(file_num) + ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "actual_photometry", str(file_num) + ".hkl")
     hickle.dump(actual_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "scarlet_comparison", "blended_photometry" + str(file_num) + ".hkl")
+    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "blended_photometry", str(file_num) + ".hkl")
     hickle.dump(blended_photometry, save_file_name, mode="w")
 
 # # Compute covariance, actual and predicted fluxes
