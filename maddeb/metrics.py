@@ -2,6 +2,7 @@ import numpy as np
 import sep
 import skimage
 from numba import jit
+from astropy.table import Table
 import pandas as pd
 
 def compute_reconstruction_metrics(predicted_images, ground_truth, channel_last=True):
@@ -104,7 +105,7 @@ def compute_pixel_covariance_and_fluxes(
                 results[band + "_blendedness"].append(blendedness)
 
         results["galaxy_num"].append(gal_num)
-    return pd.DataFrame(results)
+    return Table(results)
 
 @jit
 def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
@@ -182,4 +183,4 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
 
         results["galaxy_num"].append(galaxy_num)
 
-    return pd.DataFrame(results)
+    return Table(results)
