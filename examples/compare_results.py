@@ -17,6 +17,8 @@ import tensorflow_probability as tfp
 from scipy.optimize import curve_fit
 from scipy.stats import norm
 
+from astropy.table import vstack, hstack
+
 from maddeb.Deblender import Deblend
 from maddeb.metrics import (
     compute_apperture_photometry,
@@ -223,49 +225,14 @@ for file_num in range(num_repetations):
 
     blend["madness_predictions"] = madness_predictions
 
-    madness_results = {}
-    scarlet_results = {}
+    blend_list = []
+    madness_results = []
+    scarlet_results = []
 
-    for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-        for metric in ["_covariance", "_actual_flux", "_predicted_flux"]:
-            madness_results[band+metric] = []
-            scarlet_results[band+metric] = []
-
-    madness_results["field_num"] = []
-    scarlet_results["field_num"] = []
-
-    madness_results["file_num"] = []
-    scarlet_results["file_num"] = []
-
-    madness_results = pd.DataFrame(madness_results)
-    scarlet_results = pd.DataFrame(scarlet_results)
-
-    actual_photometry = {}
-    madness_photometry = {}
-    scarlet_photometry = {}
-    blended_photometry = {}
-
-    for band in ['u', 'g', 'r', 'i', 'z', 'y']:
-        for column in ["_flux", "_fluxerrs", "_flags"]:
-            actual_photometry[band + column] = []
-            madness_photometry[band + column] = []
-            scarlet_photometry[band + column] = []
-            blended_photometry[band + column] = []
-            
-    actual_photometry["field_num"] = []
-    madness_photometry["field_num"] = []
-    scarlet_photometry["field_num"] = []
-    blended_photometry["field_num"] = []
-
-    actual_photometry["file_num"] = []
-    madness_photometry["file_num"] = []
-    scarlet_photometry["file_num"] = []
-    blended_photometry["file_num"] = []
-
-    actual_photometry = pd.DataFrame(actual_photometry)
-    madness_photometry = pd.DataFrame(madness_photometry)
-    scarlet_photometry = pd.DataFrame(scarlet_photometry)
-    blended_photometry = pd.DataFrame(blended_photometry)
+    actual_photometry = []
+    madness_photometry = []
+    scarlet_photometry = []
+    blended_photometry = []
 
     for field_num in range(len(blend["blend_list"])):
 
@@ -293,8 +260,8 @@ for file_num in range(num_repetations):
         scarlet_current_res['file_num'] = [file_num]*num_galaxies
         #make this a table
 
-        madness_results = pd.concat([madness_results, madness_current_res], ignore_index=True)
-        scarlet_results = pd.concat([scarlet_results, scarlet_current_res], ignore_index=True)
+        madness_results.append(madness_current_res)
+        scarlet_results.append(scarlet_current_res)
 
         bkg_rms = {}
         for band in range(6):
@@ -310,7 +277,7 @@ for file_num in range(num_repetations):
         )
         actual_results_current["field_num"] = field_num
         actual_results_current["file_num"] = file_num
-        actual_photometry = pd.concat([actual_photometry, actual_results_current], ignore_index=True)
+        actual_photometry.append(actual_results_current)
 
 
         madness_results_current = compute_apperture_photometry(
@@ -322,7 +289,7 @@ for file_num in range(num_repetations):
         )
         madness_results_current["field_num"] = field_num
         madness_results_current["file_num"] = file_num
-        madness_photometry = pd.concat([madness_photometry, madness_results_current], ignore_index=True)
+        madness_photometry.append(madness_results_current)
 
         scarlet_results_current = compute_apperture_photometry(
             field_image=blend["blend_images"][field_num],
@@ -333,7 +300,7 @@ for file_num in range(num_repetations):
         )
         scarlet_results_current["field_num"] = field_num
         scarlet_results_current["file_num"] = file_num
-        scarlet_photometry = pd.concat([scarlet_photometry, scarlet_results_current], ignore_index=True)
+        scarlet_photometry.append(scarlet_results_current)
 
         blended_results_current = compute_apperture_photometry(
             field_image=blend["blend_images"][field_num],
@@ -344,7 +311,18 @@ for file_num in range(num_repetations):
         )
         blended_results_current["field_num"] = field_num
         blended_results_current["file_num"] = file_num
-        blended_photometry = pd.concat([blended_photometry, blended_results_current], ignore_index=True)
+        blended_photometry.append(blended_results_current)
+
+    madness_results = vstack(madness_results)
+    scarlet_results = vstack(scarlet_results)
+
+    madness_results = hstack([madness_results, vstack(blend["blend_list"])])
+    scarlet_results = hstack([scarlet_results, vstack(blend["blend_list"])])
+
+    actual_photometry = vstack(actual_photometry)
+    madness_photometry = vstack(madness_photometry)
+    scarlet_photometry = vstack(scarlet_photometry)
+    blended_photometry = vstack(blended_photometry)
 
     # reconstruction_file = open("debblend_results" + str(rep_num)+ ".pkl", "wb")
     save_file_name = os.path.join("/sps/lsst/users/bbiswas", "scarlet_comparison", "debblend_results" + str(file_num) + ".hkl")    
