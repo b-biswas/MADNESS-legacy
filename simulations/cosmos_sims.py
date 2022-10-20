@@ -1,3 +1,6 @@
+import sys
+import os 
+
 import btk
 import btk.catalog
 import btk.draw_blends
@@ -10,27 +13,39 @@ import pandas as pd
 from maddeb.extraction import extract_cutouts
 from maddeb.utils import CustomSampling
 
+print(sys.argv)
+dataset = sys.argv[1] # should be either training or validation
+if dataset not in ["training", "validation"]:
+    raise ValueError("The first arguement (dataset) should be either training or validation")
+
+
+blend_type = sys.argv[2]  # set to 4 to generate blended scenes
+if blend_type not in ["isolated", "blended"]:
+    raise ValueError("The second arguemnt should be either isolated or blended")
+
+if blend_type == "isolated":
+    max_number = 1
+else:
+    max_number = 4
+
 seed = 993
 
-COSMOS_CATALOG_PATHS = [
-    "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2.fits",
-    "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2_fits.fits",
-]
+CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq.fits"
 
 stamp_size = 15
-max_number = 1  # set to 4 to generate blended scenes
 batch_size = 200
 maxshift = 1.5
 
-dataset = "validation"  # either training or validation
-if dataset == "training":
-    index_range = [0, 50000]
-    num_files = 400
-elif dataset == "validation":
-    index_range = [50000, 60000]
-    num_files = 100
+sky_level_factor = 0.01
 
-catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
+if dataset == "training":
+    index_range = [0, 300000]
+    num_files = 1000
+elif dataset == "validation":
+    index_range = [300000, 400000]
+    num_files = 400
+
+catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
 
 sampling_function = CustomSampling(
@@ -41,28 +56,33 @@ sampling_function = CustomSampling(
     seed=seed,
 )
 
-draw_generator = btk.draw_blends.CosmosGenerator(
+draw_generator = btk.draw_blends.CatsimGenerator(
     catalog,
     sampling_function,
     survey,
     batch_size=batch_size,
     stamp_size=stamp_size,
-    cpus=8,
+    cpus=4,
     add_noise="all",
     verbose=False,
     seed=seed,
-    gal_type="parametric",
+    augment_data=True,
+    sky_level_factor=sky_level_factor,
 )
-
 
 for file_num in range(num_files):
 
     print("simulating file number:" + str(file_num))
 
+    # postage_stamps = {
+    #     "blended_gal_stamps": [],
+    #     "isolated_gal_stamps": [],
+    #     "btk_index": [],
+    # }
+
     postage_stamps = {
         "blended_gal_stamps": [],
         "isolated_gal_stamps": [],
-        "btk_index": [],
     }
 
     # meta_data = []
@@ -97,9 +117,9 @@ for file_num in range(num_files):
                 cutout_size=45,
             )[0][0]
             postage_stamps["isolated_gal_stamps"].append(gal_isolated)
-            postage_stamps["btk_index"].append(
-                [batch["blend_list"][blended_image_num]["btk_index"][galaxy_num]]
-            )
+            # postage_stamps["btk_index"].append(
+            #     [batch["blend_list"][blended_image_num]["btk_index"][galaxy_num]]
+            # )
             # plt.subplot(121)
             # plt.imshow(gal_blended)
 
@@ -110,24 +130,17 @@ for file_num in range(num_files):
 
         # meta_data.append(batch['blend_list'][blended_image_num])
 
-    if max_number == 1:
-        np.save(
-            "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_isolated_"
-            + dataset
-            + "/batch"
-            + str(file_num + 1)
-            + ".npy",
-            pd.DataFrame(postage_stamps).to_records(),
-        )
-    else:
-        np.save(
-            "/sps/lsst/users/bbiswas/simulations/COSMOS_btk_blended_"
-            + dataset
-            + "/batch"
-            + str(file_num + 1)
-            + ".npy",
-            pd.DataFrame(postage_stamps).to_records(),
-        )
+
+    np.save(
+        os.path.join(
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_" + blend_type + "_" + dataset,
+            "batch" + str(file_num + 1) + ".npy",
+        ),
+        pd.DataFrame(postage_stamps).to_records(),
+    )
+
+    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_btk_" + blend_type + "_" + dataset)
+
     del batch
     del postage_stamps
     del blended_image
