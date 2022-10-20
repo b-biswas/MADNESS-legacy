@@ -29,6 +29,7 @@ class CustomSampling(SamplingFunction):
     def __init__(
         self,
         max_number=2,
+        min_number=1,
         index_range=None,
         stamp_size=24.0,
         maxshift=None,
@@ -43,7 +44,7 @@ class CustomSampling(SamplingFunction):
                              is set as one-tenth the stamp size. (in arcseconds)
             seed (int): Seed to initialize randomness for reproducibility.
         """
-        super().__init__(max_number, seed)
+        super().__init__(max_number=max_number, min_number=min_number, seed=seed)
         self.stamp_size = stamp_size
         self.maxshift = maxshift if maxshift else self.stamp_size / 10.0
         self.index_range = index_range
@@ -80,11 +81,11 @@ class CustomSampling(SamplingFunction):
         """
         number_of_objects = self.rng.integers(1, self.max_number + 1)
         (q,) = np.where(
-            table["ref_mag"][self.index_range[0] : self.index_range[1]] <= 25.3
+            table["ref_mag"][self.index_range[0] : self.index_range[1]] < 28
         )
 
         if indexes is None:
-            blend_table = table[self.rng.choice(q, size=number_of_objects)]
+            blend_table = table[self.index_range[0] : self.index_range[1]][self.rng.choice(q, size=number_of_objects)]
         else:
             blend_table = table[indexes]
         blend_table["ra"] = 0.0

@@ -32,11 +32,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-
-COSMOS_CATALOG_PATHS = [
-    "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2.fits",
-    "/sps/lsst/users/bbiswas/COSMOS_catalog/COSMOS_25.2_training_sample/real_galaxy_catalog_25.2_fits.fits",
-]
+COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq.fits"
 
 stamp_size = 41
 min_number = 8
@@ -44,20 +40,16 @@ max_number = 15
 batch_size = 20
 maxshift = 15
 num_repetations = 15
-catalog = btk.catalog.CosmosCatalog.from_file(COSMOS_CATALOG_PATHS)
+catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
-run_name = "test_run"
-
-galsim_catalog = galsim.COSMOSCatalog(
-    COSMOS_CATALOG_PATHS[0], exclusion_level="marginal"
-)
+run_name = "test_run_catsim"
 
 sampling_function = btk.sampling_functions.DefaultSampling(
     max_number=max_number, min_number=min_number, max_shift=maxshift, stamp_size=stamp_size, seed=seed
 )
 
-draw_generator = btk.draw_blends.CosmosGenerator(
+draw_generator = btk.draw_blends.CatsimGenerator(
     catalog,
     sampling_function,
     survey,
@@ -66,7 +58,6 @@ draw_generator = btk.draw_blends.CosmosGenerator(
     cpus=1,
     add_noise="all",
     verbose=False,
-    gal_type="parametric",
     seed=seed,
 )
 
