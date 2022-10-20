@@ -7,6 +7,8 @@ import tensorflow_probability as tfp
 
 from maddeb.model import create_encoder, create_model_fvae
 
+from galcheat.utilities import mean_sky_level
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -14,21 +16,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-def vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000):
-    if sigma is None:
-        sigma = list(
-            np.array(
-                [
-                    0.0004904385423287749,
-                    0.0019302727887406945,
-                    0.004438500851392746,
-                    0.0053316932171583176,
-                    0.006229500751942396,
-                    0.006669720634818077,
-                ]
-            )
-            * 80000 / linear_norm_coeff
-        )
+def vae_loss_fn_wrapper(sigma):
 
     @tf.function(experimental_compile=True)
     def vae_loss_fn(ground_truth, predicted_galaxy):
@@ -61,14 +49,14 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-@tf.function(autograph=False)
+@tf.function(experimental_compile=True)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
     objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
     return objective
 
 
-@tf.function(autograph=False)
+@tf.function(experimental_compile=True)
 def flow_loss_fn(x, output):
     return -tf.math.reduce_mean(output)
 
@@ -142,13 +130,13 @@ class FlowVAEnet:
         train_generator,
         validation_generator,
         callbacks,
+        loss_function,
         train_encoder=True,
         train_decoder=True,
         optimizer=tf.keras.optimizers.Adam(1e-4),
         track_kl=False,
         epochs=35,
         verbose=1,
-        loss_function=None,
     ):
         """
         trains only the vae model. (both the encoder and the decoder)
@@ -201,7 +189,7 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:
-            loss_function = vae_loss_fn_wrapper(sigma=None, linear_norm_coeff=80000)
+            print("pass valid loss function")
         self.vae_model.compile(
             optimizer=optimizer,
             loss={"decoder": loss_function},
@@ -212,7 +200,7 @@ class FlowVAEnet:
             x=train_generator,
             epochs=epochs,
             verbose=verbose,
-            shuffle=False,
+            shuffle=True,
             validation_data=validation_generator,
             callbacks=callbacks,
             workers=8,
