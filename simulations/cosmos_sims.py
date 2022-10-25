@@ -30,7 +30,7 @@ else:
 
 seed = 993
 
-CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq.fits"
+CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 15
 batch_size = 200
@@ -39,10 +39,10 @@ maxshift = 1.5
 sky_level_factor = 0.01
 
 if dataset == "training":
-    index_range = [0, 300000]
+    index_range = [0, 150000]
     num_files = 1000
 elif dataset == "validation":
-    index_range = [300000, 400000]
+    index_range = [150000, 200000]
     num_files = 400
 
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
@@ -133,13 +133,13 @@ for file_num in range(num_files):
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_" + blend_type + "_" + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         pd.DataFrame(postage_stamps).to_records(),
     )
 
-    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_btk_" + blend_type + "_" + dataset)
+    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset)
 
     del batch
     del postage_stamps
