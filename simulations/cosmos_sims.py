@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from maddeb.extraction import extract_cutouts
-from maddeb.utils import CustomSampling
+from maddeb.utils import CustomSampling, CustomUniformSampling
 
 print(sys.argv)
 dataset = sys.argv[1] # should be either training or validation
@@ -36,7 +36,7 @@ stamp_size = 15
 batch_size = 200
 maxshift = 1.5
 
-sky_level_factor = 0.01
+sky_level_factor = .01
 
 if dataset == "training":
     index_range = [0, 150000]
@@ -48,7 +48,7 @@ elif dataset == "validation":
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
 
-sampling_function = CustomSampling(
+sampling_function = CustomUniformSampling(
     index_range=index_range,
     max_number=max_number,
     maxshift=maxshift,
@@ -133,14 +133,10 @@ for file_num in range(num_files):
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + "uniform_" + blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         pd.DataFrame(postage_stamps).to_records(),
     )
 
-    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset)
-
-    del batch
-    del postage_stamps
-    del blended_image
+    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + "uniform_" + blend_type + "_" + dataset)
