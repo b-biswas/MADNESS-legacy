@@ -8,7 +8,7 @@ import btk
 from galcheat.utilities import mag2counts, mean_sky_level
 
 from maddeb.batch_generator import COSMOSsequence
-from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper
+from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper, deblender_loss_fn
 from maddeb.train import define_callbacks
 from maddeb.utils import get_data_dir_path, listdir_fullpath
 
@@ -25,7 +25,7 @@ linear_norm_coeff = 80000
 
 survey = btk.survey.get_surveys("LSST")
 
-sky_level_factor = .01
+sky_level_factor = 1
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
@@ -35,15 +35,15 @@ for b, name in enumerate(survey.available_filters):
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 1
+kl_weight = .0001
 
 f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight)
 
 train_path_isolated_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_isolated_training/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_uniform_isolated_training/"
 )
 validation_path_isolated_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_isolated_validation/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_uniform_isolated_validation/"
 )
 
 # Keras Callbacks
@@ -82,7 +82,7 @@ hist_vae = f_net.train_vae(
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
-    optimizer=tf.keras.optimizers.Adam(2e-4),
+    optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=.1),
     loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
@@ -115,10 +115,10 @@ f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
 train_path_blended_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_blended_training/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_uniform_blended_training/"
 )
 validation_path_blended_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_btk_blended_validation/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_uniform_blended_validation/"
 )
 
 train_generator_deblender = COSMOSsequence(
@@ -153,7 +153,7 @@ hist_deblender = f_net.train_vae(
     train_encoder=True,
     train_decoder=False,
     track_kl=True,
-    optimizer=tf.keras.optimizers.Adam(2e-4),
+    optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=.1),
     loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
