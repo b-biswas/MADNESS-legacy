@@ -16,7 +16,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-def vae_loss_fn_wrapper(sigma):
+def vae_loss_fn_wrapper(sigma, linear_norm_coeff):
 
     @tf.function(experimental_compile=True)
     def vae_loss_fn(ground_truth, predicted_galaxy):
