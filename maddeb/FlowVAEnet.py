@@ -52,8 +52,10 @@ def vae_loss_fn_mse(x, predicted_distribution):
 @tf.function(experimental_compile=True)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
-    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
-    return objective
+    weight = tf.math.reduce_max(x, axis= [1, 2])
+    objective = tf.math.reduce_sum(loss, axis=[1, 2])
+    weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
+    return weighted_objective
 
 
 @tf.function(experimental_compile=True)

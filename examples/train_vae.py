@@ -20,8 +20,8 @@ vae_epochs = 180
 flow_epochs = 120
 deblender_epochs = 200
 lr_scheduler_epochs = 30
-latent_dim = 8
-linear_norm_coeff = 80000
+latent_dim = 16
+linear_norm_coeff = 10000
 
 survey = btk.survey.get_surveys("LSST")
 
@@ -83,7 +83,7 @@ hist_vae = f_net.train_vae(
     train_decoder=True,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=.1),
-    loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
+    loss_function=deblender_loss_fn,
 )
 
 np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
@@ -154,7 +154,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=.1),
-    loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
+    loss_function=deblender_loss_fn,
 )
 
 np.save(path_weights + "/train_deblender_history.npy", hist_deblender.history)
