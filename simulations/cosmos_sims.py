@@ -25,18 +25,19 @@ if blend_type not in ["isolated", "blended"]:
 
 if blend_type == "isolated":
     max_number = 1
+    batch_size = 200
 else:
     max_number = 4
+    batch_size = 100
 
 seed = 993
 
 CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 15
-batch_size = 200
 maxshift = 1.5
 
-sky_level_factor = .01
+sky_level_factor = 1.0
 
 if dataset == "training":
     index_range = [0, 150000]
