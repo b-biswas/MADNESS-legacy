@@ -74,11 +74,11 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "cosmos8d/flow/val_loss")
+            weights_path=os.path.join(data_dir_path, "catsim16d/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "cosmos8d/deblender/val_loss"
+                data_dir_path, "catsim16d/deblender/val_loss"
             )
         )
 
@@ -335,7 +335,7 @@ class Deblend:
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
 
     def compute_noise_sigma(self):
 
@@ -488,7 +488,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
         # print(self.components)
 
         return results

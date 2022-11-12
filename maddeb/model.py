@@ -82,6 +82,7 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
+    sigma_cutoff=None,
 ):
     """
     function to create the decoder
@@ -121,7 +122,7 @@ def create_decoder(
         h = PReLU()(h)
 
     # keep the output of the last layer as relu as we want only positive flux values.
-    h = Conv2DTranspose(input_shape[-1] * 2, (3, 3), activation="relu", padding="same")(h)
+    h = Conv2D(input_shape[-1] * 2, (3, 3), activation="relu", padding="same")(h)
     # h = Conv2DTranspose(input_shape[-1], (3, 3), activation="relu", padding="same")(h)
 
     # In case the last convolutional layer does not provide an image of the size of the input image, cropp it.
@@ -134,10 +135,13 @@ def create_decoder(
                 ((cropping // 2, cropping // 2 + 1), (cropping // 2, cropping // 2 + 1))
             )(h)
 
+    if sigma_cutoff is None: 
+        sigma_cutoff = 1e-3
     # Build the encoder only
+    print(sigma_cutoff)
     h = tfp.layers.DistributionLambda(
         make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=1e-7 + t[..., input_shape[-1] :]
+            loc=t[..., : input_shape[-1]], scale=sigma_cutoff + t[..., input_shape[-1] :]
         ),
         #convert_to_tensor_fn=tfp.distributions.Distribution.mean,
     )(h)
@@ -218,6 +222,7 @@ def create_model_fvae(
     num_nf_layers=6,
     kl_prior=None,
     kl_weight=None,
+    decoder_sigma_cutoff=None,
 ):
     """
     Create the sinmultaneously create the VAE and the flow model.
@@ -266,6 +271,7 @@ def create_model_fvae(
         latent_dim,
         filters_decoder,
         kernels_decoder,
+        sigma_cutoff=decoder_sigma_cutoff,
     )
 
     # create the flow transformation

@@ -52,10 +52,11 @@ def vae_loss_fn_mse(x, predicted_distribution):
 @tf.function(experimental_compile=True)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
-    weight = tf.math.reduce_max(x, axis= [1, 2])
-    objective = tf.math.reduce_sum(loss, axis=[1, 2])
-    weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
-    return weighted_objective
+    objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1,2,3]))
+    #weight = tf.math.reduce_max(x, axis= [1, 2])
+    #objective = tf.math.reduce_sum(loss, axis=[1, 2])
+    #weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
+    return objective
 
 
 @tf.function(experimental_compile=True)
@@ -75,6 +76,7 @@ class FlowVAEnet:
         num_nf_layers=8,
         kl_prior=None,
         kl_weight=None,
+        decoder_sigma_cutoff=None,
     ):
         """
         Creates the required models according to the specifications.
@@ -122,6 +124,7 @@ class FlowVAEnet:
             num_nf_layers=self.num_nf_layers,
             kl_prior=kl_prior,
             kl_weight=kl_weight,
+            decoder_sigma_cutoff=decoder_sigma_cutoff,
         )
 
         self.optimizer = None

@@ -20,7 +20,7 @@ vae_epochs = 180
 flow_epochs = 120
 deblender_epochs = 200
 lr_scheduler_epochs = 30
-latent_dim = 16
+latent_dim = 10
 linear_norm_coeff = 10000
 
 survey = btk.survey.get_surveys("LSST")
@@ -37,7 +37,7 @@ kl_prior = tfd.Independent(
 )
 kl_weight = .0001
 
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
 
 train_path_isolated_gal = listdir_fullpath(
     "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_uniform_isolated_training/"
@@ -67,7 +67,7 @@ validation_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     "blended_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=1,
+    num_iterations_per_epoch=100,
     linear_norm_coeff=linear_norm_coeff,
 )
 
