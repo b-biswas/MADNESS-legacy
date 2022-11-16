@@ -49,7 +49,7 @@ elif dataset == "validation":
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
 
-sampling_function = CustomUniformSampling(
+sampling_function = CustomSampling(
     index_range=index_range,
     max_number=max_number,
     maxshift=maxshift,
@@ -134,10 +134,10 @@ for file_num in range(num_files):
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + "uniform_" + blend_type + "_" + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         pd.DataFrame(postage_stamps).to_records(),
     )
 
-    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + "uniform_" + blend_type + "_" + dataset)
+    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset)
