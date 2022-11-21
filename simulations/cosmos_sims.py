@@ -101,7 +101,10 @@ for file_num in range(num_files):
             isolated_image = batch["isolated_images"][blended_image_num][galaxy_num]
             x_pos = batch["blend_list"][blended_image_num]["y_peak"][galaxy_num]
             y_pos = batch["blend_list"][blended_image_num]["x_peak"][galaxy_num]
-            pos = (x_pos, y_pos)
+            shift_rng = np.random.default_rng(12345)
+            x_shift = shift_rng.random() - .5
+            y_shift = shift_rng.random() - .5
+            pos = (x_pos+x_shift, y_pos+y_shift)
             gal_blended = extract_cutouts(
                 blended_image,
                 [pos],
@@ -134,10 +137,10 @@ for file_num in range(num_files):
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_" + blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         pd.DataFrame(postage_stamps).to_records(),
     )
 
-    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_" + blend_type + "_" + dataset)
+    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted" + blend_type + "_" + dataset)
