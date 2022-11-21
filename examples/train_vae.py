@@ -16,16 +16,16 @@ tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 180
-flow_epochs = 120
-deblender_epochs = 200
-lr_scheduler_epochs = 30
+vae_epochs = 125
+flow_epochs = 90
+deblender_epochs = 125
+lr_scheduler_epochs = 20
 latent_dim = 10
 linear_norm_coeff = 10000
 
 survey = btk.survey.get_surveys("LSST")
 
-sky_level_factor = 1
+sky_level_factor = .01
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
@@ -40,16 +40,16 @@ kl_weight = 1
 f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
 
 train_path_isolated_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_isolated_training/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_isolated_training/"
 )
 validation_path_isolated_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_isolated_validation/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_isolated_validation/"
 )
 
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_nonuni" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "catsim_nonuni_shifted" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -58,7 +58,7 @@ train_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     "isolated_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=400,
+    num_iterations_per_epoch=1000,
     linear_norm_coeff=linear_norm_coeff,
 )
 
@@ -67,7 +67,7 @@ validation_generator_vae = COSMOSsequence(
     "blended_gal_stamps",
     "isolated_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=100,
+    num_iterations_per_epoch=400,
     linear_norm_coeff=linear_norm_coeff,
 )
 
@@ -127,7 +127,7 @@ train_generator_deblender = COSMOSsequence(
     "blended_gal_stamps",
     "isolated_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=400,
+    num_iterations_per_epoch=1000,
     linear_norm_coeff=linear_norm_coeff,
 )
 
@@ -136,7 +136,7 @@ validation_generator_deblender = COSMOSsequence(
     "blended_gal_stamps",
     "isolated_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=100,
+    num_iterations_per_epoch=400,
     linear_norm_coeff=linear_norm_coeff,
 )
 # Define all used callbacks
