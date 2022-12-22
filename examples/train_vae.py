@@ -16,16 +16,16 @@ tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 125
+vae_epochs = 150
 flow_epochs = 90
 deblender_epochs = 125
-lr_scheduler_epochs = 20
-latent_dim = 10
+lr_scheduler_epochs = 30
+latent_dim = 16
 linear_norm_coeff = 10000
 
 survey = btk.survey.get_surveys("LSST")
 
-sky_level_factor = .01
+sky_level_factor = 1
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
@@ -35,7 +35,7 @@ for b, name in enumerate(survey.available_filters):
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 1
+kl_weight = .01
 
 f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
 
