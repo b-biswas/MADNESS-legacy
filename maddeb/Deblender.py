@@ -74,11 +74,11 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_nonuni_shifted10d/flow/val_loss")
+            weights_path=os.path.join(data_dir_path, "catsim_nonuni_shifted16d/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_nonuni_shifted10d/deblender/val_loss"
+                data_dir_path, "catsim_nonuni_shifted16d/deblender/val_loss"
             )
         )
 
@@ -436,7 +436,6 @@ class Deblend:
         if self.channel_last:
 
             sig_sq = self.postage_stamp/self.linear_norm_coeff
-
             # sig_sq[sig_sq <= (5 * noise_level)] = 0
             sig_sq = tf.convert_to_tensor(
                 np.add(sig_sq, np.square(noise_level)),
