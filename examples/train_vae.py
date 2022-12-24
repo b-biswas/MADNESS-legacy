@@ -21,7 +21,7 @@ flow_epochs = 90
 deblender_epochs = 125
 lr_scheduler_epochs = 30
 latent_dim = 16
-linear_norm_coeff = 10000
+linear_norm_coeff = [1000, 5000, 10000, 10000, 10000, 10000]
 
 survey = btk.survey.get_surveys("LSST")
 
@@ -30,7 +30,7 @@ sky_level_factor = 1
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
     filt = survey.get_filter(name)
-    noise_sigma.append(np.sqrt(mean_sky_level(survey, filt).to_value("electron")) * np.sqrt(sky_level_factor)/linear_norm_coeff)
+    noise_sigma.append(np.sqrt(mean_sky_level(survey, filt).to_value("electron")) * np.sqrt(sky_level_factor)/linear_norm_coeff[b])
 
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
