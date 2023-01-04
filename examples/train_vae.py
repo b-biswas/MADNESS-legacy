@@ -16,7 +16,7 @@ tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 150
+vae_epochs = 100
 flow_epochs = 90
 deblender_epochs = 125
 lr_scheduler_epochs = 30
