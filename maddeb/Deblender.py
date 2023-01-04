@@ -431,7 +431,7 @@ class Deblend:
 
         # Calculate sigma^2 with gaussian approximation to poisson noise.
         # Note here that self.postage stamp is normalized but it must be divided again
-        # to encure that the loglikelihood does not change due to scaling/normalizing
+        # to ensure that the loglikelihood does not change due to scaling/normalizing
 
 
         sig_sq = self.postage_stamp/self.linear_norm_coeff
@@ -441,7 +441,7 @@ class Deblend:
             dtype=tf.float32,
         )
 
-        sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
+        # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
