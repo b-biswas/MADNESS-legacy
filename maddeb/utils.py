@@ -179,8 +179,8 @@ class CustomUniformSampling(SamplingFunction):
         for object_num in range(number_of_objects):
 
             rand_numb = self.rng.random()
-            print("new choice ")
-            print(rand_numb)
+            # print("new choice ")
+            # print(rand_numb)
 
             if rand_numb <=.25:
                 index = self.rng.choice(q1, size=1)
@@ -191,7 +191,7 @@ class CustomUniformSampling(SamplingFunction):
             else:
                 index = self.rng.choice(q4, size=1)
             rows.append(table_region[index])
-            print(table_region[index]["ref_mag"])
+            # print(table_region[index]["ref_mag"])
 
         blend_table = astropy.table.vstack(rows)
         blend_table["ra"] = 0.0

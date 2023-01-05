@@ -40,11 +40,12 @@ def vae_loss_fn_wrapper(sigma, linear_norm_coeff):
 def vae_loss_fn_mse(x, predicted_distribution):
     mean = predicted_distribution.sample()
 
+    weight = tf.sqrt(tf.reduce_max(x, axis=[1, 2, 3]))
     diff = tf.subtract(mean, x)
     pixel_mse = tf.square(diff)
     mse = tf.math.reduce_sum(pixel_mse, axis=[1, 2, 3])
 
-    objective = tf.math.reduce_mean(mse)
+    objective = tf.math.reduce_mean(tf.divide(mse, weight))
 
     return objective
 
@@ -52,7 +53,10 @@ def vae_loss_fn_mse(x, predicted_distribution):
 @tf.function(experimental_compile=True)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
-    objective = -tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
+    objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1,2,3]))
+    #weight = tf.math.reduce_max(x, axis= [1, 2])
+    #objective = tf.math.reduce_sum(loss, axis=[1, 2])
+    #weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
     return objective
 
 
@@ -66,13 +70,14 @@ class FlowVAEnet:
         self,
         input_shape=[45, 45, 6],
         latent_dim=8,
-        filters_encoder=[32, 64, 128, 256],
-        filters_decoder=[32, 64, 128],
+        filters_encoder=[64, 128, 256, 512],
+        filters_decoder=[64, 128, 256],
         kernels_encoder=[3, 3, 3, 3],
         kernels_decoder=[3, 3, 3, 3],
         num_nf_layers=8,
         kl_prior=None,
         kl_weight=None,
+        decoder_sigma_cutoff=None,
     ):
         """
         Creates the required models according to the specifications.
@@ -120,6 +125,7 @@ class FlowVAEnet:
             num_nf_layers=self.num_nf_layers,
             kl_prior=kl_prior,
             kl_weight=kl_weight,
+            decoder_sigma_cutoff=decoder_sigma_cutoff,
         )
 
         self.optimizer = None
