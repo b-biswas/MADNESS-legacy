@@ -32,14 +32,14 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq.fits"
+COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 41
 min_number = 8
 max_number = 15
 batch_size = 20
 maxshift = 15
-num_repetations = 15
+num_repetations = 20
 catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
@@ -109,7 +109,6 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
             show_observed=True,
             show_residual=True,
         )
-
         plt.show()
 
     if show_sources:
@@ -171,7 +170,7 @@ for file_num in range(num_repetations):
 
     # get MADNESS predictions
     madness_predictions = []
-    linear_norm_coeff = 80000
+    linear_norm_coeff = [1000, 5000, 10000, 10000, 10000, 10000]
 
     for field_num in range(len(blend["blend_list"])):
 
@@ -184,11 +183,11 @@ for file_num in range(num_repetations):
 
         # tf.config.run_functions_eagerly(False)
         convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            atol=0.00001 * 45 * 45 * len(current_blend) * 3, min_num_steps=100, window_size=20
+            atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
         )
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.06, decay_steps=12, decay_rate=0.9, staircase=True
+            initial_learning_rate=1., decay_steps=25, decay_rate=0.9, staircase=True
         )
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
@@ -196,10 +195,10 @@ for file_num in range(num_repetations):
             field_images[field_num],
             detected_positions,
             num_components=len(current_blend), #redundant parameter
-            latent_dim=8,
+            latent_dim=16,
             use_likelihood=True,
             linear_norm_coeff=linear_norm_coeff,
-            max_iter=300,
+            max_iter=500,
         )
         deb(
             convergence_criterion=convergence_criterion,

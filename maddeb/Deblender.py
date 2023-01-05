@@ -53,12 +53,15 @@ class Deblend:
         """
 
         self.linear_norm_coeff = linear_norm_coeff
-        self.postage_stamp = postage_stamp / linear_norm_coeff
         self.max_iter = max_iter
         self.num_components = num_components
         self.use_likelihood = use_likelihood
         self.components = None
         self.channel_last = channel_last
+        if channel_last:
+            self.postage_stamp = postage_stamp / linear_norm_coeff
+        else:
+            self.postage_stamp = np.transpose(postage_stamp , axes=[1, 2, 0])/ linear_norm_coeff
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
 
@@ -74,11 +77,11 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "cosmos8d/flow/val_loss")
+            weights_path=os.path.join(data_dir_path, "catsim_nonuni_shifted16d/flow/val_loss")
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "cosmos8d/deblender/val_loss"
+                data_dir_path, "catsim_nonuni_shifted16d/deblender/val_loss"
             )
         )
 
@@ -128,10 +131,7 @@ class Deblend:
 
         if reconstructions is None:
             reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
-        if self.channel_last:
-            residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
-        else:
-            residual_field = tf.transpose(postage_stamp, perm=[1, 2, 0])
+        residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
 
         residual_field = tf.cast(residual_field, tf.float32)
 
@@ -223,7 +223,7 @@ class Deblend:
         index_pos_to_sub,
         padding_infos,
     ):
-        reconstructions = self.flow_vae_net.decoder(z)
+        reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(
             postage_stamp,
@@ -259,6 +259,9 @@ class Deblend:
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
+
+        tf.print(reconstruction_loss)
+        tf.print(log_likelihood)
 
         if self.use_likelihood:
             return (
@@ -320,31 +323,28 @@ class Deblend:
 
     def run_debvader(self):
 
-        if self.channel_last:
-            m, n, b = np.shape(self.postage_stamp)
-        else:
-            b, m, n = np.shape(self.postage_stamp)
+
+        m, n, b = np.shape(self.postage_stamp)
 
         cutouts = extract_cutouts(
             self.postage_stamp,
             pos=self.detected_positions,
             cutout_size=self.cutout_size,
             nb_of_bands=b,
-            channel_last=self.channel_last,
+            channel_last=True,
         )
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
 
     def compute_noise_sigma(self):
 
         sig = []
         for i in range(6):
-            if self.channel_last:
-                sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
-            else:
-                sig.append(sep.Background(self.postage_stamp[i]).globalrms)
+
+            sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
+            
         return np.array(sig)
 
     def gradient_decent(
@@ -369,10 +369,9 @@ class Deblend:
         # X = self.postage_stamp
         # if not self.channel_last:
         #     X = np.transpose(X, axes=(1, 2, 0))
-        if self.channel_last:
-            m, n, b = np.shape(self.postage_stamp)
-        else:
-            b, m, n = np.shape(self.postage_stamp)
+
+        m, n, b = np.shape(self.postage_stamp)
+
 
         if not use_debvader:
             # check constraint parameter over here
@@ -386,7 +385,7 @@ class Deblend:
                 pos=self.detected_positions,
                 cutout_size=self.cutout_size,
                 nb_of_bands=b,
-                channel_last=self.channel_last,
+                channel_last=True,
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
@@ -432,26 +431,17 @@ class Deblend:
 
         # Calculate sigma^2 with gaussian approximation to poisson noise.
         # Note here that self.postage stamp is normalized but it must be divided again
-        # to encure that the loglikelihood does not change due to scaling/normalizing
-        if self.channel_last:
+        # to ensure that the loglikelihood does not change due to scaling/normalizing
 
-            sig_sq = self.postage_stamp/self.linear_norm_coeff
 
-            # sig_sq[sig_sq <= (5 * noise_level)] = 0
-            sig_sq = tf.convert_to_tensor(
-                np.add(sig_sq, np.square(noise_level)),
-                dtype=tf.float32,
-            )
-        else:
-            sig_sq = np.transpose(
-                        self.postage_stamp / self.linear_norm_coeff, axes=[1, 2, 0]
-                    )
-            # sig_sq[sig_sq <= (5 * noise_level)] = 0
-            sig_sq = tf.convert_to_tensor(
-                np.add(sig_sq, np.square(noise_level)), 
-                dtype=tf.float32,
-            )
-            # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
+        sig_sq = self.postage_stamp/self.linear_norm_coeff
+        sig_sq[sig_sq <= (5 * noise_level)] = 0
+        sig_sq = tf.convert_to_tensor(
+            np.add(sig_sq, np.square(noise_level)),
+            dtype=tf.float32,
+        )
+
+        # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
@@ -488,7 +478,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).numpy() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
         # print(self.components)
 
         return results

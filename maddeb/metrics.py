@@ -107,7 +107,7 @@ def compute_pixel_covariance_and_fluxes(
         results["galaxy_num"].append(gal_num)
     return Table(results)
 
-@jit
+
 def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
     """
     only one band
