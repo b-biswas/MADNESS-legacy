@@ -25,7 +25,10 @@ if blend_type not in ["isolated", "blended"]:
 
 if blend_type == "isolated":
     max_number = 1
-    batch_size = 200
+    if dataset == "training":
+        batch_size = 200
+    if dataset == "validation":
+        batch_size = 100
 else:
     max_number = 4
     batch_size = 100
@@ -44,7 +47,7 @@ if dataset == "training":
     num_files = 1000
 elif dataset == "validation":
     index_range = [150000, 200000]
-    num_files = 400
+    num_files = 500
 
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
@@ -133,6 +136,9 @@ for file_num in range(num_files):
             # plt.show()
 
         # meta_data.append(batch['blend_list'][blended_image_num])
+    postage_stamps = pd.DataFrame(postage_stamps)
+    if dataset == "validation": 
+        postage_stamps = postage_stamps[:100]
 
 
     np.save(
@@ -140,7 +146,7 @@ for file_num in range(num_files):
             "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_" + blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
-        pd.DataFrame(postage_stamps).to_records(),
+        postage_stamps.to_records(),
     )
 
     print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted" + blend_type + "_" + dataset)
