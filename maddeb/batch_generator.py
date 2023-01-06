@@ -41,7 +41,7 @@ class COSMOSsequence(Sequence):
 
     def __getitem__(self, idx):
 
-        current_loop_file_name = choice(self.list_of_samples)
+        current_loop_file_name = self.list_of_samples[idx]
         current_sample = np.load(current_loop_file_name, allow_pickle=True)
 
         batch = np.random.choice(current_sample, size=self.batch_size, replace=False)
