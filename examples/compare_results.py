@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 41
-min_number = 8
+min_number = 12
 max_number = 15
 batch_size = 20
 maxshift = 15
@@ -182,9 +182,10 @@ for file_num in range(num_repetations):
             detected_positions.append([current_blend["y_peak"][j], current_blend["x_peak"][j]])
 
         # tf.config.run_functions_eagerly(False)
-        convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
-        )
+        # convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
+        #     atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
+        # )
+        convergence_criterion = tfp.optimizer.convergence_criteria.SuccessiveGradientsAreUncorrelated(min_num_steps=120, window_size=30)
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=1., decay_steps=25, decay_rate=0.9, staircase=True
