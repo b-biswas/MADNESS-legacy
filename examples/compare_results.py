@@ -35,7 +35,7 @@ LOG = logging.getLogger(__name__)
 COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 41
-min_number = 12
+min_number = 8
 max_number = 15
 batch_size = 20
 maxshift = 15
