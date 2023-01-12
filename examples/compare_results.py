@@ -35,15 +35,15 @@ LOG = logging.getLogger(__name__)
 COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 
 stamp_size = 41
-min_number = 8
-max_number = 15
+min_number = 12
+max_number = 20
 batch_size = 20
 maxshift = 15
 num_repetations = 20
 catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
-run_name = "test_run_catsim"
+run_name = "catsim_high_density"
 
 sampling_function = btk.sampling_functions.DefaultSampling(
     max_number=max_number, min_number=min_number, max_shift=maxshift, stamp_size=stamp_size, seed=seed
