@@ -173,7 +173,7 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
                 galaxy[band_num],
                 [xpos[galaxy_num]],
                 [ypos[galaxy_num]],
-                3.0,
+                5.0,
                 err=bkg_rms[band_num],
             )
 
