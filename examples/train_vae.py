@@ -111,7 +111,7 @@ f_net.flow.trainable = False
 # print(f_net.flow.trainable_variables)
 
 
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=1, decoder_sigma_cutoff=noise_sigma)
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
