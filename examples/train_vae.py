@@ -49,7 +49,7 @@ validation_path_isolated_gal = listdir_fullpath(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_nonuni_shifted" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "catsim_nonuni_shifted_lk" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -111,7 +111,7 @@ f_net.flow.trainable = False
 # print(f_net.flow.trainable_variables)
 
 
-f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=1, decoder_sigma_cutoff=noise_sigma)
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
