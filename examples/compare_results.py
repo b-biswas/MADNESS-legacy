@@ -43,7 +43,7 @@ num_repetations = 20
 catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
-run_name = "catsim_high_density"
+run_name = "catsim_high_density_ssim_10"
 
 sampling_function = btk.sampling_functions.DefaultSampling(
     max_number=max_number, min_number=min_number, max_shift=maxshift, stamp_size=stamp_size, seed=seed
