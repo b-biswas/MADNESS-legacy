@@ -51,6 +51,19 @@ def vae_loss_fn_mse(x, predicted_distribution):
 
 
 @tf.function(experimental_compile=True)
+def deblender_ssim_loss_fn(x, predicted_distribution):
+    loss = predicted_distribution.log_prob(x)
+
+    band_normalizer = tf.reduce_max(x, axis=[1, 2], keepdims=True)
+    ssim = tf.image.ssim(x/band_normalizer, predicted_distribution.mean()/band_normalizer, max_val=1)
+    objective = -tf.reduce_mean(tf.reduce_sum(loss, axis=[1,2,3])*ssim)
+    
+    #weight = tf.math.reduce_max(x, axis= [1, 2])
+    #objective = tf.math.reduce_sum(loss, axis=[1, 2])
+    #weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
+    return objective
+
+@tf.function(experimental_compile=True)
 def deblender_loss_fn(x, predicted_distribution):
     loss = predicted_distribution.log_prob(x)
     objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1,2,3]))

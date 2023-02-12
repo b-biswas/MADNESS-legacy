@@ -8,7 +8,7 @@ import btk
 from galcheat.utilities import mag2counts, mean_sky_level
 
 from maddeb.batch_generator import COSMOSsequence
-from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper, deblender_loss_fn
+from maddeb.FlowVAEnet import FlowVAEnet, vae_loss_fn_wrapper, deblender_loss_fn, deblender_ssim_loss_fn
 from maddeb.train import define_callbacks
 from maddeb.utils import get_data_dir_path, listdir_fullpath
 
@@ -17,7 +17,7 @@ tfd = tfp.distributions
 # define the parameters
 batch_size = 100
 vae_epochs = 100
-flow_epochs = 90
+flow_epochs = 80
 deblender_epochs = 125
 lr_scheduler_epochs = 30
 latent_dim = 16
@@ -49,7 +49,7 @@ validation_path_isolated_gal = listdir_fullpath(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_nonuni_shifted_lk" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "catsim_nonuni_shifted_lk_ssim_10" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -72,6 +72,26 @@ validation_generator_vae = COSMOSsequence(
 )
 
 # Define all used callbacks
+callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs)
+
+hist_vae = f_net.train_vae(
+    train_generator_vae,
+    validation_generator_vae,
+    callbacks=callbacks,
+    epochs=int(vae_epochs/5),
+    train_encoder=True,
+    train_decoder=True,
+    track_kl=True,
+    optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=.1),
+    loss_function=deblender_ssim_loss_fn,
+    # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
+)
+
+np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
+
+f_net = FlowVAEnet(latent_dim=latent_dim, kl_prior=kl_prior, kl_weight=kl_weight, decoder_sigma_cutoff=noise_sigma)
+f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
+
 callbacks = define_callbacks(os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs)
 
 hist_vae = f_net.train_vae(
