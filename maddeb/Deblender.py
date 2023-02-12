@@ -260,8 +260,8 @@ class Deblend:
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
 
-        tf.print(reconstruction_loss)
-        tf.print(log_likelihood)
+        # tf.print(reconstruction_loss)
+        # tf.print(log_likelihood)
 
         if self.use_likelihood:
             return (
