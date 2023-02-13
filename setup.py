@@ -1,3 +1,5 @@
+"""Setup file."""
+
 from setuptools import setup
 
 with open("README.md") as readme_file:

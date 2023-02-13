@@ -1,3 +1,5 @@
+"""Compare the speed of deblenders."""
+
 import sys
 import time
 
