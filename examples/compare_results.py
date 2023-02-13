@@ -230,7 +230,7 @@ for file_num in range(num_repetations):
             detected_positions,
             num_components=len(current_blend),  # redundant parameter
             latent_dim=16,
-            use_likelihood=True,
+            use_log_prob=True,
             linear_norm_coeff=linear_norm_coeff,
             max_iter=500,
         )
