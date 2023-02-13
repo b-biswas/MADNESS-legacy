@@ -32,3 +32,8 @@ repos:
     - id: nbstripout
       args:
             - --keep-output
+- repo: https://github.com/pycqa/pydocstyle
+  rev: 6.1.1
+  hooks:
+  - id: pydocstyle
+    args: [--ignore=D107,D204]
