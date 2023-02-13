@@ -1,10 +1,12 @@
-from random import choice
+"""Load batches of data to pass to TensorFlow during training."""
 
 import numpy as np
 from tensorflow.keras.utils import Sequence
 
 
 class COSMOSsequence(Sequence):
+    """Load data for training."""
+
     def __init__(
         self,
         list_of_samples,
@@ -15,17 +17,24 @@ class COSMOSsequence(Sequence):
         linear_norm_coeff=1,
         # channel_last=False,
     ):
-        """
-        initializes the Data generator
+        """Initialize the Data generator.
 
-        parameters:
-        list_of_samples: list of paths to the datafiles.
-        x_col_name: column name of data to be fed as input to the network
-        y_col_name: column name of data to be fed as target to the network
-        batch_size: sample sixe for each batch
-        num_iterations_per_epoch: number of samples (of size = batch_size) to be drawn from the sample
-        normalizer: object of debvader.normalize.Normalize, used to perform norm and denorm operations (default is None).
-        channel_last: boolean to indicate if the the clast channel corresponds to differnet bands of the input data.
+        Parameters
+        ----------
+        list_of_samples: list
+            list of paths to the datafiles.
+        x_col_name: String
+            column name of data to be fed as input to the network.
+        y_col_name: String
+            column name of data to be fed as target to the network.
+        batch_size: int
+            sample size for each batch.
+        num_iterations_per_epoch: int
+            number of samples (of size = batch_size) to be drawn from the sample.
+        linear_norm_coeff: int/list
+            list stores the bandwise linear normalizing/scaling factor.
+            if int is passed, same scaling factor is used for all.
+
         """
         self.list_of_samples = list_of_samples
         self.x_col_name = x_col_name
@@ -37,10 +46,24 @@ class COSMOSsequence(Sequence):
         # self.channel_last = channel_last
 
     def __len__(self):
+        """Return the number of iterations per epoch."""
         return self.num_iterations_per_epoch
 
     def __getitem__(self, idx):
+        """Fetch the next batch for specific file.
 
+        Parameters
+        ----------
+        idx: int
+            File number to opened
+        Returns
+        -------
+        x: np array
+            Data corresponding to x_col_name
+        y: np array
+            Data corresponding to x_col_name
+
+        """
         current_loop_file_name = self.list_of_samples[idx]
         current_sample = np.load(current_loop_file_name, allow_pickle=True)
 

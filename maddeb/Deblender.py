@@ -1,3 +1,5 @@
+"""Perform Deblending."""
+
 import logging
 import os
 import time
@@ -20,6 +22,8 @@ LOG = logging.getLogger(__name__)
 
 
 class Deblend:
+    """Run the deblender."""
+
     def __init__(
         self,
         postage_stamp,
@@ -33,25 +37,34 @@ class Deblend:
         channel_last=False,
         linear_norm_coeff=80000,
     ):
-        """
+        """Initialize class variables.
+
         Parameters
-        __________
+        ----------
         postage_stamp: np.ndarray
             input stamp/field that is to be deblended
-        detected_positions: as in array and not image
-        cutout_size:
+        detected_positions: list
+            List of detected positions.
+            as in array and not image
+        noise_sigma: list of float
+            backgound noise-level in each band
+        cutout_size: int
+            size of cutouts (in the VAE input/output)
         num_components: int
             number of galaxies present in the image.
         max_iter: int
             number of iterations in the deblending step
-        initZ: np.ndarry
-            initial value for the latent space
+        latent_dim: int
+            size of latent space.
         use_likelihood: bool
             decides whether or not to use the log_prob output of the flow deblender in the optimization.
         channel_last: bool
             if channel is the last column of the postage_stamp
-        """
+        linear_norm_coeff: int/list
+            list stores the bandwise linear normalizing/scaling factor.
+            if int is passed, same scaling factor is used for all.
 
+        """
         self.linear_norm_coeff = linear_norm_coeff
         self.max_iter = max_iter
         self.num_components = num_components
@@ -61,7 +74,9 @@ class Deblend:
         if channel_last:
             self.postage_stamp = postage_stamp / linear_norm_coeff
         else:
-            self.postage_stamp = np.transpose(postage_stamp , axes=[1, 2, 0])/ linear_norm_coeff
+            self.postage_stamp = (
+                np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
+            )
         self.detected_positions = detected_positions
         self.cutout_size = cutout_size
 
@@ -77,7 +92,9 @@ class Deblend:
 
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_nonuni_shifted_lk_ssim_2016d/flow/val_loss")
+            weights_path=os.path.join(
+                data_dir_path, "catsim_nonuni_shifted_lk_ssim_2016d/flow/val_loss"
+            )
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
@@ -98,8 +115,25 @@ class Deblend:
         use_debvader=False,
         optimizer=None,
         lr=0.075,
-        compute_sig_dynamically=True,
+        compute_sig_dynamically=False,
     ):
+        """Run the Deblending operation.
+
+        Parameters
+        ----------
+        convergence_criterion: tfp.optimizer.convergence_criteria
+            For termination of the optimization loop
+        use_debvader: bool
+            Use encoder as a deblender to set initial position for deblending.
+        optimizer: tf.keras.optimizers
+            Optimizer ot use used for gradient descent.
+        lr: float
+            learning rate for optimization.
+        compute_sig_dynamically: bool
+            to estimate noise level in image. (can be slow)
+            Otherwise it uses sep to compute the background noise.
+
+        """
         tf.config.run_functions_eagerly(False)
 
         self.results = self.gradient_decent(
@@ -111,8 +145,7 @@ class Deblend:
         )
 
     def get_components(self):
-        """
-        Function to return the predicted components.
+        """Return the predicted components.
 
         The final returned image has same value of channel_last as input image.
         """
@@ -128,7 +161,28 @@ class Deblend:
         index_pos_to_sub=None,
         padding_infos=None,
     ):
+        """Compute residual in a field.
 
+        Parameters
+        ----------
+        postage_stamp: tf tensor
+            field with all the galaxies
+        reconstructions: tf tensor
+            reconstructions to be subtracted
+        use_scatter_and_sub: bool
+            to use tf.tensor_scatter_nd_sub or no
+        index_pos_to_sub:
+            index position for substraction is `use_scatter_and_sub` is True
+        padding_infos:
+            padding parameters for reconstructions to that they can be subtracted from the field.
+            Used when `use_scatter_and_sub` is False.
+
+        Returns
+        -------
+        residual_field: tf tensor
+            residual of the field after subtracting the reconsturctions.
+
+        """
         if reconstructions is None:
             reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
         residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
@@ -195,7 +249,7 @@ class Deblend:
 
             def one_step(i, residual_field):
                 # padding = tf.cast(padding_infos[i], dtype=tf.int32)
-                padding= padding_infos[i]
+                padding = padding_infos[i]
                 reconstruction = tf.pad(
                     tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
                 )
@@ -223,6 +277,41 @@ class Deblend:
         index_pos_to_sub,
         padding_infos,
     ):
+        """Compute loss at each epoch of Deblending optimization.
+
+        Parameters
+        ----------
+        z: tf tensor
+            latent space representations of the reconstructions.
+        postage_stamp: tf tensor
+            field with all the galaxies
+        compute_sig_dynamically: bool
+            to estimate noise level in image. (can be slow)
+            Otherwise it uses sep to compute the background noise.
+        sig_sq: tf tensor
+            Factor for division to convert the MSE to Gaussian approx to poisson noise.
+        reconstructions: tf tensor
+            reconstructions to be subtracted
+        use_scatter_and_sub: bool
+            to use tf.tensor_scatter_nd_sub or no
+        index_pos_to_sub:
+            index position for substraction is `use_scatter_and_sub` is True
+        padding_infos:
+            padding parameters for reconstructions to that they can be subtracted from the field.
+            Used when `use_scatter_and_sub` is False.
+
+        Returns
+        -------
+        final_loss: tf float
+            Final loss to be minimized
+        reconstruction_loss: tf float
+            Loss form residuals in the field
+        log_prob: tf float
+            log prob evaluated by normalizing flow
+        residual_field: tf tensor
+            residual field after deblending.
+
+        """
         reconstructions = self.flow_vae_net.decoder(z).mean()
 
         residual_field = self.compute_residual(
@@ -251,7 +340,7 @@ class Deblend:
 
         reconstruction_loss = tf.divide(reconstruction_loss, 2)
 
-        log_likelihood = tf.math.reduce_sum(
+        log_prob = tf.math.reduce_sum(
             self.flow_vae_net.flow(
                 tf.reshape(z, (self.num_components, self.latent_dim))
             )
@@ -263,16 +352,15 @@ class Deblend:
         # tf.print(reconstruction_loss)
         # tf.print(log_likelihood)
 
+        final_loss = reconstruction_loss
+
         if self.use_likelihood:
-            return (
-                tf.math.subtract(reconstruction_loss, log_likelihood),
-                reconstruction_loss,
-                log_likelihood,
-                residual_field,
-            )
-        return reconstruction_loss, reconstruction_loss, log_likelihood, residual_field
+            final_loss = tf.math.subtract(reconstruction_loss, log_prob)
+
+        return final_loss, reconstruction_loss, log_prob, residual_field
 
     def get_index_pos_to_sub(self):
+        """Get index position to run tf.tensor_scatter_nd_sub."""
         index_list = []
         for i in range(self.num_components):
             detected_position = self.detected_positions[i]
@@ -296,6 +384,7 @@ class Deblend:
         return np.array(index_list)
 
     def get_padding_infos(self):
+        """Compute padding info to convert galaxy cutout into field."""
         padding_infos_list = []
         for detected_position in self.detected_positions:
 
@@ -322,8 +411,7 @@ class Deblend:
         return np.array(padding_infos_list)
 
     def run_debvader(self):
-
-
+        """Feed forward to use encoder as Deblender."""
         m, n, b = np.shape(self.postage_stamp)
 
         cutouts = extract_cutouts(
@@ -339,12 +427,12 @@ class Deblend:
         self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
 
     def compute_noise_sigma(self):
-
+        """Compute noise level with sep."""
         sig = []
         for i in range(6):
 
             sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
-            
+
         return np.array(sig)
 
     def gradient_decent(
@@ -356,22 +444,35 @@ class Deblend:
         lr=0.075,
         compute_sig_dynamically=False,
     ):
-        """
-        perform the gradient descent step to separate components (galaxies)
+        """Perform the gradient descent step to separate components (galaxies).
 
         Parameters
         ----------
-        optimizer: tf.keras.optimizers
-            optimizer to be used for hte gradient descent
         initZ: np.ndarray
             initial value of the latent space.
+        convergence_criterion: tfp.optimizer.convergence_criteria
+            For termination of the optimization loop
+        use_debvader: bool
+            Use encoder as a deblender to set initial position for deblending.
+        optimizer: tf.keras.optimizers
+            Optimizer ot use used for gradient descent.
+        lr: float
+            learning rate for optimization.
+        compute_sig_dynamically: bool
+            to estimate noise level in image. (can be slow)
+            Otherwise it uses sep to compute the background noise.
+
+        Returns
+        -------
+        results: list
+            variation of the loss over deblending iterations.
+
         """
         # X = self.postage_stamp
         # if not self.channel_last:
         #     X = np.transpose(X, axes=(1, 2, 0))
 
         m, n, b = np.shape(self.postage_stamp)
-
 
         if not use_debvader:
             # check constraint parameter over here
@@ -433,8 +534,7 @@ class Deblend:
         # Note here that self.postage stamp is normalized but it must be divided again
         # to ensure that the loglikelihood does not change due to scaling/normalizing
 
-
-        sig_sq = self.postage_stamp/self.linear_norm_coeff
+        sig_sq = self.postage_stamp / self.linear_norm_coeff
         # sig_sq[sig_sq <= (5 * noise_level)] = 0
         sig_sq = tf.convert_to_tensor(
             np.add(sig_sq, np.square(noise_level)),
@@ -446,7 +546,9 @@ class Deblend:
         results = tfp.math.minimize(
             loss_fn=self.generate_grad_step_loss(
                 z=z,
-                postage_stamp=tf.convert_to_tensor(self.postage_stamp, dtype=tf.float32),
+                postage_stamp=tf.convert_to_tensor(
+                    self.postage_stamp, dtype=tf.float32
+                ),
                 compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
                 sig_sq=tf.convert_to_tensor(sig_sq, dtype=tf.float32),
                 use_scatter_and_sub=tf.convert_to_tensor(True),
@@ -493,9 +595,39 @@ class Deblend:
         index_pos_to_sub,
         padding_infos,
     ):
+        """Return function compute training loss that has no arguments.
+
+        Parameters
+        ----------
+        z: tf tensor
+            latent space representations of the reconstructions.
+        postage_stamp: tf tensor
+            field with all the galaxies
+        compute_sig_dynamically: bool
+            to estimate noise level in image. (can be slow)
+            Otherwise it uses sep to compute the background noise.
+        sig_sq: tf tensor
+            Factor for division to convert the MSE to Gaussian approx to poisson noise.
+        reconstructions: tf tensor
+            reconstructions to be subtracted
+        use_scatter_and_sub: bool
+            to use tf.tensor_scatter_nd_sub or no
+        index_pos_to_sub:
+            index position for substraction is `use_scatter_and_sub` is True
+        padding_infos:
+            padding parameters for reconstructions to that they can be subtracted from the field.
+            Used when `use_scatter_and_sub` is False.
+
+        Returns
+        -------
+        training_loss: python function
+            computes loss without taking any arguments.
+
+        """
 
         @tf.function(autograph=False)
         def training_loss():
+            """Compute training loss."""
             loss, *_ = self.compute_loss(
                 z=z,
                 postage_stamp=postage_stamp,
