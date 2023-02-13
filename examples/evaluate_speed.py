@@ -77,7 +77,7 @@ for i in range(20):
         detected_positions,
         latent_dim=10,
         num_components=len(blend["blend_list"][0]),
-        use_likelihood=True,
+        use_log_prob=True,
     )
     time_per_itr.append(time.time() - t0)
     nb_gal.append(len(detected_positions))

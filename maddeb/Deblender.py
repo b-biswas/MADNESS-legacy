@@ -33,7 +33,7 @@ class Deblend:
         num_components=1,
         max_iter=60,
         latent_dim=10,
-        use_likelihood=True,
+        use_log_prob=True,
         channel_last=False,
         linear_norm_coeff=80000,
     ):
@@ -56,7 +56,7 @@ class Deblend:
             number of iterations in the deblending step
         latent_dim: int
             size of latent space.
-        use_likelihood: bool
+        use_log_prob: bool
             decides whether or not to use the log_prob output of the flow deblender in the optimization.
         channel_last: bool
             if channel is the last column of the postage_stamp
@@ -68,7 +68,7 @@ class Deblend:
         self.linear_norm_coeff = linear_norm_coeff
         self.max_iter = max_iter
         self.num_components = num_components
-        self.use_likelihood = use_likelihood
+        self.use_log_prob = use_log_prob
         self.components = None
         self.channel_last = channel_last
         if channel_last:
@@ -354,7 +354,7 @@ class Deblend:
 
         final_loss = reconstruction_loss
 
-        if self.use_likelihood:
+        if self.use_log_prob:
             final_loss = tf.math.subtract(reconstruction_loss, log_prob)
 
         return final_loss, reconstruction_loss, log_prob, residual_field
