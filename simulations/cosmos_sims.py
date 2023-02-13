@@ -1,5 +1,7 @@
+"""Simulations for training models."""
+
+import os
 import sys
-import os 
 
 import btk
 import btk.catalog
@@ -11,12 +13,14 @@ import numpy as np
 import pandas as pd
 
 from maddeb.extraction import extract_cutouts
-from maddeb.utils import CustomSampling, CustomUniformSampling
+from maddeb.utils import CustomSampling
 
 print(sys.argv)
-dataset = sys.argv[1] # should be either training or validation
+dataset = sys.argv[1]  # should be either training or validation
 if dataset not in ["training", "validation"]:
-    raise ValueError("The first arguement (dataset) should be either training or validation")
+    raise ValueError(
+        "The first arguement (dataset) should be either training or validation"
+    )
 
 
 blend_type = sys.argv[2]  # set to 4 to generate blended scenes
@@ -105,9 +109,9 @@ for file_num in range(num_files):
             x_pos = batch["blend_list"][blended_image_num]["y_peak"][galaxy_num]
             y_pos = batch["blend_list"][blended_image_num]["x_peak"][galaxy_num]
             shift_rng = np.random.default_rng(12345)
-            x_shift = shift_rng.random() - .5
-            y_shift = shift_rng.random() - .5
-            pos = (x_pos+x_shift, y_pos+y_shift)
+            x_shift = shift_rng.random() - 0.5
+            y_shift = shift_rng.random() - 0.5
+            pos = (x_pos + x_shift, y_pos + y_shift)
             gal_blended = extract_cutouts(
                 blended_image,
                 [pos],
@@ -137,16 +141,23 @@ for file_num in range(num_files):
 
         # meta_data.append(batch['blend_list'][blended_image_num])
     postage_stamps = pd.DataFrame(postage_stamps)
-    if dataset == "validation": 
+    if dataset == "validation":
         postage_stamps = postage_stamps[:100]
-
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_" + blend_type + "_" + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_"
+            + blend_type
+            + "_"
+            + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         postage_stamps.to_records(),
     )
 
-    print("saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted" + blend_type + "_" + dataset)
+    print(
+        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted"
+        + blend_type
+        + "_"
+        + dataset
+    )

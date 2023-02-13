@@ -1,3 +1,5 @@
+"""Extract cutouts from large fields."""
+
 import logging
 
 import numpy as np
@@ -15,13 +17,32 @@ def extract_cutouts(
     nb_of_bands=6,
     channel_last=False,
 ):
-    """
-    Extract the cutouts around particular galaxies in the field
-    parameters:
-        field_image: image of the field to deblend
-        field_size: size of the field
-        galaxy_distances_to_center: distances of the galaxies to deblend from the center of the field. In pixels.
-        cutout_size: size of the stamps
+    """Extract the cutouts around particular galaxies in the field.
+
+    Parameters
+    ----------
+    field_image: np array
+        image of the field to deblend
+    pos: np array
+        positions of different galaxies.
+    distances_to_center: bool
+        if distances of the galaxies to deblend are from the center of the field.
+        (In pixels).
+    cutout_size: int
+        size of the stamps in pixels.
+    nb_of_bands: int
+        number of bands of data.
+    channel_last: bool
+        if the last channel of data represents different bands
+
+    Returns
+    -------
+    cutout_images: np array
+        with cutouts of galaxies
+        and zeros if the galaxy was too close to the border.
+    list_idx: list
+        list of indexes for which deblending was successful.
+
     """
     cutout_images = np.zeros((len(pos), cutout_size, cutout_size, nb_of_bands))
     list_idx = []

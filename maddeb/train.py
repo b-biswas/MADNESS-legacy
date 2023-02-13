@@ -1,18 +1,23 @@
+"""Define callbacks for training."""
+
 import os
 
 import tensorflow as tf
 
 
 def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
-    """
-    Define callbacks for a network to train
+    """Define callbacks for a network to train.
 
-    parameters:
-        weights_save_path: path at which weights are to be saved.path at which weights are to be saved. By default, it saves weights in the data folder.
-        lr_scheduler_epochs: number of iterations after which the learning rate is decreased by a factor of $e$.
-            Default is None, and a constant learning rate is used
-    """
+    Parameters
+    ----------
+    weights_save_path: String
+        path at which weights are to be saved.path at which weights are to be saved.
+        By default, it saves weights in the data folder.
+    lr_scheduler_epochs: int
+        number of iterations after which the learning rate is decreased by a factor of $e$.
+        Default is None, and a constant learning rate is used
 
+    """
     checkpointer_val_mse = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(weights_save_path, "val_mse", "weights.ckpt"),
         monitor="val_mse",

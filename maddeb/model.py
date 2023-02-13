@@ -1,3 +1,5 @@
+"""Create the models for MADNESS."""
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -23,8 +25,7 @@ def create_encoder(
     filters,
     kernels,
 ):
-    """
-    function to create the encoder
+    """Create the encoder.
 
     Parameters
     ----------
@@ -40,9 +41,9 @@ def create_encoder(
     Returns
     -------
     encoder: tf.keras.Model
-       model that takes as input the image of a galaxy and projects it to the latent space
-    """
+       model that takes as input the image of a galaxy and projects it to the latent space.
 
+    """
     # Input layer
     input_layer = Input(shape=(input_shape))
     h = input_layer
@@ -77,8 +78,7 @@ def create_decoder(
     kernels,
     sigma_cutoff=None,
 ):
-    """
-    function to create the decoder
+    """Create the decoder.
 
     Parameters
     ----------
@@ -90,13 +90,15 @@ def create_decoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
+    sigma_cutoff: list of float
+        backgound noise-level in each band
 
     Returns
     -------
     decoder: tf.keras.Model
         model that takes as input a point in the latent space and decodes it to reconstruct a noiseless galaxy.
-    """
 
+    """
     input_layer = Input(shape=(latent_dim,))
     h = Dense(256, activation=None)(input_layer)
     h = PReLU()(h)
@@ -137,39 +139,40 @@ def create_decoder(
                 ((cropping // 2, cropping // 2 + 1), (cropping // 2, cropping // 2 + 1))
             )(h)
 
-    if sigma_cutoff is None: 
+    if sigma_cutoff is None:
         sigma_cutoff = 1e-3
     # Build the encoder only
     print(sigma_cutoff)
     h = tfp.layers.DistributionLambda(
         make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]], scale=sigma_cutoff+tf.zeros_like(t[..., : input_shape[-1]], dtype=tf.float32),
+            loc=t[..., : input_shape[-1]],
+            scale=sigma_cutoff
+            + tf.zeros_like(t[..., : input_shape[-1]], dtype=tf.float32),
         ),
-        #convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+        # convert_to_tensor_fn=tfp.distributions.Distribution.mean,
     )(h)
 
     return Model(input_layer, h, name="decoder")
 
 
 def create_flow(latent_dim=10, num_nf_layers=6):
-    """
-    Create the Flow model that takes as input a point in latent space and returns the log_prob
+    """Create the Flow model that takes as input a point in latent space and returns the log_prob.
 
     Parameters
-    __________
+    ----------
     latent_dim: int
         size of the latent space
     num_nf_layers: int
         number of layers in the normalizing flow
 
     Returns
-    _______
+    -------
     model: tf.keras.Model
         model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
     bijector_chain: tfp.bijectors.Chain
         bijector chain that is being applied on the base distribution
-    """
 
+    """
     bijects = []
     zdist = tfd.Independent(
         tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
@@ -226,8 +229,7 @@ def create_model_fvae(
     kl_weight=None,
     decoder_sigma_cutoff=None,
 ):
-    """
-    Create the sinmultaneously create the VAE and the flow model.
+    """Create the sinmultaneously create the VAE and the flow model.
 
     Parameters
     ----------
@@ -235,12 +237,22 @@ def create_model_fvae(
         shape of input tensor
     latent_dim: int
         size of the latent space
-    filters: list
-        filters used for the convolutional layers
-    kernels: list
-        kernels used for the convolutional layers
-    conv_activation: str
-        activation for conv layers
+    filters_encoder: list
+        filters used for the convolutional layers in encoder
+    filters_decoder: list
+        filters used for the convolutional layers in decoder
+    kernels_encoder: list
+        kernels used for the convolutional layers in encoder
+    kernels_decoder: list
+        kernels used for the convolutional layers in decoder
+    num_nf_layers: int
+        number of layers in the flow network
+    kl_prior: tf distribution
+        KL prior to be applied on the latent space.
+    kl_weight: float
+        Weight to be multiplied tot he kl_prior
+    decoder_sigma_cutoff: list of float
+        backgound noise-level in each band to be used in the decoder
 
     Returns
     -------
@@ -257,8 +269,8 @@ def create_model_fvae(
     flow: tf.keras.Model
         flow network which is present in the flow_model
         model that takes as input a point in the latent sapce and returns the log_prob wrt the base distribution
-    """
 
+    """
     # create the encoder
     encoder = create_encoder(
         input_shape,

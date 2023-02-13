@@ -1,23 +1,20 @@
-from copyreg import pickle
-import os
+"""Compare performance of MADNESS and SCARLET."""
+
 import logging
+import os
 import time
-import pandas as pd
 
 import btk
 import galsim
+import hickle
 import matplotlib.pyplot as plt
 import numpy as np
 import scarlet
 import scarlet.psf
-import seaborn as sns
 import sep
 import tensorflow as tf
 import tensorflow_probability as tfp
-from scipy.optimize import curve_fit
-from scipy.stats import norm
-
-from astropy.table import vstack, hstack
+from astropy.table import hstack, vstack
 
 from maddeb.Deblender import Deblend
 from maddeb.metrics import (
@@ -25,7 +22,6 @@ from maddeb.metrics import (
     compute_pixel_covariance_and_fluxes,
 )
 from maddeb.utils import get_data_dir_path
-import hickle
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -46,7 +42,11 @@ seed = 13
 run_name = "catsim_high_density_ssim_20"
 
 sampling_function = btk.sampling_functions.DefaultSampling(
-    max_number=max_number, min_number=min_number, max_shift=maxshift, stamp_size=stamp_size, seed=seed
+    max_number=max_number,
+    min_number=min_number,
+    max_shift=maxshift,
+    stamp_size=stamp_size,
+    seed=seed,
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(
@@ -61,8 +61,32 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     seed=seed,
 )
 
-# Define function to make predictions iwth scarlet
+
+# Define function to make predictions with scarlet
 def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters):
+    """Deblend using the SCARLET debelnder.
+
+    Parameters
+    ----------
+    image: array
+        field to be deblended.
+    x_pos: array
+        x positions of detections.
+    y_pos: array
+        y position of detetions.
+    show_scene: bool
+        To run scarlet.display.show_scene or not.
+    show_sources: bool
+        To run scarlet.display.show_sources or not.
+    filters: list of hashable elements
+        Names/identifiers of spectral channels
+
+    Returns
+    -------
+    predicted_sources:
+        array with reconsturctions predicted by SCARLET
+
+    """
     sig = []
     weights = np.ones_like(image)
     for i in range(6):
@@ -72,7 +96,9 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
         image, psf=scarlet.psf.ImagePSF(psf), weights=weights, channels=bands, wcs=wcs
     )
 
-    model_psf = scarlet.GaussianPSF(sigma=(0.382, .365, .344, .335, .327, .323)) # These numbers are derived from the FWHM given for LSST filters in the galcheat v1.0 repo https://github.com/aboucaud/galcheat/blob/main/galcheat/data/LSST.yaml
+    model_psf = scarlet.GaussianPSF(
+        sigma=(0.382, 0.365, 0.344, 0.335, 0.327, 0.323)
+    )  # These numbers are derived from the FWHM given for LSST filters in the galcheat v1.0 repo https://github.com/aboucaud/galcheat/blob/main/galcheat/data/LSST.yaml
     model_frame = scarlet.Frame(image.shape, psf=model_psf, channels=filters, wcs=wcs)
 
     observation = observation.match(model_frame)
@@ -128,6 +154,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     # print(np.shape(src.get_model(frame=model_frame)))
     return predicted_sources
 
+
 for file_num in range(num_repetations):
     print("Processing file " + str(file_num))
     blend = next(draw_generator)
@@ -179,23 +206,29 @@ for file_num in range(num_repetations):
         # print(blends)
         detected_positions = []
         for j in range(len(current_blend)):
-            detected_positions.append([current_blend["y_peak"][j], current_blend["x_peak"][j]])
+            detected_positions.append(
+                [current_blend["y_peak"][j], current_blend["x_peak"][j]]
+            )
 
         # tf.config.run_functions_eagerly(False)
         # convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
         #     atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
         # )
-        convergence_criterion = tfp.optimizer.convergence_criteria.SuccessiveGradientsAreUncorrelated(min_num_steps=120, window_size=30)
+        convergence_criterion = (
+            tfp.optimizer.convergence_criteria.SuccessiveGradientsAreUncorrelated(
+                min_num_steps=120, window_size=30
+            )
+        )
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1., decay_steps=25, decay_rate=0.9, staircase=True
+            initial_learning_rate=1.0, decay_steps=25, decay_rate=0.9, staircase=True
         )
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
         deb = Deblend(
             field_images[field_num],
             detected_positions,
-            num_components=len(current_blend), #redundant parameter
+            num_components=len(current_blend),  # redundant parameter
             latent_dim=16,
             use_likelihood=True,
             linear_norm_coeff=linear_norm_coeff,
@@ -209,7 +242,9 @@ for file_num in range(num_repetations):
         )
         padding_infos = deb.get_padding_infos()
         for component_num in range(deb.num_components):
-            prediction = np.pad(deb.components[component_num], padding_infos[component_num])
+            prediction = np.pad(
+                deb.components[component_num], padding_infos[component_num]
+            )
             prediction = np.transpose(prediction, axes=(2, 0, 1))
             current_field_predictions.append(prediction)
         madness_predictions.append(current_field_predictions)
@@ -227,40 +262,44 @@ for file_num in range(num_repetations):
 
     for field_num in range(len(blend["blend_list"])):
 
-
         num_galaxies = len(blend["blend_list"][field_num])
 
         isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
 
         madness_current_res = compute_pixel_covariance_and_fluxes(
-            blend["madness_predictions"][field_num], isolated_images, blend["blend_images"][field_num]
+            blend["madness_predictions"][field_num],
+            isolated_images,
+            blend["blend_images"][field_num],
         )
         scarlet_current_res = compute_pixel_covariance_and_fluxes(
-            blend["scarlet_predictions"][field_num], isolated_images, blend["blend_images"][field_num]
+            blend["scarlet_predictions"][field_num],
+            isolated_images,
+            blend["blend_images"][field_num],
         )
 
-        size = blend['blend_list'][field_num]['btk_size']
+        size = blend["blend_list"][field_num]["btk_size"]
 
-        madness_current_res['size'] = size
-        scarlet_current_res['size'] = size
+        madness_current_res["size"] = size
+        scarlet_current_res["size"] = size
 
-        madness_current_res['field_num'] = [field_num]*num_galaxies
-        scarlet_current_res['field_num'] = [field_num]*num_galaxies
+        madness_current_res["field_num"] = [field_num] * num_galaxies
+        scarlet_current_res["field_num"] = [field_num] * num_galaxies
 
-        madness_current_res['file_num'] = [file_num]*num_galaxies
-        scarlet_current_res['file_num'] = [file_num]*num_galaxies
-        #make this a table
+        madness_current_res["file_num"] = [file_num] * num_galaxies
+        scarlet_current_res["file_num"] = [file_num] * num_galaxies
+        # make this a table
 
         madness_results.append(madness_current_res)
         scarlet_results.append(scarlet_current_res)
 
         bkg_rms = {}
         for band in range(6):
-            bkg_rms[band] = sep.Background(blend["blend_images"][field_num][band]).globalrms
-
+            bkg_rms[band] = sep.Background(
+                blend["blend_images"][field_num][band]
+            ).globalrms
 
         actual_results_current = compute_apperture_photometry(
-            field_image = blend["blend_images"][field_num],
+            field_image=blend["blend_images"][field_num],
             predictions=blend["isolated_images"][field_num],
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
@@ -269,7 +308,6 @@ for file_num in range(num_repetations):
         actual_results_current["field_num"] = field_num
         actual_results_current["file_num"] = file_num
         actual_photometry.append(actual_results_current)
-
 
         madness_results_current = compute_apperture_photometry(
             field_image=blend["blend_images"][field_num],
@@ -316,27 +354,66 @@ for file_num in range(num_repetations):
     blended_photometry = vstack(blended_photometry)
 
     # reconstruction_file = open("debblend_results" + str(rep_num)+ ".pkl", "wb")
-    save_file_name = os.path.join("/sps/lsst/users/bbiswas", "scarlet_comparison", "debblend_results" + str(file_num) + ".hkl")    
+    save_file_name = os.path.join(
+        "/sps/lsst/users/bbiswas",
+        "scarlet_comparison",
+        "debblend_results" + str(file_num) + ".hkl",
+    )
     hickle.dump(blend, save_file_name, mode="w")
     # reconstruction_file.close()
 
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name,  "scarlet_reconstruction", str(file_num) + ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "scarlet_reconstruction",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(scarlet_results, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "madness_reconstruction", str(file_num) + ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "madness_reconstruction",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(madness_results, save_file_name, mode="w")
 
-
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "scarlet_photometry", str(file_num) + ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "scarlet_photometry",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(scarlet_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "madness_photometry", str(file_num) +  ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "madness_photometry",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(madness_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "actual_photometry", str(file_num) + ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "actual_photometry",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(actual_photometry, save_file_name, mode="w")
 
-    save_file_name = os.path.join(get_data_dir_path(), "results", run_name, "blended_photometry", str(file_num) + ".hkl")
+    save_file_name = os.path.join(
+        get_data_dir_path(),
+        "results",
+        run_name,
+        "blended_photometry",
+        str(file_num) + ".hkl",
+    )
     hickle.dump(blended_photometry, save_file_name, mode="w")
 
 # # Compute covariance, actual and predicted fluxes
