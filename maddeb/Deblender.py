@@ -134,7 +134,7 @@ class Deblend:
             Otherwise it uses sep to compute the background noise.
 
         """
-        tf.config.run_functions_eagerly(False)
+        # tf.config.run_functions_eagerly(False)
 
         self.results = self.gradient_decent(
             convergence_criterion=convergence_criterion,
@@ -187,7 +187,7 @@ class Deblend:
             reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
         residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
 
-        residual_field = tf.cast(residual_field, tf.float32)
+        # residual_field = tf.cast(residual_field, tf.float32)
 
         if use_scatter_and_sub:
 
@@ -254,8 +254,8 @@ class Deblend:
                     tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
                 )
                 # tf.where(mask, tf.zeros_like(tensor), tensor)
-                residual_field = tf.subtract(residual_field, reconstruction)
-                return tf.add(i, 1), residual_field
+                residual_field = residual_field - reconstruction
+                return i + 1, residual_field
 
             c = lambda i, _: i < self.num_components
 
@@ -330,15 +330,15 @@ class Deblend:
 
         if compute_sig_dynamically:
             sig_sq = tf.stop_gradient(
-                tf.square(tf.math.reduce_std(residual_field, axis=[0, 1]))
+                tf.math.reduce_std(residual_field, axis=[0, 1]) ** 2
             )
 
-        reconstruction_loss = tf.divide(tf.square(residual_field), sig_sq)
+        reconstruction_loss = residual_field**2 / sig_sq
         # tf.print(sig_sq, output_stream=sys.stdout)
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
-        reconstruction_loss = tf.divide(reconstruction_loss, 2)
+        reconstruction_loss = reconstruction_loss / 2
 
         log_prob = tf.math.reduce_sum(
             self.flow_vae_net.flow(
@@ -355,7 +355,7 @@ class Deblend:
         final_loss = reconstruction_loss
 
         if self.use_log_prob:
-            final_loss = tf.math.subtract(reconstruction_loss, log_prob)
+            final_loss = reconstruction_loss - log_prob
 
         return final_loss, reconstruction_loss, log_prob, residual_field
 
@@ -550,7 +550,7 @@ class Deblend:
                     self.postage_stamp, dtype=tf.float32
                 ),
                 compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
-                sig_sq=tf.convert_to_tensor(sig_sq, dtype=tf.float32),
+                sig_sq=sig_sq,
                 use_scatter_and_sub=tf.convert_to_tensor(True),
                 index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
                 padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
