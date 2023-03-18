@@ -91,6 +91,9 @@ for file_num in range(num_files):
     postage_stamps = {
         "blended_gal_stamps": [],
         "isolated_gal_stamps": [],
+        "gal_locations_y_peak": [],
+        "gal_locations_x_peak": [],
+        "r_band_snr": [],
     }
 
     # meta_data = []
@@ -128,6 +131,15 @@ for file_num in range(num_files):
                 cutout_size=45,
             )[0][0]
             postage_stamps["isolated_gal_stamps"].append(gal_isolated)
+            postage_stamps["gal_locations_y_peak"].append(
+                batch["blend_list"][blended_image_num]["y_peak"] - pos[0]
+            )
+            postage_stamps["gal_locations_x_peak"].append(
+                batch["blend_list"][blended_image_num]["x_peak"] - pos[1]
+            )
+            postage_stamps["r_band_snr"].append(
+                batch["blend_list"][blended_image_num]["r_band_snr"]
+            )
             # postage_stamps["btk_index"].append(
             #     [batch["blend_list"][blended_image_num]["btk_index"][galaxy_num]]
             # )
@@ -156,7 +168,7 @@ for file_num in range(num_files):
     )
 
     print(
-        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted"
+        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_"
         + blend_type
         + "_"
         + dataset
