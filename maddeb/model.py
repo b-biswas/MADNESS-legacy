@@ -139,18 +139,18 @@ def create_decoder(
                 ((cropping // 2, cropping // 2 + 1), (cropping // 2, cropping // 2 + 1))
             )(h)
 
-    if sigma_cutoff is None:
-        sigma_cutoff = 1e-3
-    # Build the encoder only
-    print(sigma_cutoff)
-    h = tfp.layers.DistributionLambda(
-        make_distribution_fn=lambda t: tfd.Normal(
-            loc=t[..., : input_shape[-1]],
-            scale=sigma_cutoff
-            + tf.zeros_like(t[..., : input_shape[-1]], dtype=tf.float32),
-        ),
-        # convert_to_tensor_fn=tfp.distributions.Distribution.mean,
-    )(h)
+    # if sigma_cutoff is None:
+    #     sigma_cutoff = 1e-3
+    # # Build the encoder only
+    # print(sigma_cutoff)
+    # h = tfp.layers.DistributionLambda(
+    #     make_distribution_fn=lambda t: tfd.Normal(
+    #         loc=t[..., : input_shape[-1]],
+    #         scale=sigma_cutoff
+    #         + tf.zeros_like(t[..., : input_shape[-1]], dtype=tf.float32),
+    #     ),
+    #     # convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+    # )(h)
 
     return Model(input_layer, h, name="decoder")
 
