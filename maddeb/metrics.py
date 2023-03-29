@@ -3,7 +3,6 @@
 import numpy as np
 import sep
 import skimage
-from astropy.table import Table
 from numba import jit
 
 
@@ -144,7 +143,7 @@ def compute_pixel_covariance_and_fluxes(
                 results[band + "_blendedness"].append(blendedness)
 
         results["galaxy_num"].append(gal_num)
-    return Table(results)
+    return results
 
 
 def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
@@ -237,7 +236,7 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
     """
     results = {}
     for band in ["u", "g", "r", "i", "z", "y"]:
-        for column in ["_flux", "_fluxerrs", "_flags"]:
+        for column in ["_phot_flux", "_phot_fluxerrs", "_phot_flags"]:
             results[band + column] = []
 
     results["galaxy_num"] = []
@@ -267,10 +266,10 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
                 err=bkg_rms[band_num],
             )
 
-            results[band + "_flux"].extend(flux)
-            results[band + "_fluxerrs"].extend(fluxerr)
-            results[band + "_flags"].extend(flag)
+            results[band + "_phot_flux"].extend(flux)
+            results[band + "_phot_fluxerrs"].extend(fluxerr)
+            results[band + "_phot_flags"].extend(flag)
 
         results["galaxy_num"].append(galaxy_num)
 
-    return Table(results)
+    return results
