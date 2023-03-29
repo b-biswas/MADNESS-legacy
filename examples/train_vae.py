@@ -9,7 +9,11 @@ import tensorflow_probability as tfp
 from galcheat.utilities import mean_sky_level
 
 from maddeb.batch_generator import COSMOSsequence
-from maddeb.FlowVAEnet import FlowVAEnet, deblender_loss_fn, deblender_ssim_loss_fn
+from maddeb.FlowVAEnet import (
+    FlowVAEnet,
+    deblender_loss_fn_wrapper,
+    deblender_ssim_loss_fn_wrapper,
+)
 from maddeb.train import define_callbacks
 from maddeb.utils import get_data_dir_path, listdir_fullpath
 
@@ -36,6 +40,7 @@ for b, name in enumerate(survey.available_filters):
         * np.sqrt(sky_level_factor)
         / linear_norm_coeff[b]
     )
+noise_sigma = np.array(noise_sigma, dtype=np.float32)
 
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
@@ -97,7 +102,7 @@ hist_vae = f_net.train_vae(
     train_decoder=True,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-    loss_function=deblender_ssim_loss_fn,
+    loss_function=deblender_ssim_loss_fn_wrapper(sigma_cutoff=noise_sigma),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
@@ -124,7 +129,7 @@ hist_vae = f_net.train_vae(
     train_decoder=True,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-    loss_function=deblender_loss_fn,
+    loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
@@ -209,7 +214,7 @@ hist_deblender = f_net.train_vae(
     train_decoder=False,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-    loss_function=deblender_loss_fn,
+    loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
