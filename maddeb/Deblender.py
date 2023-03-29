@@ -312,7 +312,7 @@ class Deblend:
             residual field after deblending.
 
         """
-        reconstructions = self.flow_vae_net.decoder(z).mean()
+        reconstructions = self.flow_vae_net.decoder(z)
 
         residual_field = self.compute_residual(
             postage_stamp,
@@ -424,7 +424,7 @@ class Deblend:
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
-        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
 
     def compute_noise_sigma(self):
         """Compute noise level with sep."""
@@ -580,7 +580,7 @@ class Deblend:
         LOG.info("--- Gradient descent complete ---")
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
-        self.components = self.flow_vae_net.decoder(z).mean() * self.linear_norm_coeff
+        self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
         # print(self.components)
 
         return results
