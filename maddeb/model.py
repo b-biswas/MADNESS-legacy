@@ -76,7 +76,6 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
-    sigma_cutoff=None,
 ):
     """Create the decoder.
 

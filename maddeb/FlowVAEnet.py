@@ -219,7 +219,7 @@ class FlowVAEnet:
         filters_encoder=[64, 128, 256, 512],
         filters_decoder=[64, 128, 256],
         kernels_encoder=[5, 3, 5, 3],
-        kernels_decoder=[5, 3, 5, 3],
+        kernels_decoder=[5, 3, 5],
         num_nf_layers=8,
         kl_prior=None,
         kl_weight=None,
