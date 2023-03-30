@@ -2,56 +2,54 @@
 
 import numpy as np
 import sep
-import skimage
 from numba import jit
 
+# def compute_reconstruction_metrics(predicted_images, ground_truth):
+#     """Calculate mean squared error, peak signal to noise ratio, ssim.
 
-def compute_reconstruction_metrics(predicted_images, ground_truth):
-    """Calculate mean squared error, peak signal to noise ratio, ssim.
+#     Parameters
+#     ----------
+#     predicted_images: np array
+#         galaxies predicted by the model
+#     ground_truth: np array
+#         simulated ground truth of the model.
 
-    Parameters
-    ----------
-    predicted_images: np array
-        galaxies predicted by the model
-    ground_truth: np array
-        simulated ground truth of the model.
+#     Returns
+#     -------
+#     results_dict: dict
+#         evaluated metrics
 
-    Returns
-    -------
-    results_dict: dict
-        evaluated metrics
+#     """
+#     msr_results = []
+#     psnr_results = []
+#     ssim_results = []
 
-    """
-    msr_results = []
-    psnr_results = []
-    ssim_results = []
+#     for i in range(len(predicted_images)):
 
-    for i in range(len(predicted_images)):
+#         msr_results.append(
+#             skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
+#         )
 
-        msr_results.append(
-            skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
-        )
+#         psnr_results.append(
+#             skimage.metrics.peak_signal_noise_ratio(
+#                 predicted_images[i],
+#                 ground_truth[i],
+#                 data_range=np.max(ground_truth[i]),
+#             )
+#         )
 
-        psnr_results.append(
-            skimage.metrics.peak_signal_noise_ratio(
-                predicted_images[i],
-                ground_truth[i],
-                data_range=np.max(ground_truth[i]),
-            )
-        )
+#         ssim_results.append(
+#             skimage.metrics.structural_similarity(
+#                 ground_truth[i],
+#                 predicted_images[i],
+#                 channel_axis=-1,
+#                 multichannel=True,
+#             )
+#         )
 
-        ssim_results.append(
-            skimage.metrics.structural_similarity(
-                ground_truth[i],
-                predicted_images[i],
-                channel_axis=-1,
-                multichannel=True,
-            )
-        )
+#     results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
 
-    results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
-
-    return results_dict
+#     return results_dict
 
 
 def compute_pixel_covariance_and_fluxes(

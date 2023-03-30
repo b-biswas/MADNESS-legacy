@@ -550,7 +550,7 @@ class Deblend:
                     self.postage_stamp, dtype=tf.float32
                 ),
                 compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
-                sig_sq=tf.convert_to_tensor(sig_sq, dtype=tf.float32),
+                sig_sq=sig_sq,
                 use_scatter_and_sub=tf.convert_to_tensor(True),
                 index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
                 padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
