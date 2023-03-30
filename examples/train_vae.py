@@ -22,7 +22,7 @@ tfd = tfp.distributions
 # define the parameters
 batch_size = 100
 vae_epochs = 100
-flow_epochs = 80
+flow_epochs = 100
 deblender_epochs = 125
 lr_scheduler_epochs = 30
 latent_dim = 16
@@ -45,7 +45,7 @@ noise_sigma = np.array(noise_sigma, dtype=np.float32)
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 0.01
+kl_weight = 1
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
@@ -64,9 +64,7 @@ validation_path_isolated_gal = listdir_fullpath(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(
-    data_path, "catsim_nonuni_shifted_lk_ssim_10" + str(latent_dim) + "d"
-)
+path_weights = os.path.join(data_path, "catsim_" + str(latent_dim) + "d")
 
 # Define the generators
 
