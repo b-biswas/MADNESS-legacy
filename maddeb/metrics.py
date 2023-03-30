@@ -2,57 +2,54 @@
 
 import numpy as np
 import sep
-import skimage
-from astropy.table import Table
 from numba import jit
 
+# def compute_reconstruction_metrics(predicted_images, ground_truth):
+#     """Calculate mean squared error, peak signal to noise ratio, ssim.
 
-def compute_reconstruction_metrics(predicted_images, ground_truth):
-    """Calculate mean squared error, peak signal to noise ratio, ssim.
+#     Parameters
+#     ----------
+#     predicted_images: np array
+#         galaxies predicted by the model
+#     ground_truth: np array
+#         simulated ground truth of the model.
 
-    Parameters
-    ----------
-    predicted_images: np array
-        galaxies predicted by the model
-    ground_truth: np array
-        simulated ground truth of the model.
+#     Returns
+#     -------
+#     results_dict: dict
+#         evaluated metrics
 
-    Returns
-    -------
-    results_dict: dict
-        evaluated metrics
+#     """
+#     msr_results = []
+#     psnr_results = []
+#     ssim_results = []
 
-    """
-    msr_results = []
-    psnr_results = []
-    ssim_results = []
+#     for i in range(len(predicted_images)):
 
-    for i in range(len(predicted_images)):
+#         msr_results.append(
+#             skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
+#         )
 
-        msr_results.append(
-            skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
-        )
+#         psnr_results.append(
+#             skimage.metrics.peak_signal_noise_ratio(
+#                 predicted_images[i],
+#                 ground_truth[i],
+#                 data_range=np.max(ground_truth[i]),
+#             )
+#         )
 
-        psnr_results.append(
-            skimage.metrics.peak_signal_noise_ratio(
-                predicted_images[i],
-                ground_truth[i],
-                data_range=np.max(ground_truth[i]),
-            )
-        )
+#         ssim_results.append(
+#             skimage.metrics.structural_similarity(
+#                 ground_truth[i],
+#                 predicted_images[i],
+#                 channel_axis=-1,
+#                 multichannel=True,
+#             )
+#         )
 
-        ssim_results.append(
-            skimage.metrics.structural_similarity(
-                ground_truth[i],
-                predicted_images[i],
-                channel_axis=-1,
-                multichannel=True,
-            )
-        )
+#     results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
 
-    results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
-
-    return results_dict
+#     return results_dict
 
 
 def compute_pixel_covariance_and_fluxes(
@@ -144,7 +141,7 @@ def compute_pixel_covariance_and_fluxes(
                 results[band + "_blendedness"].append(blendedness)
 
         results["galaxy_num"].append(gal_num)
-    return Table(results)
+    return results
 
 
 def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
@@ -237,7 +234,7 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
     """
     results = {}
     for band in ["u", "g", "r", "i", "z", "y"]:
-        for column in ["_flux", "_fluxerrs", "_flags"]:
+        for column in ["_phot_flux", "_phot_fluxerrs", "_phot_flags"]:
             results[band + column] = []
 
     results["galaxy_num"] = []
@@ -267,10 +264,10 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
                 err=bkg_rms[band_num],
             )
 
-            results[band + "_flux"].extend(flux)
-            results[band + "_fluxerrs"].extend(fluxerr)
-            results[band + "_flags"].extend(flag)
+            results[band + "_phot_flux"].extend(flux)
+            results[band + "_phot_fluxerrs"].extend(fluxerr)
+            results[band + "_phot_flags"].extend(flag)
 
         results["galaxy_num"].append(galaxy_num)
 
-    return Table(results)
+    return results
