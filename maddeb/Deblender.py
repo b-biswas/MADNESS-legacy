@@ -26,18 +26,63 @@ class Deblend:
 
     def __init__(
         self,
+        latent_dim=16,
+    ):
+        """Initialize class variables.
+
+        Parameters
+        ----------
+        latent_dim: int
+            size of latent space.
+        """
+
+        self.latent_dim = latent_dim
+        self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
+        data_dir_path = get_data_dir_path()
+        self.flow_vae_net.load_flow_weights(
+            weights_path=os.path.join(data_dir_path, "catsim_16d/flow/val_loss")
+        )
+        self.flow_vae_net.load_vae_weights(
+            weights_path=os.path.join(data_dir_path, "catsim_16d/vae/val_loss")
+        )
+
+        # self.flow_vae_net.vae_model.trainable = False
+        # self.flow_vae_net.flow_model.trainable = False
+
+        # self.flow_vae_net.vae_model.summary()
+
+        self.postage_stamp = None
+        self.detected_positions = None
+        self.cutout_size = None
+        self.num_components = None
+        self.channel_last = None
+        self.noise_sigma = None
+        self.num_bands = None
+        self.field_size = None
+        self.use_log_prob = None
+        self.linear_norm_coeff = None
+
+        self.optimizer = None
+        self.max_iter = None
+
+    def __call__(
+        self,
         postage_stamp,
         detected_positions,
         noise_sigma=None,
         cutout_size=45,
         num_components=1,
         max_iter=60,
-        latent_dim=10,
         use_log_prob=True,
         channel_last=False,
         linear_norm_coeff=80000,
+        convergence_criterion=None,
+        use_debvader=False,
+        optimizer=None,
+        lr=0.075,
+        compute_sig_dynamically=False,
     ):
-        """Initialize class variables.
+        """Run the Deblending operation.
 
         Parameters
         ----------
@@ -54,8 +99,6 @@ class Deblend:
             number of galaxies present in the image.
         max_iter: int
             number of iterations in the deblending step
-        latent_dim: int
-            size of latent space.
         use_log_prob: bool
             decides whether or not to use the log_prob output of the flow deblender in the optimization.
         channel_last: bool
@@ -63,60 +106,6 @@ class Deblend:
         linear_norm_coeff: int/list
             list stores the bandwise linear normalizing/scaling factor.
             if int is passed, same scaling factor is used for all.
-
-        """
-        self.linear_norm_coeff = linear_norm_coeff
-        self.max_iter = max_iter
-        self.num_components = num_components
-        self.use_log_prob = use_log_prob
-        self.components = None
-        self.channel_last = channel_last
-        if channel_last:
-            self.postage_stamp = postage_stamp / linear_norm_coeff
-        else:
-            self.postage_stamp = (
-                np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
-            )
-        self.detected_positions = detected_positions
-        self.cutout_size = cutout_size
-
-        if channel_last:
-            self.num_bands = np.shape(postage_stamp)[-1]
-            self.field_size = np.shape(postage_stamp)[1]
-        else:
-            self.num_bands = np.shape(postage_stamp)[0]
-            self.field_size = np.shape(postage_stamp)[1]
-
-        self.latent_dim = latent_dim
-        self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
-
-        data_dir_path = get_data_dir_path()
-        self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_16d/flow/val_loss")
-        )
-        self.flow_vae_net.load_vae_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_16d/vae/val_loss")
-        )
-
-        # self.flow_vae_net.vae_model.trainable = False
-        # self.flow_vae_net.flow_model.trainable = False
-
-        # self.flow_vae_net.vae_model.summary()
-        self.optimizer = None
-        self.noise_sigma = noise_sigma
-
-    def __call__(
-        self,
-        convergence_criterion=None,
-        use_debvader=False,
-        optimizer=None,
-        lr=0.075,
-        compute_sig_dynamically=False,
-    ):
-        """Run the Deblending operation.
-
-        Parameters
-        ----------
         convergence_criterion: tfp.optimizer.convergence_criteria
             For termination of the optimization loop
         use_debvader: bool
@@ -131,6 +120,30 @@ class Deblend:
 
         """
         # tf.config.run_functions_eagerly(False)
+        self.linear_norm_coeff = linear_norm_coeff
+        self.max_iter = max_iter
+        self.num_components = num_components
+        self.use_log_prob = use_log_prob
+        self.components = None
+        self.channel_last = channel_last
+
+        self.noise_sigma = noise_sigma
+
+        if self.channel_last:
+            self.postage_stamp = postage_stamp / linear_norm_coeff
+        else:
+            self.postage_stamp = (
+                np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
+            )
+        self.detected_positions = detected_positions
+        self.cutout_size = cutout_size
+
+        if channel_last:
+            self.num_bands = np.shape(postage_stamp)[-1]
+            self.field_size = np.shape(postage_stamp)[1]
+        else:
+            self.num_bands = np.shape(postage_stamp)[0]
+            self.field_size = np.shape(postage_stamp)[1]
 
         self.results = self.gradient_decent(
             convergence_criterion=convergence_criterion,
