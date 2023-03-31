@@ -168,10 +168,10 @@ f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
 
 train_path_blended_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_blended_training/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_blended_training/"
 )
 validation_path_blended_gal = listdir_fullpath(
-    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_blended_validation/"
+    "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_blended_validation/"
 )
 
 train_generator_deblender = COSMOSsequence(
