@@ -226,7 +226,6 @@ def create_model_fvae(
     num_nf_layers=6,
     kl_prior=None,
     kl_weight=None,
-    decoder_sigma_cutoff=None,
 ):
     """Create the sinmultaneously create the VAE and the flow model.
 
@@ -250,8 +249,6 @@ def create_model_fvae(
         KL prior to be applied on the latent space.
     kl_weight: float
         Weight to be multiplied tot he kl_prior
-    decoder_sigma_cutoff: list of float
-        backgound noise-level in each band to be used in the decoder
 
     Returns
     -------
@@ -284,7 +281,6 @@ def create_model_fvae(
         latent_dim,
         filters_decoder,
         kernels_decoder,
-        sigma_cutoff=decoder_sigma_cutoff,
     )
 
     # create the flow transformation

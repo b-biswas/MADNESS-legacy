@@ -51,7 +51,6 @@ f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=kl_prior,
     kl_weight=kl_weight,
-    decoder_sigma_cutoff=noise_sigma,
 )
 
 train_path_isolated_gal = listdir_fullpath(
@@ -104,13 +103,12 @@ hist_vae = f_net.train_vae(
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
-np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
+np.save(path_weights + "/train_vae_ssim_history.npy", hist_vae.history)
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=kl_prior,
     kl_weight=kl_weight,
-    decoder_sigma_cutoff=noise_sigma,
 )
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 
@@ -137,7 +135,6 @@ f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=None,
     kl_weight=None,
-    decoder_sigma_cutoff=noise_sigma,
 )
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 
@@ -154,7 +151,7 @@ hist_flow = f_net.train_flow(
     epochs=flow_epochs,
 )
 
-np.save(os.path.join(path_weights, "train_vae_history.npy"), hist_flow.history)
+np.save(os.path.join(path_weights, "train_flow_history.npy"), hist_flow.history)
 
 f_net.flow.trainable = False
 # deblend_prior = f_net.td
@@ -166,7 +163,6 @@ f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=kl_prior,
     kl_weight=1,
-    decoder_sigma_cutoff=noise_sigma,
 )
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
