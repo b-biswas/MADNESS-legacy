@@ -36,6 +36,8 @@ simulation_path = "/sps/lsst/users/bbiswas/simulations/test_data/"
 results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 run_name = "catsim_" + density + "_density_ssim_20"
 
+deb = Deblend(latent_dim=16)
+
 for file_num in range(num_repetations):
     LOG.info("Processing file " + str(file_num))
     blend = hickle.load(
@@ -88,16 +90,13 @@ for file_num in range(num_repetations):
         )
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
-        deb = Deblend(
+        deb(
             field_images[field_num],
             detected_positions,
             num_components=len(current_blend),  # redundant parameter
-            latent_dim=16,
             use_log_prob=True,
             linear_norm_coeff=linear_norm_coeff,
             max_iter=500,
-        )
-        deb(
             convergence_criterion=convergence_criterion,
             optimizer=optimizer,
             use_debvader=True,
