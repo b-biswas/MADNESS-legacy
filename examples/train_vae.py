@@ -45,7 +45,7 @@ noise_sigma = np.array(noise_sigma, dtype=np.float32)
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 1
+kl_weight = 0.01
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
@@ -63,7 +63,7 @@ validation_path_isolated_gal = listdir_fullpath(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "catsim_kl01" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -134,7 +134,6 @@ np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=None,
-    kl_weight=None,
 )
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 
