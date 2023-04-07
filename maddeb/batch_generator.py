@@ -1,5 +1,7 @@
 """Load batches of data to pass to TensorFlow during training."""
 
+import random
+
 import numpy as np
 from tensorflow.keras.utils import Sequence
 
@@ -15,6 +17,7 @@ class COSMOSsequence(Sequence):
         batch_size,
         num_iterations_per_epoch,
         linear_norm_coeff=1,
+        dataset="train",
         # channel_last=False,
     ):
         """Initialize the Data generator.
@@ -43,6 +46,7 @@ class COSMOSsequence(Sequence):
         self.num_iterations_per_epoch = num_iterations_per_epoch
 
         self.linear_norm_coeff = linear_norm_coeff
+        self.dataset = dataset
         # self.channel_last = channel_last
 
     def __len__(self):
@@ -65,6 +69,9 @@ class COSMOSsequence(Sequence):
 
         """
         current_loop_file_name = self.list_of_samples[idx]
+        if self.dataset == "train":
+            current_loop_file_name = random.choice(self.list_of_samples)
+
         current_sample = np.load(current_loop_file_name, allow_pickle=True)
 
         batch = np.random.choice(current_sample, size=self.batch_size, replace=False)
