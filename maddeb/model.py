@@ -174,12 +174,14 @@ def create_flow(latent_dim=10, num_nf_layers=6):
     """
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1),
+        reinterpreted_batch_ndims=1,
     )
-    # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # loop over desired bijectors and put into list
-    permute_arr = np.arange(latent_dim)[::-1]
+
+    #  add cyclic rotation in steps of 3
+    permute_arr = np.arange(0, latent_dim)[(np.arange(0, latent_dim) - 3)[:]]
 
     for i in range(num_nf_layers):
 
@@ -190,8 +192,8 @@ def create_flow(latent_dim=10, num_nf_layers=6):
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2,
-            hidden_units=[128, 128],
-            activation="sigmoid",
+            hidden_units=[32, 32],
+            activation="tanh",
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
