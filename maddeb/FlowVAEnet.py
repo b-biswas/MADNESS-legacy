@@ -215,7 +215,7 @@ class FlowVAEnet:
     def __init__(
         self,
         input_shape=[45, 45, 6],
-        latent_dim=8,
+        latent_dim=16,
         filters_encoder=[64, 128, 256, 512],
         filters_decoder=[64, 128, 256],
         kernels_encoder=[5, 3, 5, 3],
