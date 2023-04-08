@@ -40,10 +40,14 @@ class Deblend:
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_16d/flow/val_loss")
+            weights_path=os.path.join(
+                data_dir_path, "catsim_kl0116d/flow8_tanh/val_loss"
+            )
         )
         self.flow_vae_net.load_vae_weights(
-            weights_path=os.path.join(data_dir_path, "catsim_16d/vae/val_loss")
+            weights_path=os.path.join(
+                data_dir_path, "catsim_kl0116d/deblender/val_loss"
+            )
         )
 
         # self.flow_vae_net.vae_model.trainable = False
@@ -330,12 +334,6 @@ class Deblend:
             index_pos_to_sub=index_pos_to_sub,
             padding_infos=padding_infos,
         )
-
-        # sig = tf.stop_gradient(tf.math.reduce_std(residual_field))
-
-        # reconstruction_loss = tf.cast(
-        #     tf.math.reduce_sum(tf.square(residual_field)), tf.float32
-        # ) / tf.cast(tf.square(sig), tf.float32)
 
         if compute_sig_dynamically:
             sig_sq = tf.stop_gradient(
