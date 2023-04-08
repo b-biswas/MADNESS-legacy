@@ -34,9 +34,11 @@ if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
 
 
-simulation_path = "/sps/lsst/users/bbiswas/simulations/test_data/"
+simulation_path = os.path.join(
+    "/sps/lsst/users/bbiswas/simulations/test_data/", density
+)
 results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
-run_name = "catsim_" + density + "_density_ssim_20"
+density_level = density + "_density"
 
 
 # Define function to make predictions with scarlet
@@ -225,7 +227,7 @@ for file_num in range(num_repetations):
 
     save_file_name = os.path.join(
         results_path,
-        run_name,
+        density_level,
         "scarlet_results",
         str(file_num) + ".pkl",
     )
