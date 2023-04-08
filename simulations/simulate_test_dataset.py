@@ -31,7 +31,7 @@ else:
 
 batch_size = 20
 maxshift = 15
-num_repetations = 200
+num_repetations = 300
 catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
@@ -63,6 +63,7 @@ for file_num in range(num_repetations):
 
     save_file_name = os.path.join(
         simulation_path,
+        density,
         str(file_num) + ".hkl",
     )
     print(save_file_name)

@@ -76,7 +76,6 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
-    sigma_cutoff=None,
 ):
     """Create the decoder.
 
@@ -175,12 +174,14 @@ def create_flow(latent_dim=10, num_nf_layers=6):
     """
     bijects = []
     zdist = tfd.Independent(
-        tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
+        tfd.Normal(loc=tf.zeros(latent_dim), scale=1),
+        reinterpreted_batch_ndims=1,
     )
-    # zdist = tfd.Independent(tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1)
 
     # loop over desired bijectors and put into list
-    permute_arr = np.arange(latent_dim)[::-1]
+
+    #  add cyclic rotation in steps of 3
+    permute_arr = np.arange(0, latent_dim)[(np.arange(0, latent_dim) - 3)[:]]
 
     for i in range(num_nf_layers):
 
@@ -191,8 +192,8 @@ def create_flow(latent_dim=10, num_nf_layers=6):
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2,
-            hidden_units=[128, 128],
-            activation="sigmoid",
+            hidden_units=[32, 32],
+            activation="tanh",
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
 
@@ -227,7 +228,6 @@ def create_model_fvae(
     num_nf_layers=6,
     kl_prior=None,
     kl_weight=None,
-    decoder_sigma_cutoff=None,
 ):
     """Create the sinmultaneously create the VAE and the flow model.
 
@@ -251,8 +251,6 @@ def create_model_fvae(
         KL prior to be applied on the latent space.
     kl_weight: float
         Weight to be multiplied tot he kl_prior
-    decoder_sigma_cutoff: list of float
-        backgound noise-level in each band to be used in the decoder
 
     Returns
     -------
@@ -285,7 +283,6 @@ def create_model_fvae(
         latent_dim,
         filters_decoder,
         kernels_decoder,
-        sigma_cutoff=decoder_sigma_cutoff,
     )
 
     # create the flow transformation

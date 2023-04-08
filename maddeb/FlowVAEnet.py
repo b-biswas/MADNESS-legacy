@@ -215,15 +215,14 @@ class FlowVAEnet:
     def __init__(
         self,
         input_shape=[45, 45, 6],
-        latent_dim=8,
+        latent_dim=16,
         filters_encoder=[64, 128, 256, 512],
         filters_decoder=[64, 128, 256],
         kernels_encoder=[5, 3, 5, 3],
-        kernels_decoder=[5, 3, 5, 3],
+        kernels_decoder=[5, 3, 5],
         num_nf_layers=8,
         kl_prior=None,
         kl_weight=None,
-        decoder_sigma_cutoff=None,
     ):
         """Create the required models according to the specifications.
 
@@ -247,8 +246,6 @@ class FlowVAEnet:
             KL prior to be applied on the latent space.
         kl_weight: float
             Weight to be multiplied tot he kl_prior
-        decoder_sigma_cutoff: list of float
-            backgound noise-level in each band
 
         """
         self.input_shape = input_shape
@@ -280,7 +277,6 @@ class FlowVAEnet:
             num_nf_layers=self.num_nf_layers,
             kl_prior=kl_prior,
             kl_weight=kl_weight,
-            decoder_sigma_cutoff=decoder_sigma_cutoff,
         )
 
         self.optimizer = None
