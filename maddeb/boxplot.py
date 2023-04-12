@@ -4,7 +4,6 @@ import itertools
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy
 import seaborn as sns
 from matplotlib.cbook import _reshape_2D
 
@@ -179,6 +178,8 @@ def boxplot_func(
     x_label,
     y_label,
     y_label_hist,
+    whis=[5, 95],
+    percents=[25, 75],
     errors=None,
     legend_remove=False,
     palette=["#3498db", "#e74c3c"],
@@ -212,6 +213,10 @@ def boxplot_func(
         x axis label
     y_label_hist: str
         y label for the histogram
+    whis: int/float
+        percentile limit for the whiskers
+    percents: int/float
+        percentile limits for the box
     errors:
         errors to drop if necessary
     legend_remove:
@@ -265,11 +270,11 @@ def boxplot_func(
     x_bins[0] -= 1e-5
     x_bins[-1] += 1e-5
 
-    print(x_bins)
+    # print(x_bins)
 
     idx = np.digitize(df_plot[x], x_bins)
 
-    print(idx)
+    # print(idx)
 
     # Initialize figure
     fig, axes = plt.subplots(
@@ -281,20 +286,17 @@ def boxplot_func(
 
     exp = np.unique(df_plot[z])
     N_exp = len(exp)
-    print(exp)
+    # print(exp)
     handles = []
     for ik, key in enumerate(exp):
-        print(ik, key)
+        # print(ik, key)
         stats = {}
         # Compute and save statistics
         for i in range(1, len(x_bins)):
             stats[i] = my_boxplot_stats(
                 df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values,
-                whis=[100 * scipy.stats.norm.cdf(-2), 100 * scipy.stats.norm.cdf(2)],
-                percents=[
-                    100 * scipy.stats.norm.cdf(-1),
-                    100 * scipy.stats.norm.cdf(1),
-                ],
+                whis=whis,
+                percents=percents,
             )[0]
             median.append(stats[i]["med"])
             q1.append(stats[i]["q1"])
