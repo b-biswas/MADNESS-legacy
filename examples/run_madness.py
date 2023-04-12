@@ -32,9 +32,12 @@ density = sys.argv[1]
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
 
-simulation_path = "/sps/lsst/users/bbiswas/simulations/test_data/"
+simulation_path = os.path.join(
+    "/sps/lsst/users/bbiswas/simulations/test_data/", density
+)
 results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
-run_name = "catsim_" + density + "_density_ssim_20"
+density_level = density + "_density"
+run_name = "kl01"
 
 deb = Deblend(latent_dim=16)
 
@@ -79,14 +82,15 @@ for file_num in range(num_repetations):
         # convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
         #     atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
         # )
+
         convergence_criterion = (
             tfp.optimizer.convergence_criteria.SuccessiveGradientsAreUncorrelated(
-                min_num_steps=120, window_size=30
+                min_num_steps=120, window_size=25
             )
         )
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1.0, decay_steps=25, decay_rate=0.9, staircase=True
+            initial_learning_rate=0.2, decay_steps=60, decay_rate=0.9, staircase=True
         )
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
@@ -188,6 +192,7 @@ for file_num in range(num_repetations):
 
     save_file_name = os.path.join(
         results_path,
+        density_level,
         run_name,
         "madness_results",
         str(file_num) + ".pkl",
@@ -200,24 +205,18 @@ for file_num in range(num_repetations):
 
     save_file_name = os.path.join(
         results_path,
-        run_name,
+        density_level,
         "actual_photometry",
         str(file_num) + ".pkl",
     )
-    # np.save(save_file_name,
-    #     actual_photometry.to_records())
+
     actual_photometry.to_pickle(save_file_name)
-    # hickle.dump(actual_photometry, save_file_name, mode="w")
-    # ascii.write(actual_photometry, save_file_name, overwrite=True)
 
     save_file_name = os.path.join(
         results_path,
-        run_name,
+        density_level,
         "blended_photometry",
         str(file_num) + ".pkl",
     )
-    # np.save(save_file_name,
-    #     blended_photometry.to_records())
+
     blended_photometry.to_pickle(save_file_name)
-    # hickle.dump(blended_photometry, save_file_name, mode="w")
-    # ascii.write(blended_photometry, save_file_name, overwrite=True)
