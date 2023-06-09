@@ -278,7 +278,7 @@ def boxplot_func(
 
     # Initialize figure
     fig, axes = plt.subplots(
-        2, 1, figsize=(4, 4), gridspec_kw={"height_ratios": [5, 2]}
+        2, 1, figsize=(4, 4), gridspec_kw={"height_ratios": [10, 2]}
     )
 
     # Second plot: boxplot generated with seaborn split as a function of the parameter
@@ -330,7 +330,7 @@ def boxplot_func(
             handles,
             legend,
             frameon=False,
-            loc="upper right",
+            loc="upper left",
             borderpad=0.1,
             fontsize=10,
         )
@@ -355,8 +355,8 @@ def boxplot_func(
     axes[1].set_ylabel(y_label_hist)
     # axes[1].set_xticks([])
 
-    ax.set_xlabel(x_label)
-    ax.xaxis.tick_bottom()
+    axes[1].set_xlabel(x_label)
+    axes[1].xaxis.tick_bottom()
 
     fig.align_ylabels(axes)
     fig.tight_layout()
