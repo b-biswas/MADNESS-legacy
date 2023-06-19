@@ -132,6 +132,8 @@ for file_num in range(num_repetations):
         madness_current_res["file_num"] = [file_num] * num_galaxies
         madness_current_res["r_band_snr"] = blend["blend_list"][field_num]["r_band_snr"]
         madness_current_res["ref_mag"] = blend["blend_list"][field_num]["ref_mag"]
+        for band_name in ["u_ab", "g_ab", "r_ab", "i_ab", "z_ab", "y_ab"]:
+            madness_current_res[band_name] = blend["blend_list"][field_num][band_name]
         # make this a table
 
         # madness_results.append(madness_current_res)
