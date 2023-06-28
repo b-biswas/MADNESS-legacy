@@ -68,6 +68,7 @@ class Deblend:
 
         self.optimizer = None
         self.max_iter = None
+        self.z = None
 
     def __call__(
         self,
@@ -588,6 +589,7 @@ class Deblend:
         LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
 
         self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
+        self.z = z
         # print(self.components)
 
         return results
