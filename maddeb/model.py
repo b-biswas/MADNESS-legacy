@@ -61,7 +61,7 @@ def create_encoder(
 
     h = Flatten()(h)
     h = PReLU()(h)
-    h = Dense(1024)(h)
+    h = Dense(512)(h)
     h = PReLU()(h)
     h = Dense(
         tfp.layers.MultivariateNormalTriL.params_size(latent_dim),
