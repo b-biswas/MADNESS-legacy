@@ -21,31 +21,26 @@ tfd = tfp.distributions
 
 # define the parameters
 batch_size = 100
-vae_epochs = 100
+vae_epochs = 150
 flow_epochs = 175
 deblender_epochs = 125
-lr_scheduler_epochs = 30
+lr_scheduler_epochs = 40
 latent_dim = 16
-linear_norm_coeff = [1000, 5000, 10000, 10000, 10000, 10000]
+linear_norm_coeff = 10000
 
 survey = btk.survey.get_surveys("LSST")
-
-sky_level_factor = 1
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
     filt = survey.get_filter(name)
-    noise_sigma.append(
-        np.sqrt(mean_sky_level(survey, filt).to_value("electron"))
-        * np.sqrt(sky_level_factor)
-        / linear_norm_coeff[b]
-    )
-noise_sigma = np.array(noise_sigma, dtype=np.float32)
+    noise_sigma.append(np.sqrt(mean_sky_level(survey, filt).to_value("electron")))
+
+noise_sigma = np.array(noise_sigma, dtype=np.float32) / linear_norm_coeff
 
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 0.01
+kl_weight = 0.001
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
@@ -63,7 +58,7 @@ validation_path_isolated_gal = listdir_fullpath(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_kl01" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, "catsim_kl001" + str(latent_dim) + "d")
 
 # Define the generators
 
@@ -95,7 +90,7 @@ hist_vae = f_net.train_vae(
     train_generator_vae,
     validation_generator_vae,
     callbacks=callbacks,
-    epochs=int(vae_epochs / 5),
+    epochs=int(vae_epochs / 10),
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
@@ -167,7 +162,7 @@ f_net.flow.trainable = False
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=kl_prior,
-    kl_weight=kl_weight,
+    kl_weight=0,
 )
 f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 # f_net.randomize_encoder()
@@ -184,7 +179,7 @@ train_generator_deblender = COSMOSsequence(
     "blended_gal_stamps",
     "isolated_gal_stamps",
     batch_size=batch_size,
-    num_iterations_per_epoch=1000,
+    num_iterations_per_epoch=500,
     linear_norm_coeff=linear_norm_coeff,
 )
 
