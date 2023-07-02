@@ -41,12 +41,12 @@ class Deblend:
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_kl0116d/flow8_tanh/val_loss"
+                data_dir_path, "catsim_kl00116d/flow8_tanh/val_loss"
             )
         )
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_kl0116d/deblender/val_loss"
+                data_dir_path, "catsim_kl00116d/deblender/val_loss"
             )
         )
 
@@ -440,6 +440,7 @@ class Deblend:
         for i in range(6):
 
             sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
+        print(sig)
 
         return np.array(sig)
 
