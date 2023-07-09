@@ -210,7 +210,18 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     return blendedness
 
 
-def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
+def compute_apperture_photometry(
+    field_image,
+    predictions,
+    xpos,
+    ypos,
+    bkg_rms,
+    a=None,
+    b=None,
+    theta=None,
+    psf_fwhm=None,
+    r=2,
+):
     """Calculate apperture photometry.
 
     Parameters
@@ -237,6 +248,9 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
         for column in ["_phot_flux", "_phot_fluxerrs", "_phot_flags"]:
             results[band + column] = []
 
+    if psf_fwhm is None:
+        psf_fwhm = [0] * 6
+
     results["galaxy_num"] = []
 
     residual_field = field_image
@@ -256,13 +270,24 @@ def compute_apperture_photometry(field_image, predictions, xpos, ypos, bkg_rms):
 
         for band_num, band in enumerate(["u", "g", "r", "i", "z", "y"]):
 
-            flux, fluxerr, flag = sep.sum_circle(
-                galaxy[band_num],
-                [xpos[galaxy_num]],
-                [ypos[galaxy_num]],
-                5.0,
-                err=bkg_rms[band_num],
-            )
+            if (a is not None) & (b is not None) & (theta is not None):
+                flux, fluxerr, flag = sep.sum_ellipse(
+                    data=galaxy[band_num],
+                    x=[xpos[galaxy_num]],
+                    y=[ypos[galaxy_num]],
+                    a=a[galaxy_num] + psf_fwhm[band_num],
+                    b=b[galaxy_num] + psf_fwhm[band_num],
+                    theta=theta[galaxy_num],
+                    r=r,
+                )
+
+            else:
+                flux, fluxerr, flag = sep.sum_circle(
+                    galaxy[band_num],
+                    [xpos[galaxy_num]],
+                    [ypos[galaxy_num]],
+                    10.0,
+                )
 
             results[band + "_phot_flux"].extend(flux)
             results[band + "_phot_fluxerrs"].extend(fluxerr)
