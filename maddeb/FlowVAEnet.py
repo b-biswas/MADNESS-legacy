@@ -268,7 +268,7 @@ class FlowVAEnet:
         self,
         input_shape=[45, 45, 6],
         latent_dim=16,
-        filters_encoder=[64, 128, 256, 512],
+        filters_encoder=[64, 128, 256, 128],
         filters_decoder=[32, 64, 128],
         kernels_encoder=[5, 5, 5, 5],
         kernels_decoder=[5, 5, 5],
