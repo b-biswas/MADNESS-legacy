@@ -62,7 +62,7 @@ for file_num in range(num_repetations):
     # get MADNESS predictions
     madness_predictions = []
     madness_models = []
-    linear_norm_coeff = [1000, 5000, 10000, 10000, 10000, 10000]
+    linear_norm_coeff = 10000
 
     blend_list = []
     madness_results = []
@@ -92,7 +92,7 @@ for file_num in range(num_repetations):
         convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
             rtol=0.001,
             atol=0.0001 * 45 * 45 * len(current_blend) * 3,
-            min_num_steps=80,
+            min_num_steps=60,
             window_size=25,
         )
         # convergence_criterion = None
