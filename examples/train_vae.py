@@ -14,7 +14,7 @@ from maddeb.FlowVAEnet import (
     deblender_loss_fn_wrapper,
     deblender_ssim_loss_fn_wrapper,
 )
-from maddeb.train import define_callbacks
+from maddeb.callbacks import define_callbacks
 from maddeb.utils import get_data_dir_path, listdir_fullpath
 
 tfd = tfp.distributions
