@@ -508,10 +508,9 @@ class Deblend:
         if optimizer is None:
             if isinstance(lr, tf.keras.optimizers.schedules):
                 lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-                    lr, decay_steps=12, decay_rate=0.75, staircase=True
+                    initial_learning_rate=.2, decay_steps=30, decay_rate=0.9, staircase=False,
                 )
-
-            optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr_scheduler)
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
         LOG.info("\n--- Starting gradient descent in the latent space ---")
         LOG.info("Maximum number of iterations: " + str(self.max_iter))

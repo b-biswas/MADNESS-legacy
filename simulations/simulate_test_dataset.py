@@ -54,7 +54,7 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     add_noise="all",
     verbose=False,
     seed=seed,
-    augment_data=True,
+    augment_data=False,
 )
 
 for file_num in range(num_repetations):

@@ -1,6 +1,7 @@
 """Run Scarlet on test data."""
 
 import logging
+import math
 import os
 import sys
 import time
@@ -27,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 survey = btk.survey.get_surveys("LSST")
 
-num_repetations = 200
+num_repetations = 300
 density = sys.argv[1]
 
 if density not in ["high", "low"]:
@@ -39,6 +40,11 @@ simulation_path = os.path.join(
 )
 results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 density_level = density + "_density"
+
+psf_fwhm = []
+for band in ["u", "g", "r", "i", "z", "y"]:
+    filt = survey.get_filter(band)
+    psf_fwhm.append(filt.psf_fwhm.value * 5)
 
 
 # Define function to make predictions with scarlet
@@ -208,12 +214,33 @@ for file_num in range(num_repetations):
                 blend["blend_images"][field_num][band]
             ).globalrms
 
+        a = blend["blend_list"][field_num]["a_d"].value
+        b = blend["blend_list"][field_num]["b_d"].value
+        theta = blend["blend_list"][field_num]["pa_disk"].value
+
+        cond = (
+            blend["blend_list"][field_num]["a_d"]
+            < blend["blend_list"][field_num]["a_b"]
+        )
+        a = np.where(cond, blend["blend_list"][field_num]["a_b"].value, a)
+        b = np.where(cond, blend["blend_list"][field_num]["b_b"].value, b)
+        theta = np.where(cond, blend["blend_list"][field_num]["pa_bulge"].value, theta)
+
+        theta = theta % 180
+        theta = theta * math.pi / 180
+
+        theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
+
         scarlet_photometry_current = compute_apperture_photometry(
             field_image=blend["blend_images"][field_num],
             predictions=scarlet_current_predictions,
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
-            bkg_rms=bkg_rms,
+            a=5 * a,
+            b=5 * b,
+            theta=theta,
+            psf_fwhm=psf_fwhm,
+            bkg_rms=None,
         )
         scarlet_current_res.update(scarlet_photometry_current)
         scarlet_current_res = pd.DataFrame.from_dict(scarlet_current_res)
