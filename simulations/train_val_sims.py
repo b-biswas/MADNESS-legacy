@@ -34,7 +34,7 @@ if blend_type == "isolated":
     if dataset == "validation":
         batch_size = 100
 else:
-    max_number = 4
+    max_number = 3
     batch_size = 100
 
 seed = 993
@@ -44,14 +44,12 @@ CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
 stamp_size = 15
 maxshift = 1.5
 
-sky_level_factor = 1.0
-
 if dataset == "training":
     index_range = [0, 150000]
     num_files = 1000
 elif dataset == "validation":
     index_range = [150000, 200000]
-    num_files = 500
+    num_files = 400
 
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
@@ -74,8 +72,7 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     add_noise="background",
     verbose=False,
     seed=seed,
-    augment_data=True,
-    sky_level_factor=sky_level_factor,
+    augment_data=False,
 )
 
 for file_num in range(num_files):
@@ -158,17 +155,15 @@ for file_num in range(num_files):
 
     np.save(
         os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_"
-            + blend_type
-            + "_"
-            + dataset,
+            "/sps/lsst/users/bbiswas/simulations/CATSIM",
+            blend_type + "_" + dataset,
             "batch" + str(file_num + 1) + ".npy",
         ),
         postage_stamps.to_records(),
     )
 
     print(
-        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM_10_btk_shifted_"
+        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM/"
         + blend_type
         + "_"
         + dataset

@@ -182,6 +182,7 @@ def boxplot_func(
     percents=[25, 75],
     errors=None,
     legend_remove=False,
+    legend_location="upper left",
     palette=["#3498db", "#e74c3c"],
     nbins=11,
 ):
@@ -278,7 +279,7 @@ def boxplot_func(
 
     # Initialize figure
     fig, axes = plt.subplots(
-        2, 1, figsize=(4, 4), gridspec_kw={"height_ratios": [5, 2]}
+        2, 1, figsize=(6, 4), gridspec_kw={"height_ratios": [10, 2]}
     )
 
     # Second plot: boxplot generated with seaborn split as a function of the parameter
@@ -286,11 +287,13 @@ def boxplot_func(
 
     exp = np.unique(df_plot[z])
     N_exp = len(exp)
-    # print(exp)
+    print(exp)
     handles = []
+    #old = np.array([0])
     for ik, key in enumerate(exp):
         # print(ik, key)
         stats = {}
+        
         # Compute and save statistics
         for i in range(1, len(x_bins)):
             stats[i] = my_boxplot_stats(
@@ -298,6 +301,15 @@ def boxplot_func(
                 whis=whis,
                 percents=percents,
             )[0]
+            # if i==7:
+            #     print(old)
+            #     print(df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values)
+            #     if np.array_equal(old, df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values):
+            #             print("equal")
+            #     else:
+            #         print("not equal")
+            #     old = df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values
+            #     print(stats[i])
             median.append(stats[i]["med"])
             q1.append(stats[i]["q1"])
             q3.append(stats[i]["q3"])
@@ -309,7 +321,7 @@ def boxplot_func(
             positions=np.arange(len(x_bins) - 1)
             + 0.5
             + 0.9 * (ik - (N_exp - 1.0) / 2.0) / N_exp,
-            widths=0.7 / len(np.unique(df_plot[z])),
+            widths=0.6 / len(np.unique(df_plot[z])),
             showfliers=False,
             patch_artist=True,
             boxprops={
@@ -330,7 +342,7 @@ def boxplot_func(
             handles,
             legend,
             frameon=False,
-            loc="upper right",
+            loc=legend_location,
             borderpad=0.1,
             fontsize=10,
         )
@@ -355,8 +367,8 @@ def boxplot_func(
     axes[1].set_ylabel(y_label_hist)
     # axes[1].set_xticks([])
 
-    ax.set_xlabel(x_label)
-    ax.xaxis.tick_bottom()
+    axes[1].set_xlabel(x_label)
+    axes[1].xaxis.tick_bottom()
 
     fig.align_ylabels(axes)
     fig.tight_layout()
