@@ -236,7 +236,14 @@ def compute_apperture_photometry(
         y positions of the detections
     bkg_rms: list
         list with the rms background in each band.
-
+    a: float
+        hlr semi major axis of galaxy in pixels
+    b: float
+        hlr semi minor axis of galaxy in pixels
+    theta: float
+        orientation of the galaxy in degrees
+    psf_fwhm: float
+        fwhm of PSF in pixels 
     Returns
     -------
     results: astropy.Table
@@ -275,8 +282,8 @@ def compute_apperture_photometry(
                     data=galaxy[band_num],
                     x=[xpos[galaxy_num]],
                     y=[ypos[galaxy_num]],
-                    a=a[galaxy_num] + psf_fwhm[band_num],
-                    b=b[galaxy_num] + psf_fwhm[band_num],
+                    a=(a[galaxy_num]**2 + (psf_fwhm[band_num]/2)**2)**.5,
+                    b=(b[galaxy_num]**2 + (psf_fwhm[band_num]/2)**2)**.5,
                     theta=theta[galaxy_num],
                     r=r,
                 )
