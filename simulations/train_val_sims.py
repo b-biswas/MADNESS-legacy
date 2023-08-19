@@ -1,5 +1,7 @@
 """Simulations for training models, individual file"""
 
+import logging 
+
 import os
 import sys
 
@@ -15,7 +17,11 @@ import pandas as pd
 from maddeb.extraction import extract_cutouts
 from maddeb.utils import CustomSampling
 
-print(sys.argv)
+logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+LOG = logging.getLogger(__name__)
+
+LOG.info(sys.argv)
 dataset = sys.argv[1]  # should be either training or validation
 if dataset not in ["training", "validation"]:
     raise ValueError(
@@ -29,12 +35,14 @@ if blend_type not in ["isolated", "blended"]:
 
 if blend_type == "isolated":
     max_number = 1
+    unique_galaxies=True
     if dataset == "training":
         batch_size = 100
     if dataset == "validation":
         batch_size = 100
 else:
-    max_number = 3
+    unique_galaxies = False
+    max_number = 4
     batch_size = 100
 
 seed = 993
@@ -62,6 +70,7 @@ sampling_function = CustomSampling(
     maxshift=maxshift,
     stamp_size=stamp_size,
     seed=seed,
+    unique=unique_galaxies,
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(
@@ -76,6 +85,9 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     seed=seed,
     augment_data=False,
 )
+
+total_galaxy_stamps = num_batches*batch_size
+stamp_counter=0
 
 for batch_num in range(num_batches):
 
@@ -130,3 +142,7 @@ for batch_num in range(num_batches):
                 postage_stamps.to_records(),
             )
 
+            stamp_counter+=1
+            if stamp_counter==total_galaxy_stamps:
+                LOG.info(f"simulated {stamp_counter} stamps")
+                sys.exit()
