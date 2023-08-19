@@ -3,10 +3,7 @@
 import logging
 
 import tensorflow as tf
-import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
-
-from maddeb.model import create_encoder, create_model_fvae
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -94,7 +91,7 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-def deblender_ssim_loss_fn_wrapper(sigma_cutoff):
+def deblender_ssim_loss_fn_wrapper(sigma_cutoff, ch_alpha):
     """Input field sigma into ssim loss function.
 
     Parameters
@@ -126,16 +123,20 @@ def deblender_ssim_loss_fn_wrapper(sigma_cutoff):
             objective to be minimized by the minimizer.
 
         """
-        predicted_distribution = tfd.Normal(loc=predicted_galaxy, scale=sigma_cutoff)
-        loss = predicted_distribution.log_prob(x)
+        loss = tf.math.reduce_mean(
+            tf.reduce_sum(
+                (x - predicted_galaxy) ** 2 / sigma_cutoff**2, axis=[1, 2, 3]
+            )
+        )
 
         band_normalizer = tf.reduce_max(x, axis=[1, 2], keepdims=True)
         ssim = tf.image.ssim(
             x / band_normalizer,
-            predicted_distribution.mean() / band_normalizer,
+            predicted_galaxy / band_normalizer,
             max_val=1,
         )
-        objective = -tf.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]) * ssim)
+        tf.stop_gradient(ch_alpha.alpha)
+        objective = tf.reduce_mean(loss*(1 + ch_alpha.alpha * ssim))
 
         # weight = tf.math.reduce_max(x, axis= [1, 2])
         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
