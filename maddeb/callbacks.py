@@ -3,6 +3,8 @@
 import os
 
 import tensorflow as tf
+from tensorflow.keras.callbacks import Callback
+import tensorflow.keras.backend as K
 
 
 def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
@@ -56,3 +58,13 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
     callbacks += [tf.keras.callbacks.TerminateOnNaN()]
 
     return callbacks
+
+class changeAlpha(Callback):
+    def __init__(self, max_epochs):
+        super(changeAlpha, self).__init__()
+        self.alpha = tf.Variable(1.0)
+        self.max_epochs = max_epochs
+
+    def on_epoch_begin(self, epoch, logs={}):
+        K.set_value(self.alpha, max(0, 1-epoch/self.max_epochs))
+        print("Setting alpha to =", str(self.alpha))
