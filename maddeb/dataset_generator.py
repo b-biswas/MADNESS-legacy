@@ -98,7 +98,6 @@ def loadCATSIMDataset(
             train_data_dir, 
             val_data_dir,
             output_dir,
-
         ):
 
     arg_dict = {
@@ -109,3 +108,57 @@ def loadCATSIMDataset(
     ds = tfds.load('CatsimDataset', data_dir=output_dir, builder_kwargs=arg_dict)
 
     return ds
+
+def batched_CATSIMDataset(
+            tf_dataset_dir,
+            linear_norm_coeff,
+            batch_size,
+            x_col_name="blended_gal_stamps", 
+            y_col_name="isolated_gal_stamps"
+        ):
+
+    # normalized train and val dataset generator
+    def preprocess_batch(ds, linear_norm_coeff, x_col_name, y_col_name):
+
+        def pre_process(galaxy):
+            """ Pre-processing function preparing data for denoising task
+            """
+            # Cutout a portion of the map
+            x = galaxy[x_col_name]/linear_norm_coeff
+            y = galaxy[y_col_name]/linear_norm_coeff
+
+            do_flip_lr = tf.random.uniform([]) > 0.5
+            if do_flip_lr:
+                x = tf.image.flip_left_right(x)
+                y = tf.image.flip_left_right(y)
+
+            do_flip_ud = tf.random.uniform([]) > 0.5
+            if do_flip_ud:
+                x = tf.image.flip_up_down(x)
+                y = tf.image.flip_up_down(y)
+
+            return (x, y)
+
+        #ds = ds.repeat()
+        ds = ds.shuffle(buffer_size=10*batch_size)
+        ds = ds.batch(batch_size)
+        ds = ds.map(pre_process)
+        ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+        return ds
+    
+    ds = loadCATSIMDataset(
+        train_data_dir=None,
+        val_data_dir=None,
+        output_dir=tf_dataset_dir,
+    )
+
+    ds_train = preprocess_batch(ds=ds[tfds.Split.TRAIN], 
+                                linear_norm_coeff=linear_norm_coeff,
+                                x_col_name=x_col_name, 
+                                y_col_name=y_col_name,
+                                )
+    ds_val = preprocess_batch(ds=ds[tfds.Split.VALIDATION], 
+                              linear_norm_coeff=linear_norm_coeff,
+                              x_col_name=x_col_name,y_col_name=y_col_name)
+
+    return ds_train, ds_val
