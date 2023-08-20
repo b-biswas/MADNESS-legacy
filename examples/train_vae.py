@@ -65,16 +65,16 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
 
 # Define all used callbacks
 callbacks = define_callbacks(
-    os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs
+    os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs, patience=vae_epochs,
 )
 
-ch_alpha=changeAlpha(max_epochs=vae_epochs)
+ch_alpha=changeAlpha(max_epochs=int(vae_epochs/2))
 
 hist_vae = f_net.train_vae(
     ds_isolated_train,
     ds_isolated_val,
     callbacks=callbacks+[ch_alpha],
-    epochs=vae_epochs,
+    epochs=int(vae_epochs/2),
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
@@ -93,7 +93,7 @@ hist_vae = f_net.train_vae(
     ds_isolated_train,
     ds_isolated_val,
     callbacks=callbacks,
-    epochs=vae_epochs,
+    epochs=int(vae_epochs/2),
     train_encoder=True,
     train_decoder=True,
     track_kl=True,

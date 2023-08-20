@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import Callback
 import tensorflow.keras.backend as K
 
 
-def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
+def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
     """Define callbacks for a network to train.
 
     Parameters
@@ -39,7 +39,7 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None):
         save_freq="epoch",
     )
 
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=25)
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
 
     callbacks = [checkpointer_val_mse, checkpointer_val_loss, early_stopping]
 
