@@ -12,11 +12,11 @@ from galcheat.utilities import mean_sky_level
 from maddeb.batch_generator import COSMOSsequence
 from maddeb.FlowVAEnet import FlowVAEnet
    
-from maddeb.losses import deblender_loss_fn_wrapper, deblender_ssim_loss_fn_wrapper
+from maddeb.losses import deblender_loss_fn_wrapper
 
 from maddeb.callbacks import define_callbacks, changeAlpha
-from maddeb.utils import get_data_dir_path, listdir_fullpath
-from maddeb.dataset_generator import loadCATSIMDataset, batched_CATSIMDataset
+from maddeb.utils import get_data_dir_path
+from maddeb.dataset_generator import batched_CATSIMDataset
 
 tfd = tfp.distributions
 
@@ -41,7 +41,7 @@ noise_sigma = np.array(noise_sigma, dtype=np.float32) / linear_norm_coeff
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 0.01
+kl_weight = 0.0001
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
@@ -79,7 +79,7 @@ hist_vae = f_net.train_vae(
     train_decoder=True,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.1),
-    loss_function=deblender_ssim_loss_fn_wrapper(sigma_cutoff=noise_sigma, ch_alpha=ch_alpha),
+    loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, use_ssim=True, ch_alpha=ch_alpha),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
@@ -97,7 +97,7 @@ hist_vae = f_net.train_vae(
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
-    optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
+    optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.01),
     loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
@@ -170,7 +170,7 @@ hist_deblender = f_net.train_vae(
     train_encoder=True,
     train_decoder=False,
     track_kl=True,
-    optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.1),
+    optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.01),
     loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
