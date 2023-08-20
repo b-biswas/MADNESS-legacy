@@ -5,6 +5,8 @@ import logging
 import tensorflow as tf
 import tensorflow_probability as tfp
 
+from maddeb.callbacks import changeAlpha
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -91,7 +93,7 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-def deblender_ssim_loss_fn_wrapper(sigma_cutoff, ch_alpha):
+def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None):
     """Input field sigma into ssim loss function.
 
     Parameters
@@ -105,6 +107,10 @@ def deblender_ssim_loss_fn_wrapper(sigma_cutoff, ch_alpha):
         function to compute the loss using SSIM weight.
 
     """
+
+    if use_ssim and not isinstance(ch_alpha, changeAlpha):
+        raise ValueError("Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha")
+
 
     @tf.function(experimental_compile=True)
     def deblender_ssim_loss_fn(x, predicted_galaxy):
@@ -123,11 +129,11 @@ def deblender_ssim_loss_fn_wrapper(sigma_cutoff, ch_alpha):
             objective to be minimized by the minimizer.
 
         """
-        loss = tf.math.reduce_mean(
-            tf.reduce_sum(
-                (x - predicted_galaxy) ** 2 / sigma_cutoff**2, axis=[1, 2, 3]
+
+        
+        loss = tf.reduce_sum(
+                (x - predicted_galaxy) ** 2 / (sigma_cutoff**2+x), axis=[1, 2, 3]
             )
-        )
 
         band_normalizer = tf.reduce_max(x, axis=[1, 2], keepdims=True)
         ssim = tf.image.ssim(
@@ -135,111 +141,113 @@ def deblender_ssim_loss_fn_wrapper(sigma_cutoff, ch_alpha):
             predicted_galaxy / band_normalizer,
             max_val=1,
         )
-        tf.stop_gradient(ch_alpha.alpha)
-        objective = tf.reduce_mean(loss*(1 + ch_alpha.alpha * ssim))
+        if use_ssim:
+            tf.stop_gradient(ch_alpha.alpha)
+            loss = loss - ch_alpha.alpha * ssim * 1e5
 
+        loss = tf.reduce_mean(loss)
         # weight = tf.math.reduce_max(x, axis= [1, 2])
         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
 
-        return objective
+        return loss
 
     return deblender_ssim_loss_fn
 
 
-def deblender_loss_fn_wrapper(sigma_cutoff):
-    """Input field sigma into deblender loss function.
+# def deblender_loss_fn_wrapper(sigma_cutoff):
+#     """Input field sigma into deblender loss function.
 
-    Parameters
-    ----------
-    sigma_cutoff: list
-        list of sigma levels (normalized) in the bands.
+#     Parameters
+#     ----------
+#     sigma_cutoff: list
+#         list of sigma levels (normalized) in the bands.
 
-    Returns
-    -------
-    deblender_loss_fn:
-        function to compute the deblender loss.
+#     Returns
+#     -------
+#     deblender_loss_fn:
+#         function to compute the deblender loss.
 
-    """
+#     """
 
-    @tf.function(experimental_compile=True)
-    def deblender_loss_fn(x, predicted_galaxy):
-        """Compute the loss under predicted distribution.
+#     @tf.function(experimental_compile=True)
+#     def deblender_loss_fn(x, predicted_galaxy):
+#         """Compute the loss under predicted distribution.
 
-        Parameters
-        ----------
-        x: array/tensor
-            Galaxy ground truth.
-        predicted_galaxy: tf tensor
-            pixel wise prediction of the flux.
+#         Parameters
+#         ----------
+#         x: array/tensor
+#             Galaxy ground truth.
+#         predicted_galaxy: tf tensor
+#             pixel wise prediction of the flux.
 
-        Returns
-        -------
-        objective: float
-            objective to be minimized by the minimizer.
+#         Returns
+#         -------
+#         objective: float
+#             objective to be minimized by the minimizer.
 
-        """
-        # predicted_distribution = tfd.Normal(loc=predicted_galaxy, scale=sigma_cutoff)
-        # loss = predicted_distribution.log_prob(x)
-        # objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
+#         """
+#         # predicted_distribution = tfd.Normal(loc=predicted_galaxy, scale=sigma_cutoff)
+#         # loss = predicted_distribution.log_prob(x)
+#         # objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
 
-        objective = tf.math.reduce_mean(
-            tf.reduce_sum(
-                (x - predicted_galaxy) ** 2 / sigma_cutoff**2, axis=[1, 2, 3]
-            )
-        )
+#         objective = tf.math.reduce_mean(
+#             tf.reduce_sum(
+#                 (x - predicted_galaxy) ** 2 / (sigma_cutoff**2 + x), axis=[1, 2, 3]
+#             )
+#         )
 
-        # weight = tf.math.reduce_max(x, axis= [1, 2])
-        # objective = tf.math.reduce_sum(loss, axis=[1, 2])
-        # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
-        return objective
+#         # weight = tf.math.reduce_max(x, axis= [1, 2])
+#         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
+#         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
+#         return objective
 
-    return deblender_loss_fn
+#     return deblender_loss_fn
 
 
-def vae_loss_fn_wrapper(sigma_cutoff):
-    """Input field sigma into deblender loss function.
+# def vae_loss_fn_wrapper(sigma_cutoff):
+#     """Input field sigma into deblender loss function.
 
-    Parameters
-    ----------
-    sigma_cutoff: list
-        list of sigma levels (normalized) in the bands.
+#     Parameters
+#     ----------
+#     sigma_cutoff: list
+#         list of sigma levels (normalized) in the bands.
 
-    Returns
-    -------
-    deblender_loss_fn:
-        function to compute the deblender loss.
+#     Returns
+#     -------
+#     deblender_loss_fn:
+#         function to compute the deblender loss.
 
-    """
+#     """
 
-    @tf.function(experimental_compile=True)
-    def deblender_loss_fn(x, predicted_galaxy):
-        """Compute the loss under predicted distribution.
+#     @tf.function(experimental_compile=True)
+#     def deblender_loss_fn(x, predicted_galaxy):
+#         """Compute the loss under predicted distribution.
 
-        Parameters
-        ----------
-        x: array/tensor
-            Galaxy ground truth.
-        predicted_galaxy: tf tensor
-            pixel wise prediction of the flux.
+#         Parameters
+#         ----------
+#         x: array/tensor
+#             Galaxy ground truth.
+#         predicted_galaxy: tf tensor
+#             pixel wise prediction of the flux.
 
-        Returns
-        -------
-        objective: float
-            objective to be minimized by the minimizer.
+#         Returns
+#         -------
+#         objective: float
+#             objective to be minimized by the minimizer.
 
-        """
-        predicted_distribution = tfd.Normal(
-            loc=predicted_galaxy, scale=sigma_cutoff + tf.math.sqrt(predicted_galaxy)
-        )
-        loss = predicted_distribution.log_prob(x)
-        objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
-        # weight = tf.math.reduce_max(x, axis= [1, 2])
-        # objective = tf.math.reduce_sum(loss, axis=[1, 2])
-        # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
-        return objective
+#         """
+#         predicted_distribution = tfd.Normal(
+#             loc=predicted_galaxy, scale=sigma_cutoff + tf.math.sqrt(x)
+#         )
+#         loss = predicted_distribution.log_prob(x)
+#         objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
+#         # weight = tf.math.reduce_max(x, axis= [1, 2])
+#         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
+#         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
+#         return objective
 
-    return deblender_loss_fn
+#     return deblender_loss_fn
 
 
 @tf.function(experimental_compile=True)
