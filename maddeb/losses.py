@@ -93,7 +93,7 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None):
+def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000):
     """Input field sigma into ssim loss function.
 
     Parameters
@@ -132,7 +132,7 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None):
 
         
         loss = tf.reduce_sum(
-                (x - predicted_galaxy) ** 2 / (sigma_cutoff**2+x), axis=[1, 2, 3]
+                (x - predicted_galaxy) ** 2 / (sigma_cutoff**2+x/linear_norm_coeff), axis=[1, 2, 3]
             )
 
         band_normalizer = tf.reduce_max(x, axis=[1, 2], keepdims=True)
@@ -143,7 +143,7 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None):
         )
         if use_ssim:
             tf.stop_gradient(ch_alpha.alpha)
-            loss = loss - ch_alpha.alpha * ssim * 1e5
+            loss = loss*(1 - ch_alpha.alpha * ssim)
 
         loss = tf.reduce_mean(loss)
         # weight = tf.math.reduce_max(x, axis= [1, 2])

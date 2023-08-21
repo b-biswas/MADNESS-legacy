@@ -65,21 +65,21 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
 
 # Define all used callbacks
 callbacks = define_callbacks(
-    os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs, patience=vae_epochs,
+    os.path.join(path_weights, "ssim"), lr_scheduler_epochs=lr_scheduler_epochs, patience=vae_epochs,
 )
 
-ch_alpha=changeAlpha(max_epochs=int(vae_epochs/2))
+ch_alpha=changeAlpha(max_epochs=int(vae_epochs/5))
 
 hist_vae = f_net.train_vae(
     ds_isolated_train,
     ds_isolated_val,
     callbacks=callbacks+[ch_alpha],
-    epochs=int(vae_epochs/2),
+    epochs=int(vae_epochs/5),
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
     optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.1),
-    loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, use_ssim=True, ch_alpha=ch_alpha),
+    loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, use_ssim=True, ch_alpha=ch_alpha, linear_norm_coeff=linear_norm_coeff),
     # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
 )
 
@@ -93,7 +93,7 @@ hist_vae = f_net.train_vae(
     ds_isolated_train,
     ds_isolated_val,
     callbacks=callbacks,
-    epochs=int(vae_epochs/2),
+    epochs=int(8*vae_epochs/10),
     train_encoder=True,
     train_decoder=True,
     track_kl=True,
