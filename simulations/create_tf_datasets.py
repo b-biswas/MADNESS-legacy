@@ -7,7 +7,7 @@ loadCATSIMDataset(
 )
 
 loadCATSIMDataset(
-    train_data_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isoled_training',
+    train_data_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_training',
     val_data_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_validation',
     output_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_tfDataset'
 )

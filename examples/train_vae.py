@@ -41,7 +41,7 @@ noise_sigma = np.array(noise_sigma, dtype=np.float32) / linear_norm_coeff
 kl_prior = tfd.Independent(
     tfd.Normal(loc=tf.zeros(latent_dim), scale=1), reinterpreted_batch_ndims=1
 )
-kl_weight = 0.0001
+kl_weight = 1e-3
 
 f_net = FlowVAEnet(
     latent_dim=latent_dim,
@@ -52,7 +52,7 @@ f_net = FlowVAEnet(
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, "catsim_kl01" + str(latent_dim) + "d")
+path_weights = os.path.join(data_path, f"catsim_kl{3}{latent_dim}d")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(

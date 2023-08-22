@@ -192,7 +192,7 @@ def create_flow(latent_dim=10, num_nf_layers=6):
         # create a MAF
         anet = tfb.AutoregressiveNetwork(
             params=2,
-            hidden_units=[32, 32],
+            hidden_units=[16, 16],
             activation="tanh",
         )
         ab = tfb.MaskedAutoregressiveFlow(anet)
