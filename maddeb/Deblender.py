@@ -41,7 +41,7 @@ class Deblend:
         data_dir_path = get_data_dir_path()
         self.flow_vae_net.load_flow_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_kl00116d/flow8_tanh/val_loss"
+                data_dir_path, "catsim_kl00116d/flow8/val_loss"
             )
         )
         self.flow_vae_net.load_vae_weights(
