@@ -1,4 +1,6 @@
-"""Simulations for training models."""
+"""Simulations for training models, individual file"""
+
+import logging 
 
 import os
 import sys
@@ -15,7 +17,11 @@ import pandas as pd
 from maddeb.extraction import extract_cutouts
 from maddeb.utils import CustomSampling
 
-print(sys.argv)
+logging.basicConfig(format="%(message)s", level=logging.INFO)
+
+LOG = logging.getLogger(__name__)
+
+LOG.info(sys.argv)
 dataset = sys.argv[1]  # should be either training or validation
 if dataset not in ["training", "validation"]:
     raise ValueError(
@@ -29,27 +35,31 @@ if blend_type not in ["isolated", "blended"]:
 
 if blend_type == "isolated":
     max_number = 1
+    unique_galaxies=True
     if dataset == "training":
-        batch_size = 200
+        batch_size = 100
     if dataset == "validation":
         batch_size = 100
 else:
-    max_number = 3
+    unique_galaxies = False
+    max_number = 4
     batch_size = 100
 
 seed = 993
 
 CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
+SAVE_PATH = "/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset"
+print("saving data at " + SAVE_PATH)
 
 stamp_size = 15
 maxshift = 1.5
 
 if dataset == "training":
     index_range = [0, 150000]
-    num_files = 1000
+    num_batches = 1500
 elif dataset == "validation":
     index_range = [150000, 200000]
-    num_files = 400
+    num_batches = 500
 
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys("LSST")
@@ -60,6 +70,7 @@ sampling_function = CustomSampling(
     maxshift=maxshift,
     stamp_size=stamp_size,
     seed=seed,
+    unique=unique_galaxies,
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(
@@ -69,31 +80,18 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     batch_size=batch_size,
     stamp_size=stamp_size,
     cpus=4,
-    add_noise="background",
+    add_noise="all",
     verbose=False,
     seed=seed,
     augment_data=False,
 )
 
-for file_num in range(num_files):
+total_galaxy_stamps = num_batches*batch_size
+stamp_counter=0
 
-    print("simulating file number:" + str(file_num))
+for batch_num in range(num_batches):
 
-    # postage_stamps = {
-    #     "blended_gal_stamps": [],
-    #     "isolated_gal_stamps": [],
-    #     "btk_index": [],
-    # }
-
-    postage_stamps = {
-        "blended_gal_stamps": [],
-        "isolated_gal_stamps": [],
-        "gal_locations_y_peak": [],
-        "gal_locations_x_peak": [],
-        "r_band_snr": [],
-    }
-
-    # meta_data = []
+    print("simulating file number:" + str(batch_num))
 
     batch = next(draw_generator)
 
@@ -103,6 +101,7 @@ for file_num in range(num_files):
 
         for galaxy_num in range(len(batch["blend_list"][blended_image_num]["x_peak"])):
 
+            postage_stamps = {}
             # print("Image number "+ str(blended_image_num))
             # print("Galaxy number " + str(galaxy_num))
             isolated_image = batch["isolated_images"][blended_image_num][galaxy_num]
@@ -119,7 +118,7 @@ for file_num in range(num_files):
                 channel_last=False,
                 cutout_size=45,
             )[0][0]
-            postage_stamps["blended_gal_stamps"].append(gal_blended)
+            postage_stamps["blended_gal_stamps"]=[gal_blended]
             gal_isolated = extract_cutouts(
                 isolated_image,
                 [pos],
@@ -127,44 +126,23 @@ for file_num in range(num_files):
                 channel_last=False,
                 cutout_size=45,
             )[0][0]
-            postage_stamps["isolated_gal_stamps"].append(gal_isolated)
-            postage_stamps["gal_locations_y_peak"].append(
-                batch["blend_list"][blended_image_num]["y_peak"] - pos[0]
+            postage_stamps["isolated_gal_stamps"] = [gal_isolated]
+            postage_stamps["gal_locations_y_peak"] = [batch["blend_list"][blended_image_num]["y_peak"] - pos[0]]
+            postage_stamps["gal_locations_x_peak"] = [batch["blend_list"][blended_image_num]["x_peak"] - pos[1]]
+            postage_stamps["r_band_snr"] = [batch["blend_list"][blended_image_num]["r_band_snr"]]
+
+            postage_stamps = pd.DataFrame(postage_stamps)
+
+            np.save(
+                os.path.join(
+                    SAVE_PATH,
+                    blend_type + "_" + dataset,
+                    f"gal_{batch_num}_{blended_image_num}_{galaxy_num}.npy",
+                ),
+                postage_stamps.to_records(),
             )
-            postage_stamps["gal_locations_x_peak"].append(
-                batch["blend_list"][blended_image_num]["x_peak"] - pos[1]
-            )
-            postage_stamps["r_band_snr"].append(
-                batch["blend_list"][blended_image_num]["r_band_snr"]
-            )
-            # postage_stamps["btk_index"].append(
-            #     [batch["blend_list"][blended_image_num]["btk_index"][galaxy_num]]
-            # )
-            # plt.subplot(121)
-            # plt.imshow(gal_blended)
 
-            # plt.subplot(122)
-            # plt.imshow(gal_isolated)
-
-            # plt.show()
-
-        # meta_data.append(batch['blend_list'][blended_image_num])
-    postage_stamps = pd.DataFrame(postage_stamps)
-    if dataset == "validation":
-        postage_stamps = postage_stamps[:100]
-
-    np.save(
-        os.path.join(
-            "/sps/lsst/users/bbiswas/simulations/CATSIM",
-            blend_type + "_" + dataset,
-            "batch" + str(file_num + 1) + ".npy",
-        ),
-        postage_stamps.to_records(),
-    )
-
-    print(
-        "saved to /sps/lsst/users/bbiswas/simulations/CATSIM/"
-        + blend_type
-        + "_"
-        + dataset
-    )
+            stamp_counter+=1
+            if stamp_counter==total_galaxy_stamps:
+                LOG.info(f"simulated {stamp_counter} stamps")
+                sys.exit()

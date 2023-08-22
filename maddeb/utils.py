@@ -51,6 +51,7 @@ class CustomSampling(SamplingFunction):
         index_range=None,
         stamp_size=24.0,
         maxshift=None,
+        unique=True,
         seed=DEFAULT_SEED,
     ):
         """Initialize default sampling function.
@@ -68,6 +69,9 @@ class CustomSampling(SamplingFunction):
         maxshift: float
             Magnitude of maximum value of shift. If None then it
             is set as one-tenth the stamp size. (in arcseconds)
+        unique: bool
+            whether to hae unique galaxies in differnet stamps.
+            If true, galaxies are sampled sequentially from the catalog.
         seed: int
             Seed to initialize randomness for reproducibility.
 
@@ -76,6 +80,8 @@ class CustomSampling(SamplingFunction):
         self.stamp_size = stamp_size
         self.maxshift = maxshift if maxshift else self.stamp_size / 10.0
         self.index_range = index_range
+        self.unique = unique
+        self.indexes = list(np.arange(index_range[0], index_range[1]+1))
 
     @property
     def compatible_catalogs(self):
@@ -114,14 +120,18 @@ class CustomSampling(SamplingFunction):
 
         """
         number_of_objects = self.rng.integers(1, self.max_number + 1)
-        (q,) = np.where(
-            table["ref_mag"][self.index_range[0] : self.index_range[1]] < 28
-        )
 
         if indexes is None:
-            indexes = self.rng.choice(q, size=number_of_objects)
-            print(indexes)
-            blend_table = table[self.index_range[0] : self.index_range[1]][indexes]
+            if self.unique:
+                current_indexes = self.indexes[:number_of_objects]
+                self.indexes = self.indexes[number_of_objects:]
+                if number_of_objects>len(self.indexes):
+                    raise ValueError("Too many iterations. All galaxies have been sampled.")
+
+            else:
+                current_indexes = self.rng.choice(self.indexes, size=number_of_objects)
+            print(current_indexes)
+            blend_table = table[current_indexes]
         else:
             blend_table = table[indexes]
         blend_table["ra"] = 0.0
