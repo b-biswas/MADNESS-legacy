@@ -49,11 +49,14 @@ class Deblend:
                 weights_path, "flow8/val_loss"
             )
         )
+        self.flow_vae_net.flow_model.trainable = False
+
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
                 weights_path, "deblender/val_loss"
             )
         )
+        self.flow_vae_net.vae_model.trainable = False
 
         # self.flow_vae_net.vae_model.trainable = False
         # self.flow_vae_net.flow_model.trainable = False

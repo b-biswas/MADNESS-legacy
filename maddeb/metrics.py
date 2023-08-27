@@ -79,7 +79,7 @@ def compute_pixel_covariance_and_fluxes(
     """
     noiseless_galaxy_field = np.zeros_like(field_image)
     residual_field = field_image
-    for simulated_galaxy, predicted_galaxy in zip(simulated_galaxies):
+    for simulated_galaxy, predicted_galaxy in zip(simulated_galaxies, predicted_galaxies):
         noiseless_galaxy_field += simulated_galaxy
         residual_field = field_image - predicted_galaxy
 
