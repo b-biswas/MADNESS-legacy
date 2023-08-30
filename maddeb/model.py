@@ -12,6 +12,7 @@ from tensorflow.keras.layers import (
     Input,
     PReLU,
     Reshape,
+    BatchNormalization,
 )
 from tensorflow.keras.models import Model
 
@@ -204,7 +205,7 @@ def create_flow(latent_dim=10, num_nf_layers=6):
         permute = tfb.Permute(permute_arr)
         bijects.append(permute)
 
-    # bijects.append(tfb.BatchNormalization())
+    bijects.append(tfb.BatchNormalization())
     # combine the bijectors into a chain
     bijector_chain = tfb.Chain(list(reversed(bijects[:-1])))
 
