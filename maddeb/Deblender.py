@@ -46,7 +46,7 @@ class Deblend:
             weights_path = os.path.join(data_dir_path, "catsim_kl416d")
         self.flow_vae_net.load_flow_weights(
             weights_path=os.path.join(
-                weights_path, "flow8/val_loss"
+                weights_path, "flow6/val_loss"
             )
         )
         self.flow_vae_net.flow_model.trainable = False
