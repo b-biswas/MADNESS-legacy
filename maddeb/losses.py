@@ -143,7 +143,7 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
                 max_val=1,
             )
             tf.stop_gradient(ch_alpha.alpha)
-            loss = loss - ch_alpha.alpha * ssim * 1e4
+            loss = loss * (1 - ch_alpha.alpha * ssim)
 
         loss = tf.reduce_mean(loss)
         # weight = tf.math.reduce_max(x, axis= [1, 2])
