@@ -1,7 +1,6 @@
-"""Simulations for training models, individual file"""
+"""Simulations for training models."""
 
-import logging 
-
+import logging
 import os
 import sys
 
@@ -35,7 +34,7 @@ if blend_type not in ["isolated", "blended"]:
 
 if blend_type == "isolated":
     max_number = 1
-    unique_galaxies=True
+    unique_galaxies = True
     if dataset == "training":
         batch_size = 100
     if dataset == "validation":
@@ -86,8 +85,8 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     augment_data=False,
 )
 
-total_galaxy_stamps = num_batches*batch_size
-stamp_counter=0
+total_galaxy_stamps = num_batches * batch_size
+stamp_counter = 0
 
 for batch_num in range(num_batches):
 
@@ -118,7 +117,7 @@ for batch_num in range(num_batches):
                 channel_last=False,
                 cutout_size=45,
             )[0][0]
-            postage_stamps["blended_gal_stamps"]=[gal_blended]
+            postage_stamps["blended_gal_stamps"] = [gal_blended]
             gal_isolated = extract_cutouts(
                 isolated_image,
                 [pos],
@@ -127,9 +126,15 @@ for batch_num in range(num_batches):
                 cutout_size=45,
             )[0][0]
             postage_stamps["isolated_gal_stamps"] = [gal_isolated]
-            postage_stamps["gal_locations_y_peak"] = [batch["blend_list"][blended_image_num]["y_peak"] - pos[0]]
-            postage_stamps["gal_locations_x_peak"] = [batch["blend_list"][blended_image_num]["x_peak"] - pos[1]]
-            postage_stamps["r_band_snr"] = [batch["blend_list"][blended_image_num]["r_band_snr"]]
+            postage_stamps["gal_locations_y_peak"] = [
+                batch["blend_list"][blended_image_num]["y_peak"] - pos[0]
+            ]
+            postage_stamps["gal_locations_x_peak"] = [
+                batch["blend_list"][blended_image_num]["x_peak"] - pos[1]
+            ]
+            postage_stamps["r_band_snr"] = [
+                batch["blend_list"][blended_image_num]["r_band_snr"]
+            ]
 
             postage_stamps = pd.DataFrame(postage_stamps)
 
@@ -142,7 +147,7 @@ for batch_num in range(num_batches):
                 postage_stamps.to_records(),
             )
 
-            stamp_counter+=1
-            if stamp_counter==total_galaxy_stamps:
+            stamp_counter += 1
+            if stamp_counter == total_galaxy_stamps:
                 LOG.info(f"simulated {stamp_counter} stamps")
                 sys.exit()

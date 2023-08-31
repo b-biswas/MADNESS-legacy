@@ -222,6 +222,8 @@ def boxplot_func(
         errors to drop if necessary
     legend_remove:
         boolean to remove the legend
+    legend_location:
+        location of the legend.
     palette:
         color palette
     nbins:
@@ -289,11 +291,11 @@ def boxplot_func(
     N_exp = len(exp)
     print(exp)
     handles = []
-    #old = np.array([0])
+    # old = np.array([0])
     for ik, key in enumerate(exp):
         # print(ik, key)
         stats = {}
-        
+
         # Compute and save statistics
         for i in range(1, len(x_bins)):
             stats[i] = my_boxplot_stats(

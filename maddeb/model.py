@@ -12,7 +12,6 @@ from tensorflow.keras.layers import (
     Input,
     PReLU,
     Reshape,
-    BatchNormalization,
 )
 from tensorflow.keras.models import Model
 

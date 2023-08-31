@@ -81,7 +81,7 @@ class CustomSampling(SamplingFunction):
         self.maxshift = maxshift if maxshift else self.stamp_size / 10.0
         self.index_range = index_range
         self.unique = unique
-        self.indexes = list(np.arange(index_range[0], index_range[1]+1))
+        self.indexes = list(np.arange(index_range[0], index_range[1] + 1))
 
     @property
     def compatible_catalogs(self):
@@ -125,8 +125,10 @@ class CustomSampling(SamplingFunction):
             if self.unique:
                 current_indexes = self.indexes[:number_of_objects]
                 self.indexes = self.indexes[number_of_objects:]
-                if number_of_objects>len(self.indexes):
-                    raise ValueError("Too many iterations. All galaxies have been sampled.")
+                if number_of_objects > len(self.indexes):
+                    raise ValueError(
+                        "Too many iterations. All galaxies have been sampled."
+                    )
 
             else:
                 current_indexes = self.rng.choice(self.indexes, size=number_of_objects)
