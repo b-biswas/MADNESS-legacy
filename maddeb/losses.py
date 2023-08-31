@@ -112,13 +112,13 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
         raise ValueError("Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha")
 
 
-    @tf.function(experimental_compile=True)
-    def deblender_ssim_loss_fn(x, predicted_galaxy):
+    @tf.function
+    def deblender_ssim_loss_fn(y, predicted_galaxy):
         """Compute the loss under predicted distribution, weighted by the SSIM.
 
         Parameters
         ----------
-        x: array/tensor
+        y: array/tensor
             Galaxy ground truth.
         predicted_galaxy: tf tensor
             pixel wise prediction of the flux.
@@ -132,18 +132,18 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
 
         
         loss = tf.reduce_sum(
-                (x - predicted_galaxy) ** 2 / (sigma_cutoff**2+x/linear_norm_coeff), axis=[1, 2, 3]
+                (y-predicted_galaxy) ** 2 / (sigma_cutoff**2 + y/linear_norm_coeff), axis=[1, 2, 3]
             )
-
-        band_normalizer = tf.reduce_max(x, axis=[1, 2], keepdims=True)
-        ssim = tf.image.ssim(
-            x / band_normalizer,
-            predicted_galaxy / band_normalizer,
-            max_val=1,
-        )
+        
         if use_ssim:
+            band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
+            ssim = tf.image.ssim(
+                y / band_normalizer,
+                predicted_galaxy / band_normalizer,
+                max_val=1,
+            )
             tf.stop_gradient(ch_alpha.alpha)
-            loss = loss*(1 - ch_alpha.alpha * ssim)
+            loss = loss * (1 - ch_alpha.alpha * ssim)
 
         loss = tf.reduce_mean(loss)
         # weight = tf.math.reduce_max(x, axis= [1, 2])

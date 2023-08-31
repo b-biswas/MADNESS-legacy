@@ -27,6 +27,8 @@ class Deblend:
     def __init__(
         self,
         latent_dim=16,
+        weights_path=None,
+
     ):
         """Initialize class variables.
 
@@ -38,17 +40,23 @@ class Deblend:
 
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
-        data_dir_path = get_data_dir_path()
+        
+        if weights_path is None:
+            data_dir_path = get_data_dir_path()
+            weights_path = os.path.join(data_dir_path, "catsim_kl416d")
         self.flow_vae_net.load_flow_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_kl00116d/flow8/val_loss"
+                weights_path, "flow6/val_loss"
             )
         )
+        self.flow_vae_net.flow_model.trainable = False
+
         self.flow_vae_net.load_vae_weights(
             weights_path=os.path.join(
-                data_dir_path, "catsim_kl00116d/deblender/val_loss"
+                weights_path, "deblender/val_loss"
             )
         )
+        self.flow_vae_net.vae_model.trainable = False
 
         # self.flow_vae_net.vae_model.trainable = False
         # self.flow_vae_net.flow_model.trainable = False
