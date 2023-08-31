@@ -93,7 +93,9 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000):
+def deblender_loss_fn_wrapper(
+    sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000
+):
     """Input field sigma into ssim loss function.
 
     Parameters
@@ -109,8 +111,9 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
     """
 
     if use_ssim and not isinstance(ch_alpha, changeAlpha):
-        raise ValueError("Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha")
-
+        raise ValueError(
+            "Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha"
+        )
 
     @tf.function
     def deblender_ssim_loss_fn(y, predicted_galaxy):
@@ -130,11 +133,11 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
 
         """
 
-        
         loss = tf.reduce_sum(
-                (y-predicted_galaxy) ** 2 / (sigma_cutoff**2 + y/linear_norm_coeff), axis=[1, 2, 3]
-            )
-        
+            (y - predicted_galaxy) ** 2 / (sigma_cutoff**2 + y / linear_norm_coeff),
+            axis=[1, 2, 3],
+        )
+
         if use_ssim:
             band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
             ssim = tf.image.ssim(
@@ -268,4 +271,3 @@ def flow_loss_fn(x, output):
 
     """
     return -tf.math.reduce_mean(output)
-

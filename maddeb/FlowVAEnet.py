@@ -6,14 +6,15 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
 
-from maddeb.model import create_encoder, create_model_fvae
 from maddeb.losses import flow_loss_fn
+from maddeb.model import create_encoder, create_model_fvae
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
+
 
 class FlowVAEnet:
     """Initialize and train the Neural Network model."""

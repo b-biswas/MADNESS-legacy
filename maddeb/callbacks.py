@@ -3,8 +3,8 @@
 import os
 
 import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
 import tensorflow.keras.backend as K
+from tensorflow.keras.callbacks import Callback
 
 
 def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
@@ -39,7 +39,9 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
         save_freq="epoch",
     )
 
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=patience)
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=patience
+    )
 
     callbacks = [checkpointer_val_mse, checkpointer_val_loss, early_stopping]
 
@@ -59,12 +61,13 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
 
     return callbacks
 
+
 class changeAlpha(Callback):
     def __init__(self, max_epochs):
-        super(changeAlpha, self).__init__()
+        super().__init__()
         self.alpha = tf.Variable(1.0)
         self.max_epochs = max_epochs
 
     def on_epoch_begin(self, epoch, logs={}):
-        K.set_value(self.alpha, max(0, 1-epoch/self.max_epochs))
+        K.set_value(self.alpha, max(0, 1 - epoch / self.max_epochs))
         print("Setting alpha to =", str(self.alpha))

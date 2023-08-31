@@ -28,7 +28,6 @@ class Deblend:
         self,
         latent_dim=16,
         weights_path=None,
-
     ):
         """Initialize class variables.
 
@@ -40,21 +39,17 @@ class Deblend:
 
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
-        
+
         if weights_path is None:
             data_dir_path = get_data_dir_path()
             weights_path = os.path.join(data_dir_path, "catsim_kl416d")
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(
-                weights_path, "flow6/val_loss"
-            )
+            weights_path=os.path.join(weights_path, "flow6/val_loss")
         )
         self.flow_vae_net.flow_model.trainable = False
 
         self.flow_vae_net.load_vae_weights(
-            weights_path=os.path.join(
-                weights_path, "deblender/val_loss"
-            )
+            weights_path=os.path.join(weights_path, "deblender/val_loss")
         )
         self.flow_vae_net.vae_model.trainable = False
 
@@ -516,7 +511,10 @@ class Deblend:
         if optimizer is None:
             if isinstance(lr, tf.keras.optimizers.schedules):
                 lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-                    initial_learning_rate=.2, decay_steps=30, decay_rate=0.9, staircase=False,
+                    initial_learning_rate=0.2,
+                    decay_steps=30,
+                    decay_rate=0.9,
+                    staircase=False,
                 )
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 

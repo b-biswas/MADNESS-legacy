@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.keras.layers import (
+    BatchNormalization,
     Conv2D,
     Conv2DTranspose,
     Cropping2D,
@@ -12,7 +13,6 @@ from tensorflow.keras.layers import (
     Input,
     PReLU,
     Reshape,
-    BatchNormalization,
 )
 from tensorflow.keras.models import Model
 

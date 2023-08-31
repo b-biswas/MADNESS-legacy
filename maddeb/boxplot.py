@@ -289,11 +289,11 @@ def boxplot_func(
     N_exp = len(exp)
     print(exp)
     handles = []
-    #old = np.array([0])
+    # old = np.array([0])
     for ik, key in enumerate(exp):
         # print(ik, key)
         stats = {}
-        
+
         # Compute and save statistics
         for i in range(1, len(x_bins)):
             stats[i] = my_boxplot_stats(

@@ -1,24 +1,22 @@
 """Train all models."""
 
-import logging 
+import logging
 import os
 import sys
 
 import btk
 import numpy as np
 import tensorflow as tf
-import tensorflow_probability as tfp
 import tensorflow_datasets as tfds
+import tensorflow_probability as tfp
 from galcheat.utilities import mean_sky_level
 
 from maddeb.batch_generator import COSMOSsequence
-from maddeb.FlowVAEnet import FlowVAEnet
-   
-from maddeb.losses import deblender_loss_fn_wrapper
-
-from maddeb.callbacks import define_callbacks, changeAlpha
-from maddeb.utils import get_data_dir_path
+from maddeb.callbacks import changeAlpha, define_callbacks
 from maddeb.dataset_generator import batched_CATSIMDataset
+from maddeb.FlowVAEnet import FlowVAEnet
+from maddeb.losses import deblender_loss_fn_wrapper
+from maddeb.utils import get_data_dir_path
 
 tfd = tfp.distributions
 
@@ -35,9 +33,11 @@ deblender_epochs = 150
 lr_scheduler_epochs = 30
 latent_dim = 16
 linear_norm_coeff = 10000
-patience=30
+patience = 30
 
-train_models = sys.argv[1] # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
+train_models = sys.argv[
+    1
+]  # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
 
 kl_weight_exp = int(sys.argv[2])
 kl_weight = 10**-kl_weight_exp
@@ -69,34 +69,41 @@ path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
-    tf_dataset_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_tfDataset',
+    tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_tfDataset",
     linear_norm_coeff=linear_norm_coeff,
     batch_size=batch_size,
     x_col_name="blended_gal_stamps",
     y_col_name="isolated_gal_stamps",
 )
 
-if train_models=="all" or "GenerativeModel" in train_models:
+if train_models == "all" or "GenerativeModel" in train_models:
 
-    ssim_fraction = .25
+    ssim_fraction = 0.25
     # Define all used callbacks
     callbacks = define_callbacks(
-        os.path.join(path_weights, "ssim"), lr_scheduler_epochs=lr_scheduler_epochs, patience=vae_epochs,
+        os.path.join(path_weights, "ssim"),
+        lr_scheduler_epochs=lr_scheduler_epochs,
+        patience=vae_epochs,
     )
 
-    ch_alpha=changeAlpha(max_epochs=int(ssim_fraction * vae_epochs))
+    ch_alpha = changeAlpha(max_epochs=int(ssim_fraction * vae_epochs))
 
     hist_vae = f_net.train_vae(
         ds_isolated_train,
         ds_isolated_val,
-        callbacks=callbacks+[ch_alpha],
+        callbacks=callbacks + [ch_alpha],
         epochs=int(ssim_fraction * vae_epochs),
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-        loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, use_ssim=True, ch_alpha=ch_alpha, linear_norm_coeff=linear_norm_coeff),
-        verbose=2, 
+        loss_function=deblender_loss_fn_wrapper(
+            sigma_cutoff=noise_sigma,
+            use_ssim=True,
+            ch_alpha=ch_alpha,
+            linear_norm_coeff=linear_norm_coeff,
+        ),
+        verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
     )
 
@@ -105,26 +112,30 @@ if train_models=="all" or "GenerativeModel" in train_models:
     # f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 
     callbacks = define_callbacks(
-        os.path.join(path_weights, "vae"), lr_scheduler_epochs=lr_scheduler_epochs, patience=patience,
+        os.path.join(path_weights, "vae"),
+        lr_scheduler_epochs=lr_scheduler_epochs,
+        patience=patience,
     )
 
     hist_vae = f_net.train_vae(
         ds_isolated_train,
         ds_isolated_val,
         callbacks=callbacks,
-        epochs=int((1-ssim_fraction)*vae_epochs),
+        epochs=int((1 - ssim_fraction) * vae_epochs),
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-        loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff),
+        loss_function=deblender_loss_fn_wrapper(
+            sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff
+        ),
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
     )
 
     np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
 
-if train_models=="all" or "NormalizingFlow" in train_models:
+if train_models == "all" or "NormalizingFlow" in train_models:
 
     num_nf_layers = 6
     f_net = FlowVAEnet(
@@ -157,13 +168,12 @@ if train_models=="all" or "NormalizingFlow" in train_models:
     np.save(os.path.join(path_weights, "train_flow_history.npy"), hist_flow.history)
 
 
-if train_models=="all" or "Deblender" in train_models:
+if train_models == "all" or "Deblender" in train_models:
 
     f_net.flow.trainable = False
     # deblend_prior = f_net.td
     # deblend_prior.trainable = False
     # print(f_net.flow.trainable_variables)
-
 
     f_net = FlowVAEnet(
         latent_dim=latent_dim,
@@ -172,7 +182,6 @@ if train_models=="all" or "Deblender" in train_models:
     )
     f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
     # f_net.randomize_encoder()
-
 
     # Define all used callbacks
     callbacks = define_callbacks(
@@ -184,7 +193,7 @@ if train_models=="all" or "Deblender" in train_models:
     # f_net.vae_model.get_layer("latent_space").activity_regularizer=None
 
     ds_blended_train, ds_blended_val = batched_CATSIMDataset(
-        tf_dataset_dir='/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/blended_tfDataset',
+        tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/blended_tfDataset",
         linear_norm_coeff=linear_norm_coeff,
         batch_size=batch_size,
         x_col_name="blended_gal_stamps",
@@ -200,7 +209,9 @@ if train_models=="all" or "Deblender" in train_models:
         train_decoder=False,
         track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-        loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff), 
+        loss_function=deblender_loss_fn_wrapper(
+            sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff
+        ),
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
     )
