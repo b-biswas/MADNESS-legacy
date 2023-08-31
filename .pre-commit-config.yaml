@@ -7,7 +7,7 @@ repos:
     - id: trailing-whitespace
       args: [--markdown-linebreak-ext=md]
 - repo: https://github.com/PyCQA/isort
-  rev: 5.10.1
+  rev: 5.12.0
   hooks:
     - id: isort
       args: [--profile, black]
@@ -32,8 +32,8 @@ repos:
     - id: nbstripout
       args:
             - --keep-output
-# - repo: https://github.com/pycqa/pydocstyle
-#   rev: 6.1.1
-#   hooks:
-#   - id: pydocstyle
-#     args: ['--ignore=D107,D204,D213,D203']
+- repo: https://github.com/pycqa/pydocstyle
+  rev: 6.1.1
+  hooks:
+  - id: pydocstyle
+    args: ['--ignore=D107,D204,D213,D203']

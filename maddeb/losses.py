@@ -14,55 +14,6 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-# def vae_loss_fn_wrapper(sigma, linear_norm_coeff):
-#     """Return function to compute loss with Gaussian approx to Poisson noise.
-
-#     Parameters
-#     ----------
-#     sigma: list/array
-#         Contains information of the noise in each band.
-#     linear_norm_coeff: int/list/array
-#         Scaling factor for normalization.
-#         If single number is passed, all bands are normalized with same constant.
-
-#     Returns
-#     -------
-#     vae_loss_func:
-#         loss function to compute the VAE loss
-
-#     """
-
-#     @tf.function(experimental_compile=True)
-#     def vae_loss_fn(ground_truth, predicted_galaxy):
-#         """Compute the gaussian approximation to poisson noise.
-
-#         Parameters
-#         ----------
-#         ground_truth: array/tensor
-#             ground truth of the field.
-#         predicted_galaxy:
-#             galaxy predicted my the model.
-
-#         Returns
-#         -------
-#         objective: float
-#             objective to be minimized by the minimizer.
-
-#         """
-#         # predicted_galaxies = predicted_distribution.mean()
-
-#         weight = tf.add(tf.divide(ground_truth, linear_norm_coeff), tf.square(sigma))
-#         mse = tf.square(tf.subtract(predicted_galaxy, ground_truth))
-#         loss = tf.math.divide(mse, weight)
-#         # loss = log_prob
-
-#         objective = tf.math.reduce_mean(tf.math.reduce_sum(loss, axis=[1, 2, 3]))
-
-#         return objective
-
-#     return vae_loss_fn
-
-
 @tf.function(autograph=False)
 def vae_loss_fn_mse(x, predicted_distribution):
     """Compute the MSE loss function.
@@ -93,13 +44,21 @@ def vae_loss_fn_mse(x, predicted_distribution):
     return objective
 
 
-def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000):
+def deblender_loss_fn_wrapper(
+    sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000
+):
     """Input field sigma into ssim loss function.
 
     Parameters
     ----------
     sigma_cutoff: list
         list of sigma levels (normalized) in the bands.
+    use_ssim: bool
+        Flag to add the ssim loss function.
+    ch_alpha: madness.callbacks.ChangeAlpha
+        instance of ChangeAlpha to update the weight of SSIM over epochs.
+    linear_norm_coeff: int
+        linear norm coefficient used for normalizing.
 
     Returns
     -------
@@ -107,10 +66,10 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
         function to compute the loss using SSIM weight.
 
     """
-
     if use_ssim and not isinstance(ch_alpha, changeAlpha):
-        raise ValueError("Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha")
-
+        raise ValueError(
+            "Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha"
+        )
 
     @tf.function
     def deblender_ssim_loss_fn(y, predicted_galaxy):
@@ -129,12 +88,11 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
             objective to be minimized by the minimizer.
 
         """
-
-        
         loss = tf.reduce_sum(
-                (y-predicted_galaxy) ** 2 / (sigma_cutoff**2 + y/linear_norm_coeff), axis=[1, 2, 3]
-            )
-        
+            (y - predicted_galaxy) ** 2 / (sigma_cutoff**2 + y / linear_norm_coeff),
+            axis=[1, 2, 3],
+        )
+
         if use_ssim:
             band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
             ssim = tf.image.ssim(
@@ -155,101 +113,6 @@ def deblender_loss_fn_wrapper(sigma_cutoff, use_ssim=False, ch_alpha=None, linea
     return deblender_ssim_loss_fn
 
 
-# def deblender_loss_fn_wrapper(sigma_cutoff):
-#     """Input field sigma into deblender loss function.
-
-#     Parameters
-#     ----------
-#     sigma_cutoff: list
-#         list of sigma levels (normalized) in the bands.
-
-#     Returns
-#     -------
-#     deblender_loss_fn:
-#         function to compute the deblender loss.
-
-#     """
-
-#     @tf.function(experimental_compile=True)
-#     def deblender_loss_fn(x, predicted_galaxy):
-#         """Compute the loss under predicted distribution.
-
-#         Parameters
-#         ----------
-#         x: array/tensor
-#             Galaxy ground truth.
-#         predicted_galaxy: tf tensor
-#             pixel wise prediction of the flux.
-
-#         Returns
-#         -------
-#         objective: float
-#             objective to be minimized by the minimizer.
-
-#         """
-#         # predicted_distribution = tfd.Normal(loc=predicted_galaxy, scale=sigma_cutoff)
-#         # loss = predicted_distribution.log_prob(x)
-#         # objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
-
-#         objective = tf.math.reduce_mean(
-#             tf.reduce_sum(
-#                 (x - predicted_galaxy) ** 2 / (sigma_cutoff**2 + x), axis=[1, 2, 3]
-#             )
-#         )
-
-#         # weight = tf.math.reduce_max(x, axis= [1, 2])
-#         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
-#         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
-#         return objective
-
-#     return deblender_loss_fn
-
-
-# def vae_loss_fn_wrapper(sigma_cutoff):
-#     """Input field sigma into deblender loss function.
-
-#     Parameters
-#     ----------
-#     sigma_cutoff: list
-#         list of sigma levels (normalized) in the bands.
-
-#     Returns
-#     -------
-#     deblender_loss_fn:
-#         function to compute the deblender loss.
-
-#     """
-
-#     @tf.function(experimental_compile=True)
-#     def deblender_loss_fn(x, predicted_galaxy):
-#         """Compute the loss under predicted distribution.
-
-#         Parameters
-#         ----------
-#         x: array/tensor
-#             Galaxy ground truth.
-#         predicted_galaxy: tf tensor
-#             pixel wise prediction of the flux.
-
-#         Returns
-#         -------
-#         objective: float
-#             objective to be minimized by the minimizer.
-
-#         """
-#         predicted_distribution = tfd.Normal(
-#             loc=predicted_galaxy, scale=sigma_cutoff + tf.math.sqrt(x)
-#         )
-#         loss = predicted_distribution.log_prob(x)
-#         objective = -tf.math.reduce_mean(tf.reduce_sum(loss, axis=[1, 2, 3]))
-#         # weight = tf.math.reduce_max(x, axis= [1, 2])
-#         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
-#         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
-#         return objective
-
-#     return deblender_loss_fn
-
-
 @tf.function(experimental_compile=True)
 def flow_loss_fn(x, output):
     """Compute the loss under predicted distribution.
@@ -268,4 +131,3 @@ def flow_loss_fn(x, output):
 
     """
     return -tf.math.reduce_mean(output)
-

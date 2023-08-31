@@ -4,53 +4,6 @@ import numpy as np
 import sep
 from numba import jit
 
-# def compute_reconstruction_metrics(predicted_images, ground_truth):
-#     """Calculate mean squared error, peak signal to noise ratio, ssim.
-
-#     Parameters
-#     ----------
-#     predicted_images: np array
-#         galaxies predicted by the model
-#     ground_truth: np array
-#         simulated ground truth of the model.
-
-#     Returns
-#     -------
-#     results_dict: dict
-#         evaluated metrics
-
-#     """
-#     msr_results = []
-#     psnr_results = []
-#     ssim_results = []
-
-#     for i in range(len(predicted_images)):
-
-#         msr_results.append(
-#             skimage.metrics.mean_squared_error(predicted_images[i], ground_truth[i])
-#         )
-
-#         psnr_results.append(
-#             skimage.metrics.peak_signal_noise_ratio(
-#                 predicted_images[i],
-#                 ground_truth[i],
-#                 data_range=np.max(ground_truth[i]),
-#             )
-#         )
-
-#         ssim_results.append(
-#             skimage.metrics.structural_similarity(
-#                 ground_truth[i],
-#                 predicted_images[i],
-#                 channel_axis=-1,
-#                 multichannel=True,
-#             )
-#         )
-
-#     results_dict = {"mse": msr_results, "psnr": psnr_results, "ssim": ssim_results}
-
-#     return results_dict
-
 
 def compute_pixel_covariance_and_fluxes(
     predicted_galaxies,
@@ -79,7 +32,9 @@ def compute_pixel_covariance_and_fluxes(
     """
     noiseless_galaxy_field = np.zeros_like(field_image)
     residual_field = field_image
-    for simulated_galaxy, predicted_galaxy in zip(simulated_galaxies, predicted_galaxies):
+    for simulated_galaxy, predicted_galaxy in zip(
+        simulated_galaxies, predicted_galaxies
+    ):
         noiseless_galaxy_field += simulated_galaxy
         residual_field = field_image - predicted_galaxy
 
@@ -95,15 +50,6 @@ def compute_pixel_covariance_and_fluxes(
     results["galaxy_num"] = []
 
     for gal_num in range(len(predicted_galaxies)):
-        # (
-        #     pixel_covriance,
-        #     actual_flux,
-        #     predicted_flux,
-        # ) = compute_pixel_covariance_and_flux(
-        #     predicted_galaxy=predicted_galaxies[gal_num],
-        #     simulated_galaxy=simulated_galaxies[gal_num],
-        #     field_image=field_image,
-        # )
 
         predicted_galaxy = predicted_galaxies[gal_num]
         simulated_galaxy = simulated_galaxies[gal_num]
@@ -129,7 +75,9 @@ def compute_pixel_covariance_and_fluxes(
                 band_predicted_flux,
                 pixel_covariance,
             ) = convariance_and_flux_helper(
-                predicted_galaxy[band_number] + residual_field[band_number], simulated_galaxy[band_number]+residual_field[band_number], sig
+                predicted_galaxy[band_number] + residual_field[band_number],
+                simulated_galaxy[band_number] + residual_field[band_number],
+                sig,
             )
 
             results[band + "_actual_flux"].append(band_actual_flux)
@@ -245,7 +193,10 @@ def compute_apperture_photometry(
     theta: float
         orientation of the galaxy in degrees
     psf_fwhm: float
-        fwhm of PSF in pixels 
+        fwhm of PSF in pixels
+    r: int
+        factor by which the major-minor-axis is multiplied
+
     Returns
     -------
     results: astropy.Table
@@ -284,8 +235,8 @@ def compute_apperture_photometry(
                     data=galaxy[band_num],
                     x=[xpos[galaxy_num]],
                     y=[ypos[galaxy_num]],
-                    a=(a[galaxy_num]**2 + (psf_fwhm[band_num]/2)**2)**.5,
-                    b=(b[galaxy_num]**2 + (psf_fwhm[band_num]/2)**2)**.5,
+                    a=(a[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
+                    b=(b[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
                     theta=theta[galaxy_num],
                     r=r,
                 )
