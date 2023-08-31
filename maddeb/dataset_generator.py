@@ -1,7 +1,5 @@
 import os
-from random import choice
 
-import h5py as h5py
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -63,7 +61,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
-        N_TIMESTEPS = 280
+
         return tfds.core.DatasetInfo(
             builder=self,
             description=_DESCRIPTION,

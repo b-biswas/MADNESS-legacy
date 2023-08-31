@@ -7,11 +7,9 @@ import sys
 import btk
 import numpy as np
 import tensorflow as tf
-import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
 from galcheat.utilities import mean_sky_level
 
-from maddeb.batch_generator import COSMOSsequence
 from maddeb.callbacks import changeAlpha, define_callbacks
 from maddeb.dataset_generator import batched_CATSIMDataset
 from maddeb.FlowVAEnet import FlowVAEnet
