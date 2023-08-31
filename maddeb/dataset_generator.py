@@ -271,17 +271,8 @@ def batched_CATSIMDataset(
         output_dir=tf_dataset_dir,
     )
 
-    ds_train = preprocess_batch(
-        ds=ds[tfds.Split.TRAIN],
-        linear_norm_coeff=linear_norm_coeff,
-        x_col_name=x_col_name,
-        y_col_name=y_col_name,
-    )
-    ds_val = preprocess_batch(
-        ds=ds[tfds.Split.VALIDATION],
-        linear_norm_coeff=linear_norm_coeff,
-        x_col_name=x_col_name,
-        y_col_name=y_col_name,
-    )
+    ds_train = preprocess_batch(ds=ds[tfds.Split.TRAIN])
+
+    ds_val = preprocess_batch(ds=ds[tfds.Split.VALIDATION])
 
     return ds_train, ds_val
