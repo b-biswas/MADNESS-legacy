@@ -37,7 +37,7 @@ latent_dim = 16
 linear_norm_coeff = 10000
 patience=30
 
-train_models = sys.argv[1] # either "all" or a list contraining: ["GenerativeModel", "NormalizingFlow", "Deblender"]
+train_models = sys.argv[1] # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
 
 kl_weight_exp = int(sys.argv[2])
 kl_weight = 10**-kl_weight_exp
@@ -78,7 +78,7 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
 
 if train_models=="all" or "GenerativeModel" in train_models:
 
-    ssim_fraction = .20
+    ssim_fraction = .25
     # Define all used callbacks
     callbacks = define_callbacks(
         os.path.join(path_weights, "ssim"), lr_scheduler_epochs=lr_scheduler_epochs, patience=vae_epochs,
@@ -94,7 +94,7 @@ if train_models=="all" or "GenerativeModel" in train_models:
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.01),
+        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, use_ssim=True, ch_alpha=ch_alpha, linear_norm_coeff=linear_norm_coeff),
         verbose=2, 
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
@@ -116,7 +116,7 @@ if train_models=="all" or "GenerativeModel" in train_models:
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=0.01),
+        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff),
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
@@ -126,7 +126,7 @@ if train_models=="all" or "GenerativeModel" in train_models:
 
 if train_models=="all" or "NormalizingFlow" in train_models:
 
-    num_nf_layers = 8
+    num_nf_layers = 6
     f_net = FlowVAEnet(
         latent_dim=latent_dim,
         kl_prior=None,
@@ -149,9 +149,9 @@ if train_models=="all" or "NormalizingFlow" in train_models:
         ds_isolated_train,
         ds_isolated_val,
         callbacks=callbacks,
-        optimizer=tf.keras.optimizers.Adam(5e-4),
+        optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.01),
         epochs=flow_epochs,
-        verbose=2,
+        verbose=1,
     )
 
     np.save(os.path.join(path_weights, "train_flow_history.npy"), hist_flow.history)
@@ -178,7 +178,7 @@ if train_models=="all" or "Deblender" in train_models:
     callbacks = define_callbacks(
         os.path.join(path_weights, "deblender"),
         lr_scheduler_epochs=lr_scheduler_epochs,
-        patience=patience,
+        patience=15,
     )
 
     # f_net.vae_model.get_layer("latent_space").activity_regularizer=None
@@ -199,7 +199,7 @@ if train_models=="all" or "Deblender" in train_models:
         train_encoder=True,
         train_decoder=False,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.01),
+        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff), 
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
