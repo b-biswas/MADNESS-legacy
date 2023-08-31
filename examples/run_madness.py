@@ -18,6 +18,7 @@ from maddeb.metrics import (
     compute_apperture_photometry,
     compute_pixel_covariance_and_fluxes,
 )
+from maddeb.utils import get_data_dir_path
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -26,9 +27,8 @@ LOG = logging.getLogger(__name__)
 
 survey = btk.survey.get_surveys("LSST")
 
-num_repetations = 300
-
 density = sys.argv[1]
+run_name = sys.argv[2]
 
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -38,14 +38,17 @@ simulation_path = os.path.join(
 )
 results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 density_level = density + "_density"
-run_name = "kl001"
 
-deb = Deblend(latent_dim=16)
+
+weights_path = os.path.join(get_data_dir_path(), f"catsim_{run_name}16d")
+deb = Deblend(latent_dim=16, weights_path=weights_path)
 
 psf_fwhm = []
 for band in ["u", "g", "r", "i", "z", "y"]:
     filt = survey.get_filter(band)
     psf_fwhm.append(filt.psf_fwhm.value * 5)
+
+num_repetations = 300
 
 for file_num in range(num_repetations):
     LOG.info("Processing file " + str(file_num))

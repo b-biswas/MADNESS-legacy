@@ -78,8 +78,10 @@ def compute_pixel_covariance_and_fluxes(
 
     """
     noiseless_galaxy_field = np.zeros_like(field_image)
-    for simulated_galaxy in simulated_galaxies:
+    residual_field = field_image
+    for simulated_galaxy, predicted_galaxy in zip(simulated_galaxies, predicted_galaxies):
         noiseless_galaxy_field += simulated_galaxy
+        residual_field = field_image - predicted_galaxy
 
     results = {}
 
@@ -127,7 +129,7 @@ def compute_pixel_covariance_and_fluxes(
                 band_predicted_flux,
                 pixel_covariance,
             ) = convariance_and_flux_helper(
-                predicted_galaxy[band_number], simulated_galaxy[band_number], sig
+                predicted_galaxy[band_number] + residual_field[band_number], simulated_galaxy[band_number]+residual_field[band_number], sig
             )
 
             results[band + "_actual_flux"].append(band_actual_flux)
@@ -166,14 +168,14 @@ def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, si
         pixel-wise covariance in the band
 
     """
-    mask1 = simulated_band_galaxy > 0 * sig
-    mask2 = predicted_band_galaxy > 0 * sig
-    mask = np.logical_or(mask1, mask2)
-    ground_truth_pixels = simulated_band_galaxy[mask].flatten()
-    predicted_pixels = predicted_band_galaxy[mask].flatten()
+    # mask1 = simulated_band_galaxy > 0 * sig
+    # mask2 = predicted_band_galaxy > 0 * sig
+    # mask = np.logical_or(mask1, mask2)
+    ground_truth_pixels = simulated_band_galaxy.flatten()
+    predicted_pixels = predicted_band_galaxy.flatten()
 
-    band_actual_flux = np.sum(simulated_band_galaxy[mask1])
-    band_predicted_flux = np.sum(predicted_band_galaxy[mask2])
+    band_actual_flux = np.sum(simulated_band_galaxy)
+    band_predicted_flux = np.sum(predicted_band_galaxy)
 
     pixel_covariance = np.sum(np.multiply(predicted_pixels, ground_truth_pixels)) / (
         np.sqrt(np.sum(np.square(predicted_pixels)))
