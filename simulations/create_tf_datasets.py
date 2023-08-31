@@ -1,3 +1,4 @@
+"""First call to generate tf datasets."""
 from maddeb.dataset_generator import loadCATSIMDataset
 
 loadCATSIMDataset(

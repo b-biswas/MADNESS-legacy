@@ -1,3 +1,4 @@
+"""TF Dataset generator."""
 import os
 
 import numpy as np
@@ -13,14 +14,16 @@ _URL = "https://github.com/b-biswas/MADNESS"
 
 
 def Logger(str, verbosity=0):
-    """
+    """Logger.
 
-    Simple Logger
-    By default logs .. increase verbosity in case of well .. more verbose logs
+    By default logs
 
-    use
-    os.environ["DIFF_TRACE"]="1"
-    in your notebook to change verbosity
+    Parameters
+    ----------
+    str: string
+        string to log
+    verbosity: int
+        verbosity level
 
     """
     if int(os.environ.get("DIFF_TRACE", 0)) > verbosity:
@@ -28,7 +31,7 @@ def Logger(str, verbosity=0):
 
 
 class CatsimDataset(tfds.core.GeneratorBasedBuilder):
-    """Catsim galaxy dataset"""
+    """Catsim galaxy dataset."""
 
     VERSION = tfds.core.Version("1.0.0")
     RELEASE_NOTES = {
@@ -39,14 +42,36 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
     )
 
     def __init__(self, train_data_dir, val_data_dir, **kwargs):
+        """Initialize the dataset.
+
+        Parameters
+        ----------
+        train_data_dir: string
+            path to training data directory with .npy files
+        val_data_dir: string
+            path to validation data directory with .npy files
+
+        """
         super().__init__(**kwargs)
         self.train_data_dir = train_data_dir
         self.val_data_dir = val_data_dir
 
-    def PopulateFileList(self, fit_path):
+    def PopulateFileList(self, data_folder):
+        """Populate file list.
 
+        Parameters
+        ----------
+        data_folder: string
+            Path to folder with .npy files
+
+        Returns
+        -------
+        list_of_images: list
+            names of all images in the data_folder.
+
+        """
         list_of_images = []
-        for root, dirs, files in os.walk(fit_path, topdown=False):
+        for root, dirs, files in os.walk(data_folder, topdown=False):
             for name in files:
                 file_path = os.path.join(root, name)
                 if os.path.splitext(file_path)[1] != ".npy":
@@ -60,8 +85,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         return list_of_images
 
     def _info(self) -> tfds.core.DatasetInfo:
-        """Returns the dataset metadata."""
-
+        """Return the dataset metadata."""
         return tfds.core.DatasetInfo(
             builder=self,
             description=_DESCRIPTION,
@@ -80,16 +104,28 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         )
 
     def _split_generators(self, dl):
-        """Returns generators according to split"""
+        """Return generators according to split.
+
+        Parameters
+        ----------
+        dl: tfds.download.DownloadManager
+            not used here because nothing is to be downloaded
+
+        """
         return {
             tfds.Split.TRAIN: self._generate_examples(self.train_data_dir),
             tfds.Split.VALIDATION: self._generate_examples(self.val_data_dir),
         }
 
     def _generate_examples(self, data_folder):
-        """Yields examples."""
+        """Yield examples.
 
-        # Only populated the first time
+        Parameters
+        ----------
+        data_folder: string
+            path to the data folder
+
+        """
         list_of_images = self.PopulateFileList(data_folder)
 
         for gal_file in list_of_images:
@@ -112,7 +148,28 @@ def loadCATSIMDataset(
     val_data_dir,
     output_dir,
 ):
+    """Load/Generate CATSIM Dataset.
 
+    If the TFDataset has already been generated (first call) it is realoaded.
+    If CATSIM tf dataset is already generated train_data_dir and val_data_dir are ignored.
+
+    Parameters
+    ----------
+    train_data_dir: string
+        Path to .npy files for training.
+        Ignored if TF Dataset is already present in output_dir.
+    val_data_dir: string
+        Path to .npy files for validation.
+        Ignored if TF Dataset is already present in output_dir.
+    output_dir: string
+        Path to save the tf Dataset
+
+    Returns
+    -------
+    ds: dictionary tf datsets.
+        refer to CatsimDataset._split_generators.
+
+    """
     arg_dict = {
         "train_data_dir": train_data_dir,
         "val_data_dir": val_data_dir,
@@ -130,14 +187,65 @@ def batched_CATSIMDataset(
     x_col_name="blended_gal_stamps",
     y_col_name="isolated_gal_stamps",
 ):
+    """Load generated tf dataset.
 
+    Parameters
+    ----------
+    tf_dataset_dir: string
+        Path to generated tf dataset.
+    linear_norm_coeff: int
+        linear norm coefficient.
+    batch_size: int
+        size of batches to be generated.
+    x_col_name: string
+        column name for input to the ML models.
+        Defaults to "blended_gal_stamps".
+    y_col_name: string
+        column name for loss computation of the ML models.
+        Defaults to "isolated_gal_stamps".
+
+    Returns
+    -------
+    ds_train: tf dataset
+        prefetched training dataset
+    ds_val: tf dataset
+        prefetched validation dataset
+
+    """
     # normalized train and val dataset generator
-    def preprocess_batch(ds, linear_norm_coeff, x_col_name, y_col_name):
-        def pre_process(galaxy):
-            """Pre-processing function preparing data for denoising task"""
-            # Cutout a portion of the map
-            x = galaxy[x_col_name] / linear_norm_coeff
-            y = galaxy[y_col_name] / linear_norm_coeff
+    def preprocess_batch(ds):
+        """Preprocessing function.
+
+        Randomly flips, normalizes, shuffles the dataset
+
+        Parameters
+        ----------
+        ds: tf dataset
+            prefetched tf dataset
+
+        Returns
+        -------
+        ds: tf dataset
+            processing dataset, with (x,y) for training/validating network
+
+        """
+
+        def pre_process(elem):
+            """Pre-processing function preparing data for denoising task.
+
+            Parameters
+            ----------
+            elem: dict
+                element of tf dataset.
+
+            Returns
+            -------
+            (x, y): tuple
+                data for training Neural Networks
+
+            """
+            x = elem[x_col_name] / linear_norm_coeff
+            y = elem[y_col_name] / linear_norm_coeff
 
             do_flip_lr = tf.random.uniform([]) > 0.5
             if do_flip_lr:
@@ -151,7 +259,6 @@ def batched_CATSIMDataset(
 
             return (x, y)
 
-        # ds = ds.repeat(2)
         ds = ds.shuffle(buffer_size=15 * batch_size)
         ds = ds.batch(batch_size)
         ds = ds.map(pre_process)

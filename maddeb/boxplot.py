@@ -222,6 +222,8 @@ def boxplot_func(
         errors to drop if necessary
     legend_remove:
         boolean to remove the legend
+    legend_location:
+        location of the legend.
     palette:
         color palette
     nbins:

@@ -37,6 +37,8 @@ class COSMOSsequence(Sequence):
         linear_norm_coeff: int/list
             list stores the bandwise linear normalizing/scaling factor.
             if int is passed, same scaling factor is used for all.
+        dataset: str
+            "train" or "validation"
 
         """
         self.list_of_samples = list_of_samples

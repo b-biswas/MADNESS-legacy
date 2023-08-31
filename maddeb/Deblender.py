@@ -35,14 +35,18 @@ class Deblend:
         ----------
         latent_dim: int
             size of latent space.
-        """
+        weights_path: string
+            base path to load weights.
+            flow weights are loaded from weights_path/flow6/val_loss
+            vae weights are loaded from weights_path/deblender/val_loss
 
+        """
         self.latent_dim = latent_dim
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
         if weights_path is None:
             data_dir_path = get_data_dir_path()
-            weights_path = os.path.join(data_dir_path, "catsim_kl416d")
+            weights_path = os.path.join(data_dir_path, "catsim_kl116d")
         self.flow_vae_net.load_flow_weights(
             weights_path=os.path.join(weights_path, "flow6/val_loss")
         )

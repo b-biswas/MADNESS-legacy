@@ -18,6 +18,8 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
     lr_scheduler_epochs: int
         number of iterations after which the learning rate is decreased by a factor of $e$.
         Default is None, and a constant learning rate is used
+    patience: int
+        number of iterations after which training is stopped if loss does not decrease.
 
     """
     checkpointer_val_mse = tf.keras.callbacks.ModelCheckpoint(
@@ -63,11 +65,31 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
 
 
 class changeAlpha(Callback):
+    """Update SSIM weight over epochs."""
+
     def __init__(self, max_epochs):
+        """Initialize the weight parameter.
+
+        Parameters
+        ----------
+        max_epochs: int
+            number of epochs after which SSIM weight should go to 0.
+
+        """
         super().__init__()
         self.alpha = tf.Variable(1.0)
         self.max_epochs = max_epochs
 
     def on_epoch_begin(self, epoch, logs={}):
+        """Update the SSIM weight.
+
+        Parameters
+        ----------
+        epoch: int
+            current epoch
+        logs: dict
+            logs
+
+        """
         K.set_value(self.alpha, max(0, 1 - epoch / self.max_epochs))
         print("Setting alpha to =", str(self.alpha))

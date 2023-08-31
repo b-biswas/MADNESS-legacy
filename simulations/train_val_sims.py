@@ -1,4 +1,4 @@
-"""Simulations for training models, individual file"""
+"""Simulations for training models."""
 
 import logging
 import os
