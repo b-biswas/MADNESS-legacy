@@ -183,7 +183,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         madness_current_res.update(madness_photometry_current)
         madness_current_res = pd.DataFrame.from_dict(madness_current_res)
@@ -198,7 +198,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         actual_results_current["field_num"] = field_num * num_galaxies
         actual_results_current["file_num"] = file_num * num_galaxies
@@ -215,7 +215,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         blended_results_current["field_num"] = field_num * num_galaxies
         blended_results_current["file_num"] = file_num * num_galaxies
