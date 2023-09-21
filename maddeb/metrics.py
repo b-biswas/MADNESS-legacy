@@ -151,9 +151,9 @@ def compute_apperture_photometry(
     xpos,
     ypos,
     bkg_rms,
-    a=None,
-    b=None,
-    theta=None,
+    a,
+    b,
+    theta,
     psf_fwhm=None,
     r=2,
 ):
@@ -215,26 +215,16 @@ def compute_apperture_photometry(
 
         for band_num, band in enumerate(["u", "g", "r", "i", "z", "y"]):
 
-            if (a is not None) & (b is not None) & (theta is not None):
-                flux, fluxerr, flag = sep.sum_ellipse(
-                    data=galaxy[band_num],
-                    x=[xpos[galaxy_num]],
-                    y=[ypos[galaxy_num]],
-                    a=(a[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
-                    b=(b[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
-                    theta=theta[galaxy_num],
-                    r=r,
-                    err=bkg_rms[band_num],
-                )
-
-            else:
-                flux, fluxerr, flag = sep.sum_circle(
-                    data=galaxy[band_num],
-                    x=[xpos[galaxy_num]],
-                    y=[ypos[galaxy_num]],
-                    r=10.0,
-                    err=bkg_rms,
-                )
+            flux, fluxerr, flag = sep.sum_ellipse(
+                data=galaxy[band_num],
+                x=[xpos[galaxy_num]],
+                y=[ypos[galaxy_num]],
+                a=(a[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
+                b=(b[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
+                theta=theta[galaxy_num],
+                r=r,
+                err=bkg_rms[band_num],
+            )
 
             results[band + "_phot_flux"].extend(flux)
             results[band + "_phot_fluxerrs"].extend(fluxerr)
