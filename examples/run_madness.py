@@ -16,7 +16,7 @@ import tensorflow_probability as tfp
 from maddeb.Deblender import Deblend
 from maddeb.metrics import (
     compute_apperture_photometry,
-    compute_pixel_covariance_and_fluxes,
+    compute_pixel_cosdist,
 )
 from maddeb.utils import get_data_dir_path
 
@@ -133,7 +133,7 @@ for file_num in range(num_repetations):
 
         isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
 
-        madness_current_res = compute_pixel_covariance_and_fluxes(
+        madness_current_res = compute_pixel_cosdist(
             current_field_predictions,
             isolated_images,
             blend["blend_images"][field_num],

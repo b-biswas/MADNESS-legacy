@@ -5,7 +5,7 @@ import sep
 from numba import jit
 
 
-def compute_pixel_covariance_and_fluxes(
+def compute_pixel_cosdist(
     predicted_galaxies,
     simulated_galaxies,
     field_image,
@@ -31,16 +31,14 @@ def compute_pixel_covariance_and_fluxes(
 
     """
     noiseless_galaxy_field = np.zeros_like(field_image)
-    residual_field = field_image
     for simulated_galaxy, predicted_galaxy in zip(
         simulated_galaxies, predicted_galaxies
     ):
         noiseless_galaxy_field += simulated_galaxy
-        residual_field = field_image - predicted_galaxy
 
     results = {}
 
-    columns = ["_covariance", "_actual_flux", "_predicted_flux"]
+    columns = ["_covariance"]
     if get_blendedness:
         columns = columns + ["_blendedness"]
 
@@ -70,18 +68,12 @@ def compute_pixel_covariance_and_fluxes(
             #             plt.subplot(1, 2, 2)
             #             plt.imshow(madness_predictions[blend_number][galaxy_number][band_number])
             #             plt.show()
-            (
-                band_actual_flux,
-                band_predicted_flux,
-                pixel_covariance,
-            ) = convariance_and_flux_helper(
-                predicted_galaxy[band_number] + residual_field[band_number],
-                simulated_galaxy[band_number] + residual_field[band_number],
+            pixel_covariance = cosdist_helper(
+                predicted_galaxy[band_number],
+                simulated_galaxy[band_number],
                 sig,
             )
 
-            results[band + "_actual_flux"].append(band_actual_flux)
-            results[band + "_predicted_flux"].append(band_predicted_flux)
             results[band + "_covariance"].append(pixel_covariance)
             if get_blendedness:
                 blendedness = compute_blendedness(
@@ -93,8 +85,8 @@ def compute_pixel_covariance_and_fluxes(
         results["galaxy_num"].append(gal_num)
     return results
 
-
-def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
+@jit
+def cosdist_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
     """Calculate pixel fluxes and covariances in a band.
 
     Parameters
@@ -108,10 +100,6 @@ def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, si
 
     Returns
     -------
-    band_actual_flux: float
-        Actual flux in the band
-    band_predicted_flux: float
-        Flux predicted by the model
     pixel_covariance: float
         pixel-wise covariance in the band
 
@@ -122,15 +110,12 @@ def convariance_and_flux_helper(predicted_band_galaxy, simulated_band_galaxy, si
     ground_truth_pixels = simulated_band_galaxy.flatten()
     predicted_pixels = predicted_band_galaxy.flatten()
 
-    band_actual_flux = np.sum(simulated_band_galaxy)
-    band_predicted_flux = np.sum(predicted_band_galaxy)
-
     pixel_covariance = np.sum(np.multiply(predicted_pixels, ground_truth_pixels)) / (
         np.sqrt(np.sum(np.square(predicted_pixels)))
         * np.sqrt(np.sum(np.square(ground_truth_pixels)))
     )
 
-    return band_actual_flux, band_predicted_flux, pixel_covariance
+    return pixel_covariance
 
 
 @jit
@@ -239,14 +224,16 @@ def compute_apperture_photometry(
                     b=(b[galaxy_num] ** 2 + (psf_fwhm[band_num] / 2) ** 2) ** 0.5,
                     theta=theta[galaxy_num],
                     r=r,
+                    err=bkg_rms[band_num],
                 )
 
             else:
                 flux, fluxerr, flag = sep.sum_circle(
-                    galaxy[band_num],
-                    [xpos[galaxy_num]],
-                    [ypos[galaxy_num]],
-                    10.0,
+                    data=galaxy[band_num],
+                    x=[xpos[galaxy_num]],
+                    y=[ypos[galaxy_num]],
+                    r=10.0,
+                    err=bkg_rms,
                 )
 
             results[band + "_phot_flux"].extend(flux)

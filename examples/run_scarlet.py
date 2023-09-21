@@ -18,7 +18,7 @@ import sep
 
 from maddeb.metrics import (
     compute_apperture_photometry,
-    compute_pixel_covariance_and_fluxes,
+    compute_pixel_cosdist,
 )
 
 # logging level set to INFO
@@ -190,7 +190,7 @@ for file_num in range(num_repetations):
 
         isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
 
-        scarlet_current_res = compute_pixel_covariance_and_fluxes(
+        scarlet_current_res = compute_pixel_cosdist(
             scarlet_current_predictions,
             isolated_images,
             blend["blend_images"][field_num],
