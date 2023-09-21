@@ -260,8 +260,8 @@ def batched_CATSIMDataset(
             return (x, y)
 
         ds = ds.shuffle(buffer_size=15 * batch_size)
-        ds = ds.batch(batch_size)
         ds = ds.map(pre_process)
+        ds = ds.batch(batch_size)
         ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
 
