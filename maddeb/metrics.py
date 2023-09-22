@@ -110,6 +110,12 @@ def cosdist_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
     ground_truth_pixels = simulated_band_galaxy.flatten()
     predicted_pixels = predicted_band_galaxy.flatten()
 
+    if np.sum(ground_truth_pixels) == 0:
+        return -1
+
+    if np.sum(predicted_pixels) == 0:
+        return 0
+
     pixel_covariance = np.sum(np.multiply(predicted_pixels, ground_truth_pixels)) / (
         np.sqrt(np.sum(np.square(predicted_pixels)))
         * np.sqrt(np.sum(np.square(ground_truth_pixels)))
