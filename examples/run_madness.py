@@ -16,7 +16,7 @@ import tensorflow_probability as tfp
 from maddeb.Deblender import Deblend
 from maddeb.metrics import (
     compute_apperture_photometry,
-    compute_pixel_covariance_and_fluxes,
+    compute_pixel_cosdist,
 )
 from maddeb.utils import get_data_dir_path
 
@@ -133,7 +133,7 @@ for file_num in range(num_repetations):
 
         isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
 
-        madness_current_res = compute_pixel_covariance_and_fluxes(
+        madness_current_res = compute_pixel_cosdist(
             current_field_predictions,
             isolated_images,
             blend["blend_images"][field_num],
@@ -183,7 +183,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         madness_current_res.update(madness_photometry_current)
         madness_current_res = pd.DataFrame.from_dict(madness_current_res)
@@ -198,7 +198,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         actual_results_current["field_num"] = field_num * num_galaxies
         actual_results_current["file_num"] = file_num * num_galaxies
@@ -215,7 +215,7 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         blended_results_current["field_num"] = field_num * num_galaxies
         blended_results_current["file_num"] = file_num * num_galaxies

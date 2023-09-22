@@ -185,7 +185,7 @@ if train_models == "all" or "Deblender" in train_models:
     callbacks = define_callbacks(
         os.path.join(path_weights, "deblender"),
         lr_scheduler_epochs=lr_scheduler_epochs,
-        patience=15,
+        patience=patience,
     )
 
     # f_net.vae_model.get_layer("latent_space").activity_regularizer=None
