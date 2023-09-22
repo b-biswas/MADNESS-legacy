@@ -18,7 +18,7 @@ import sep
 
 from maddeb.metrics import (
     compute_apperture_photometry,
-    compute_pixel_covariance_and_fluxes,
+    compute_pixel_cosdist,
 )
 
 # logging level set to INFO
@@ -190,7 +190,7 @@ for file_num in range(num_repetations):
 
         isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
 
-        scarlet_current_res = compute_pixel_covariance_and_fluxes(
+        scarlet_current_res = compute_pixel_cosdist(
             scarlet_current_predictions,
             isolated_images,
             blend["blend_images"][field_num],
@@ -240,11 +240,10 @@ for file_num in range(num_repetations):
             b=5 * b,
             theta=theta,
             psf_fwhm=psf_fwhm,
-            bkg_rms=None,
+            bkg_rms=bkg_rms,
         )
         scarlet_current_res.update(scarlet_photometry_current)
         scarlet_current_res = pd.DataFrame.from_dict(scarlet_current_res)
-        print(scarlet_current_res)
         scarlet_results.append(scarlet_current_res)
     # scarlet_results = vstack(scarlet_results)
     # scarlet_results = hstack([scarlet_results, vstack(blend["blend_list"])])

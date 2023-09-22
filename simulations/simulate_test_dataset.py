@@ -7,6 +7,8 @@ import sys
 import btk
 import hickle
 
+from maddeb.utils import CustomSampling
+
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
@@ -20,7 +22,7 @@ stamp_size = 41
 density = sys.argv[1]
 
 if density not in ["high", "low"]:
-    raise ValueError("The second arguemnt should be either isolated or blended")
+    raise ValueError("The first arguemnt should be either high or low")
 
 if density == "high":
     min_number = 12
@@ -36,12 +38,15 @@ catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
 
-sampling_function = btk.sampling_functions.DefaultSampling(
-    max_number=max_number,
+index_range = [200000, 300000]
+sampling_function = CustomSampling(
+    index_range=index_range,
     min_number=min_number,
-    max_shift=maxshift,
+    max_number=max_number,
+    maxshift=maxshift,
     stamp_size=stamp_size,
     seed=seed,
+    unique=False,
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(

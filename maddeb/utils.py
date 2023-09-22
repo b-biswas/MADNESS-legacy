@@ -119,16 +119,16 @@ class CustomSampling(SamplingFunction):
             Astropy.table with entries corresponding to one blend.
 
         """
-        number_of_objects = self.rng.integers(1, self.max_number + 1)
+        number_of_objects = self.rng.integers(self.min_number, self.max_number + 1)
 
         if indexes is None:
             if self.unique:
-                current_indexes = self.indexes[:number_of_objects]
-                self.indexes = self.indexes[number_of_objects:]
                 if number_of_objects > len(self.indexes):
                     raise ValueError(
                         "Too many iterations. All galaxies have been sampled."
                     )
+                current_indexes = self.indexes[:number_of_objects]
+                self.indexes = self.indexes[number_of_objects:]
 
             else:
                 current_indexes = self.rng.choice(self.indexes, size=number_of_objects)
