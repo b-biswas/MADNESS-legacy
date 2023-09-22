@@ -178,6 +178,7 @@ def boxplot_func(
     x_label,
     y_label,
     y_label_hist,
+    x_ticks=None,
     whis=[5, 95],
     percents=[25, 75],
     errors=None,
@@ -214,6 +215,8 @@ def boxplot_func(
         x axis label
     y_label_hist: str
         y label for the histogram
+    x_ticks: list
+        x_ticks for the histogram
     whis: int/float
         percentile limit for the whiskers
     percents: int/float
@@ -261,6 +264,8 @@ def boxplot_func(
     else:
         df_plot = df_in
 
+    df_plot = df_plot[(df_plot[x]>xlim[0]) & (df_plot[x]<xlim[1])]
+
     # Drop NaN in dataframe
     df_plot = df_plot.dropna()
 
@@ -273,11 +278,7 @@ def boxplot_func(
     x_bins[0] -= 1e-5
     x_bins[-1] += 1e-5
 
-    # print(x_bins)
-
     idx = np.digitize(df_plot[x], x_bins)
-
-    # print(idx)
 
     # Initialize figure
     fig, axes = plt.subplots(
@@ -289,11 +290,9 @@ def boxplot_func(
 
     exp = np.unique(df_plot[z])
     N_exp = len(exp)
-    print(exp)
     handles = []
-    # old = np.array([0])
+
     for ik, key in enumerate(exp):
-        # print(ik, key)
         stats = {}
 
         # Compute and save statistics
@@ -303,15 +302,6 @@ def boxplot_func(
                 whis=whis,
                 percents=percents,
             )[0]
-            # if i==7:
-            #     print(old)
-            #     print(df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values)
-            #     if np.array_equal(old, df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values):
-            #             print("equal")
-            #     else:
-            #         print("not equal")
-            #     old = df_plot[y][np.logical_and(idx == i, df_plot[z] == key)].values
-            #     print(stats[i])
             median.append(stats[i]["med"])
             q1.append(stats[i]["q1"])
             q3.append(stats[i]["q3"])
@@ -350,12 +340,8 @@ def boxplot_func(
         )
 
     ax.set_xticks([])
-    ax.set_ylabel(y_label)
+    ax.set_ylabel(y_label, fontsize=12)
     ax.set_ylim(ylim[0], ylim[1])
-    # ax.set_xticks([])
-
-    # ax = ax.twiny()
-    # ax.set_xticks([])
 
     # Top plot: distribution of the parameter
     if x_scale == "log":
@@ -366,32 +352,17 @@ def boxplot_func(
     axes[1].set_xlim(xlim[0], xlim[1])
 
     axes[1].set_yticks([])
-    axes[1].set_ylabel(y_label_hist)
-    # axes[1].set_xticks([])
+    axes[1].set_ylabel(y_label_hist, fontsize=12)
 
-    axes[1].set_xlabel(x_label)
+    if x_ticks is not None:
+        axes[1].set_xticks(x_ticks)
+        axes[1].set_xticklabels(x_ticks) 
+
+    axes[1].set_xlabel(x_label, fontsize=12)
     axes[1].xaxis.tick_bottom()
 
     fig.align_ylabels(axes)
     fig.tight_layout()
     fig.subplots_adjust(hspace=0)
-
-    # # Median of boxplot, as a function of the parameter
-    # ax = axes[2]
-    # ax.axhline(y=0, c='0.5', zorder=32, lw=0.5)
-    # med_array = np.array(median).reshape(N_exp,int(len(median)/N_exp))
-    # for ik, key in enumerate(exp):
-    #     ax.plot(np.repeat(x_bins,2)[1:-1], np.repeat(med_array[ik],2), c=palette[ik])
-    # ax.set_xlim(xlim[0], xlim[1])
-    # if x_scale == 'log':
-    #     ax.set_xscale('log')
-    # ax.set_xlabel(x_label)
-    # ax.set_ylim(ylim2)
-    # ax.set_ylabel(y_label_2)
-    # ax.xaxis.tick_bottom()
-
-    # fig.align_ylabels(axes)
-    # fig.tight_layout()
-    # fig.subplots_adjust(hspace=0)
 
     return fig, median, q1, q3, whislo, whishi
