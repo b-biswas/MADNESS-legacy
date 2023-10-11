@@ -345,10 +345,10 @@ def boxplot_func(
 
     # Top plot: distribution of the parameter
     if x_scale == "log":
-        sns.histplot(df_plot[x], kde=False, log_scale=True, ax=axes[1], color="0.5")
+        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=100, ax=axes[1], color="0.5", element="step")
         # axes[0].set_xlim(np.log10(xlim[0]), np.log10(xlim[1]))
     else:
-        sns.histplot(df_plot[x], kde=False, ax=axes[1], color="0.5")
+        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=100, color="0.5", element="step")
     axes[1].set_xlim(xlim[0], xlim[1])
 
     axes[1].set_yticks([])
