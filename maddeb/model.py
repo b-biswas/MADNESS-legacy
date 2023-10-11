@@ -99,7 +99,7 @@ def create_decoder(
 
     """
     input_layer = Input(shape=(latent_dim,))
-    h = Dense(256, activation=None)(input_layer)
+    h = Dense(512, activation=None)(input_layer)
     h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
     h = Dense(w * w * filters[-1], activation=None)(tf.cast(h, tf.float32))
