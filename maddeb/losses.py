@@ -113,6 +113,39 @@ def deblender_loss_fn_wrapper(
     return deblender_ssim_loss_fn
 
 
+def deblender_encoder_loss_wrapper(
+    original_encoder, noise_sigma, latent_dim=16,
+):
+    """AI is creating summary for deblender_encoder_loss_wrapper
+
+    Args:
+        original_encoder ([type]): [description]
+        noise_sigma ([type]): [description]
+        latent_dim (int, optional): [description]. Defaults to 16.
+
+    Returns:
+        [type]: [description]
+    """
+    @tf.function
+    def deblender_encoder_loss(y, predicted_galaxy):
+
+        z_predicted = tfp.layers.MultivariateNormalTriL(
+            latent_dim,
+        )(predicted_galaxy)
+
+        y = y + tf.random.normal(y.shape[1:], [0]*noise_sigma.shape[0], noise_sigma)
+        z_original = tfp.layers.MultivariateNormalTriL(
+            latent_dim,
+        )(original_encoder(y)).sample()
+
+        loss = tf.reduce_mean((z_predicted-z_original)**2)
+
+        return loss
+    
+    return deblender_encoder_loss
+
+
+
 @tf.function(experimental_compile=True)
 def flow_loss_fn(x, output):
     """Compute the loss under predicted distribution.

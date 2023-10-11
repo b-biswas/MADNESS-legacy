@@ -180,6 +180,70 @@ class FlowVAEnet:
         )
         return hist
 
+    def train_encoder(
+        self,
+        train_generator,
+        validation_generator,
+        callbacks,
+        loss_function,
+        optimizer=tf.keras.optimizers.Adam(1e-4),
+        epochs=35,
+        verbose=1,
+    ):
+        """Train only the the components of VAE model (encoder and/or decoder).
+
+        Parameters
+        ----------
+        train_generator:
+            generator to be used for training the network.
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
+        validation_generator:
+            generator to be used for validation
+            keras.utils.Sequence returning (inputs, targets) or (inputs, targets, sample_weights)
+        callbacks: list
+            List of keras.callbacks.Callback instances.
+            List of callbacks to apply during training.
+            See tf.keras.callbacks
+        loss_function: python function
+            function that can compute the loss.
+        optimizer: str or tf.keras.optimizers
+            String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
+        epochs: int
+            number of epochs for which the model is going to be trained
+        verbose: int
+            verbose option for training.
+            'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
+            'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy.
+            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
+
+        """
+        self.vae_model.summary()
+        LOG.info("\n--- Training only encoder network ---")
+
+        # LOG.info("Initial learning rate: " + str(lr))
+
+
+        LOG.info("Number of epochs: " + str(epochs))
+
+        if loss_function is None:
+            print("pass valid loss function")
+        self.encoder.compile(
+            optimizer=optimizer,
+            loss=loss_function,
+            experimental_run_tf_function=False,
+        )
+        hist = self.encoder.fit(
+            x=train_generator,
+            epochs=epochs,
+            verbose=verbose,
+            shuffle=True,
+            validation_data=validation_generator,
+            callbacks=callbacks,
+            workers=8,
+            use_multiprocessing=True,
+        )
+        return hist
+
     def train_flow(
         self,
         train_generator,
@@ -277,6 +341,24 @@ class FlowVAEnet:
         if is_folder:
             weights_path = tf.train.latest_checkpoint(weights_path)
         self.flow_model.load_weights(weights_path).expect_partial()
+
+    def load_encoder_weights(self, weights_path, is_folder=True):
+        """Load the trained weights encoder and NF (encoder and Flow).
+
+        Parameters
+        ----------
+        weights_path: str
+            path to the weights of the vae_model.
+            The path must point to either a folder with the saved checkpoints or directly to the checkpoint.
+        is_folder: bool
+            specifies if the weights_path points to a folder.
+            If True, then the latest checkpoint is loaded.
+            else, the checkpoint specified in the path is loaded
+
+        """
+        if is_folder:
+            weights_path = tf.train.latest_checkpoint(weights_path)
+        self.encoder.load_weights(weights_path).expect_partial()
 
     def randomize_encoder(self):
         """Randomize the weights of encoder to restart training."""
