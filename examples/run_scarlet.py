@@ -44,7 +44,7 @@ density_level = density + "_density"
 psf_fwhm = []
 for band in ["u", "g", "r", "i", "z", "y"]:
     filt = survey.get_filter(band)
-    psf_fwhm.append(filt.psf_fwhm.value * 5)
+    psf_fwhm.append(filt.psf_fwhm.value)
 
 
 # Define function to make predictions with scarlet
@@ -239,7 +239,7 @@ for file_num in range(num_repetations):
             a=5 * a,
             b=5 * b,
             theta=theta,
-            psf_fwhm=psf_fwhm,
+            psf_fwhm=np.array(psf_fwhm)*5,
             bkg_rms=bkg_rms,
         )
         scarlet_current_res.update(scarlet_photometry_current)
