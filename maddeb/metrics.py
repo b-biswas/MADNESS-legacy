@@ -3,6 +3,7 @@
 import numpy as np
 import sep
 from numba import jit
+from skimage.metrics import structural_similarity
 
 
 def compute_pixel_cosdist(
@@ -38,7 +39,7 @@ def compute_pixel_cosdist(
 
     results = {}
 
-    columns = ["_covariance"]
+    columns = ["_cosd", "_ssim"]
     if get_blendedness:
         columns = columns + ["_blendedness"]
 
@@ -74,7 +75,14 @@ def compute_pixel_cosdist(
                 sig,
             )
 
-            results[band + "_covariance"].append(pixel_covariance)
+            ssim = structural_similarity(
+                predicted_galaxy[band_number]/np.amax(predicted_galaxy[band_number]),
+                simulated_galaxy[band_number]/np.amax(simulated_galaxy[band_number]),
+            )
+
+            results[band + "_cosd"].append(pixel_covariance)
+
+            results[band + "_ssim"].append(ssim)
             if get_blendedness:
                 blendedness = compute_blendedness(
                     isolated_galaxy_band=simulated_galaxy[band_number],
@@ -151,7 +159,7 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     return blendedness
 
 
-def compute_apperture_photometry(
+def compute_aperture_photometry(
     field_image,
     predictions,
     xpos,
@@ -163,7 +171,7 @@ def compute_apperture_photometry(
     psf_fwhm=None,
     r=2,
 ):
-    """Calculate apperture photometry.
+    """Calculate aperture photometry.
 
     Parameters
     ----------
