@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from matplotlib.cbook import _reshape_2D
+import matplotlib as mpl
 
 
 # Function adapted from matplotlib.cbook
@@ -179,12 +180,14 @@ def boxplot_func(
     y_label,
     y_label_hist,
     x_ticks=None,
+    x_ticklabels=None,
     whis=[5, 95],
     percents=[25, 75],
     errors=None,
     legend_remove=False,
     legend_location="upper left",
     palette=["#3498db", "#e74c3c"],
+    ls=None,
     nbins=11,
 ):
     """Return boxplot figure, median and standard deviation.
@@ -217,6 +220,8 @@ def boxplot_func(
         y label for the histogram
     x_ticks: list
         x_ticks for the histogram
+    x_tickslabels: list
+        x_ticklables for the histogram
     whis: int/float
         percentile limit for the whiskers
     percents: int/float
@@ -229,6 +234,8 @@ def boxplot_func(
         location of the legend.
     palette:
         color palette
+    ls: 
+        list of line styles
     nbins:
         number of bins to split data
 
@@ -257,6 +264,8 @@ def boxplot_func(
     import matplotlib as mpl
 
     mpl.rcdefaults()
+    mpl.rcParams['text.usetex'] = True
+    mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
     # Drop error if necessary
     if errors is not None:
@@ -280,11 +289,12 @@ def boxplot_func(
 
     idx = np.digitize(df_plot[x], x_bins)
 
+    sns.set(font_scale=1.25)
+    sns.set_style("whitegrid", {"grid.color": ".85", 'grid.linestyle': '--'})
     # Initialize figure
     fig, axes = plt.subplots(
         2, 1, figsize=(6, 4), gridspec_kw={"height_ratios": [10, 2]}
     )
-
     # Second plot: boxplot generated with seaborn split as a function of the parameter
     ax = axes[0]
 
@@ -312,13 +322,17 @@ def boxplot_func(
             [stats[i] for i in range(1, len(x_bins))],
             positions=np.arange(len(x_bins) - 1)
             + 0.5
-            + 0.9 * (ik - (N_exp - 1.0) / 2.0) / N_exp,
-            widths=0.6 / len(np.unique(df_plot[z])),
+            + 0.7 * (ik - (N_exp - 1.0) / 2.0) / N_exp,
+            widths=0.4 / len(np.unique(df_plot[z])),
             showfliers=False,
             patch_artist=True,
             boxprops={
                 "facecolor": (*mpl.colors.to_rgba(palette[ik])[:3], 0.25),
                 "edgecolor": palette[ik],
+                "ls": ls[ik] if ls is not None else "-",
+            },
+            whiskerprops={
+                "ls": ls[ik] if ls is not None else "-",
             },
         )
 
@@ -333,32 +347,44 @@ def boxplot_func(
         ax.legend(
             handles,
             legend,
-            frameon=False,
+            frameon=True,
             loc=legend_location,
-            borderpad=0.1,
-            fontsize=10,
         )
 
+    ax.grid(visible=True, which='minor')
+    ax.grid(visible=False, which='major')
+
     ax.set_xticks([])
-    ax.set_ylabel(y_label, fontsize=12)
+    ax.set_xlim(0, nbins)
+    ax.set_xticks(np.arange(nbins), minor=True)
+
+    ax.set_ylabel(y_label)
     ax.set_ylim(ylim[0], ylim[1])
 
     # Top plot: distribution of the parameter
     if x_scale == "log":
-        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=100, ax=axes[1], color="0.5", element="step")
+        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=250, ax=axes[1], color="0.25", alpha=.05, element="poly")
         # axes[0].set_xlim(np.log10(xlim[0]), np.log10(xlim[1]))
     else:
-        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=100, color="0.5", element="step")
+        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=250, color="0.25", alpha=.05, element="poly")
+    
     axes[1].set_xlim(xlim[0], xlim[1])
 
+    axes[1].grid(visible=True, which='minor')
+    axes[1].grid(visible=False, which='major')
+
     axes[1].set_yticks([])
-    axes[1].set_ylabel(y_label_hist, fontsize=12)
+    axes[1].set_ylabel(y_label_hist)
+
+    axes[1].set_xticks(x_bins, minor=True)
+    axes[1].tick_params(which='minor', width=0)
+    axes[1].set_xticklabels([], minor=True)
 
     if x_ticks is not None:
         axes[1].set_xticks(x_ticks)
-        axes[1].set_xticklabels(x_ticks) 
+        axes[1].set_xticklabels(x_ticks if x_ticklabels is None else x_ticklabels)
 
-    axes[1].set_xlabel(x_label, fontsize=12)
+    axes[1].set_xlabel(x_label)
     axes[1].xaxis.tick_bottom()
 
     fig.align_ylabels(axes)
