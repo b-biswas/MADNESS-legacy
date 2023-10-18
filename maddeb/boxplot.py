@@ -181,6 +181,8 @@ def boxplot_func(
     y_label_hist,
     x_ticks=None,
     x_ticklabels=None,
+    y_ticks=None, 
+    y_ticklabels=None,
     whis=[5, 95],
     percents=[25, 75],
     errors=None,
@@ -189,6 +191,7 @@ def boxplot_func(
     palette=["#3498db", "#e74c3c"],
     ls=None,
     nbins=11,
+    x_major_grid=False,
 ):
     """Return boxplot figure, median and standard deviation.
 
@@ -238,6 +241,8 @@ def boxplot_func(
         list of line styles
     nbins:
         number of bins to split data
+    x_major_grid: 
+        hide grids corresponding to major ticks in x-axis
 
     Returns
     -------
@@ -361,20 +366,25 @@ def boxplot_func(
 
     ax.grid(axis='y', visible=False, which='major')
     ax.axhline(0, ls="--", color=plt.cm.gray(.85), linewidth=1)
+    if y_ticks is not None: 
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabel(y_ticklabels)
+    ax.yaxis.tick_left()
+
     ax.set_ylabel(y_label)
     ax.set_ylim(ylim[0], ylim[1])
 
     # Top plot: distribution of the parameter
     if x_scale == "log":
-        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=250, ax=axes[1], color="0.25", alpha=.05, element="poly")
+        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=250, ax=axes[1], color="0.25", alpha=.2, element="poly")
         # axes[0].set_xlim(np.log10(xlim[0]), np.log10(xlim[1]))
     else:
-        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=250, color="0.25", alpha=.05, element="poly")
+        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=250, color="0.25", alpha=.2, element="poly")
     
     axes[1].set_xlim(xlim[0], xlim[1])
 
     axes[1].grid(visible=True, which='minor')
-    axes[1].grid(visible=False, which='major')
+    axes[1].grid(visible=x_major_grid, which='major')
 
     axes[1].set_yticks([])
     axes[1].set_ylabel(y_label_hist)
