@@ -351,13 +351,16 @@ def boxplot_func(
             loc=legend_location,
         )
 
-    ax.grid(visible=True, which='minor')
-    ax.grid(visible=False, which='major')
+    ax.grid(axis='x', visible=True, which='minor')
+
+    ax.tick_params(axis='x', which='minor', width=0)
 
     ax.set_xticks([])
     ax.set_xlim(0, nbins)
     ax.set_xticks(np.arange(nbins), minor=True)
 
+    ax.grid(axis='y', visible=False, which='major')
+    ax.axhline(0, ls="--", color=plt.cm.gray(.85), linewidth=1)
     ax.set_ylabel(y_label)
     ax.set_ylim(ylim[0], ylim[1])
 
@@ -376,16 +379,18 @@ def boxplot_func(
     axes[1].set_yticks([])
     axes[1].set_ylabel(y_label_hist)
 
-    axes[1].set_xticks(x_bins, minor=True)
-    axes[1].tick_params(which='minor', width=0)
-    axes[1].set_xticklabels([], minor=True)
-
     if x_ticks is not None:
         axes[1].set_xticks(x_ticks)
         axes[1].set_xticklabels(x_ticks if x_ticklabels is None else x_ticklabels)
 
+    axes[1].set_xticks(x_bins, minor=True)
+    axes[1].tick_params(which='minor', width=0)
+    axes[1].set_xticklabels([], minor=True)
+
     axes[1].set_xlabel(x_label)
     axes[1].xaxis.tick_bottom()
+
+
 
     fig.align_ylabels(axes)
     fig.tight_layout()
