@@ -53,6 +53,9 @@ class Deblend:
         self.flow_vae_net.flow_model.trainable = False
 
         self.flow_vae_net.load_vae_weights(
+            weights_path=os.path.join(weights_path, "vae/val_loss")
+        )
+        self.flow_vae_net.load_encoder_weights(
             weights_path=os.path.join(weights_path, "deblender/val_loss")
         )
         self.flow_vae_net.vae_model.trainable = False
@@ -87,12 +90,13 @@ class Deblend:
         max_iter=60,
         use_log_prob=True,
         channel_last=False,
-        linear_norm_coeff=80000,
+        linear_norm_coeff=10000,
         convergence_criterion=None,
-        use_debvader=False,
+        use_debvader=True,
         optimizer=None,
         lr=0.075,
         compute_sig_dynamically=False,
+        map_solution=True,
     ):
         """Run the Deblending operation.
 
@@ -129,7 +133,9 @@ class Deblend:
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
-
+        map_solution: bool
+            To obtain the map solution (MADNESS) or debvader solution. 
+            Both `map_solution` and `use_debvader` cannot be False at the same time.
         """
         # tf.config.run_functions_eagerly(False)
         self.linear_norm_coeff = linear_norm_coeff
@@ -163,6 +169,7 @@ class Deblend:
             optimizer=optimizer,
             lr=lr,
             compute_sig_dynamically=compute_sig_dynamically,
+            map_solution=map_solution,
         )
 
     def get_components(self):
@@ -455,10 +462,11 @@ class Deblend:
         self,
         initZ=None,
         convergence_criterion=None,
-        use_debvader=False,
+        use_debvader=True,
         optimizer=None,
         lr=0.075,
         compute_sig_dynamically=False,
+        map_solution=True,
     ):
         """Perform the gradient descent step to separate components (galaxies).
 
@@ -477,6 +485,9 @@ class Deblend:
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
+        map_solution: bool
+            To obtain the map solution or debvader solution. 
+            Both `map_solution` and `use_debvader` cannot be False at the same time.
 
         Returns
         -------
@@ -487,6 +498,10 @@ class Deblend:
         # X = self.postage_stamp
         # if not self.channel_last:
         #     X = np.transpose(X, axes=(1, 2, 0))
+        LOG.info("use debvader: "+ str(use_debvader))
+        LOG.info("MAP solution: "+ str(map_solution))
+        if not map_solution and not use_debvader:
+            raise ValueError("Both use_debvader and map_solution cannot be False at the same time") 
 
         m, n, b = np.shape(self.postage_stamp)
 
@@ -511,95 +526,97 @@ class Deblend:
             z = tf.Variable(initZ.mean())
 
         # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
+        if map_solution:
+            if optimizer is None:
+                if isinstance(lr, tf.keras.optimizers.schedules):
+                    lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
+                        initial_learning_rate=0.2,
+                        decay_steps=30,
+                        decay_rate=0.9,
+                        staircase=False,
+                    )
+                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
-        if optimizer is None:
-            if isinstance(lr, tf.keras.optimizers.schedules):
-                lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-                    initial_learning_rate=0.2,
-                    decay_steps=30,
-                    decay_rate=0.9,
-                    staircase=False,
-                )
-            optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
+            LOG.info("\n--- Starting gradient descent in the latent space ---")
+            LOG.info("Maximum number of iterations: " + str(self.max_iter))
+            # LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
+            LOG.info("Number of Galaxies: " + str(self.num_components))
+            LOG.info("Dimensions of latent space: " + str(self.latent_dim))
 
-        LOG.info("\n--- Starting gradient descent in the latent space ---")
-        LOG.info("Maximum number of iterations: " + str(self.max_iter))
-        # LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
-        LOG.info("Number of Galaxies: " + str(self.num_components))
-        LOG.info("Dimensions of latent space: " + str(self.latent_dim))
+            t0 = time.time()
 
-        t0 = time.time()
+            index_pos_to_sub = self.get_index_pos_to_sub()
+            # index_pos_to_sub = tf.TensorArray(
+            #   tf.int32,
+            #   size=np.shape(index_pos_to_sub)[0],
+            #   clear_after_read=False).unstack(index_pos_to_sub)
 
-        index_pos_to_sub = self.get_index_pos_to_sub()
-        # index_pos_to_sub = tf.TensorArray(
-        #   tf.int32,
-        #   size=np.shape(index_pos_to_sub)[0],
-        #   clear_after_read=False).unstack(index_pos_to_sub)
+            padding_infos = self.get_padding_infos()
+            # padding_infos = tf.TensorArray(
+            #   tf.int32,
+            #   size=np.shape(padding_infos)[0],
+            #   clear_after_read=False).unstack(padding_infos)
 
-        padding_infos = self.get_padding_infos()
-        # padding_infos = tf.TensorArray(
-        #   tf.int32,
-        #   size=np.shape(padding_infos)[0],
-        #   clear_after_read=False).unstack(padding_infos)
+            def trace_fn(traceable_quantities):
+                return {"loss": traceable_quantities.loss}
 
-        def trace_fn(traceable_quantities):
-            return {"loss": traceable_quantities.loss}
+            if self.noise_sigma is None:
+                noise_level = self.compute_noise_sigma()
 
-        if self.noise_sigma is None:
-            noise_level = self.compute_noise_sigma()
+            # Calculate sigma^2 with gaussian approximation to poisson noise.
+            # Note here that self.postage stamp is normalized but it must be divided again
+            # to ensure that the loglikelihood does not change due to scaling/normalizing
 
-        # Calculate sigma^2 with gaussian approximation to poisson noise.
-        # Note here that self.postage stamp is normalized but it must be divided again
-        # to ensure that the loglikelihood does not change due to scaling/normalizing
+            sig_sq = self.postage_stamp / self.linear_norm_coeff
+            # sig_sq[sig_sq <= (5 * noise_level)] = 0
+            sig_sq = tf.convert_to_tensor(
+                np.add(sig_sq, np.square(noise_level)),
+                dtype=tf.float32,
+            )
 
-        sig_sq = self.postage_stamp / self.linear_norm_coeff
-        # sig_sq[sig_sq <= (5 * noise_level)] = 0
-        sig_sq = tf.convert_to_tensor(
-            np.add(sig_sq, np.square(noise_level)),
-            dtype=tf.float32,
-        )
+            # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
-        # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
-
-        results = tfp.math.minimize(
-            loss_fn=self.generate_grad_step_loss(
-                z=z,
-                postage_stamp=tf.convert_to_tensor(
-                    self.postage_stamp, dtype=tf.float32
+            results = tfp.math.minimize(
+                loss_fn=self.generate_grad_step_loss(
+                    z=z,
+                    postage_stamp=tf.convert_to_tensor(
+                        self.postage_stamp, dtype=tf.float32
+                    ),
+                    compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
+                    sig_sq=sig_sq,
+                    use_scatter_and_sub=tf.convert_to_tensor(True),
+                    index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
+                    padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
                 ),
-                compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
-                sig_sq=sig_sq,
-                use_scatter_and_sub=tf.convert_to_tensor(True),
-                index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
-                padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
-            ),
-            trainable_variables=[z],
-            num_steps=self.max_iter,
-            optimizer=optimizer,
-            convergence_criterion=convergence_criterion,
-        )
+                trainable_variables=[z],
+                num_steps=self.max_iter,
+                optimizer=optimizer,
+                convergence_criterion=convergence_criterion,
+            )
 
-        # for i in range(self.max_iter):
-        # print("log prob flow:" + str(log_likelihood.numpy()))
-        # print("reconstruction loss"+str(reconstruction_loss.numpy()))
-        #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+            # for i in range(self.max_iter):
+            # print("log prob flow:" + str(log_likelihood.numpy()))
+            # print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
-        """ LOG.info(f"Final loss {output.objective_value.numpy()}")
-        LOG.info("converged "+ str(output.converged.numpy()))
-        LOG.info("converged "+ str(output.num_iterations.numpy()))
+            """ LOG.info(f"Final loss {output.objective_value.numpy()}")
+            LOG.info("converged "+ str(output.converged.numpy()))
+            LOG.info("converged "+ str(output.num_iterations.numpy()))
 
-        z_flatten = output.position
-        z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
-        # for i in range(self.max_iter):
-        # print("log prob flow:" + str(log_likelihood.numpy()))
-        # print("reconstruction loss"+str(reconstruction_loss.numpy()))
-        #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
+            z_flatten = output.position
+            z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
+            # for i in range(self.max_iter):
+            # print("log prob flow:" + str(log_likelihood.numpy()))
+            # print("reconstruction loss"+str(reconstruction_loss.numpy()))
+            #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
 
-        LOG.info("--- Gradient descent complete ---")
-        LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
-
+            LOG.info("--- Gradient descent complete ---")
+            LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
+        else:
+            results=None
         self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
         self.z = z
+        
         # print(self.components)
 
         return results
