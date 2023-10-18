@@ -138,7 +138,8 @@ def deblender_encoder_loss_wrapper(
             latent_dim,
         )(original_encoder(y)).sample()
 
-        loss = tf.reduce_mean((z_predicted-z_original)**2)
+        l2_norm = tf.sqrt(tf.reduce_sum((z_predicted-z_original)**2))
+        loss = tf.reduce_mean(l2_norm)
 
         return loss
     
