@@ -38,7 +38,7 @@ catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
 survey = btk.survey.get_surveys("LSST")
 seed = 13
 
-index_range = [200000, 300000]
+index_range = [200000, len(catalog.table)]
 sampling_function = CustomSampling(
     index_range=index_range,
     min_number=min_number,

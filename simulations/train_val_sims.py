@@ -41,7 +41,7 @@ if blend_type == "isolated":
         batch_size = 100
 else:
     unique_galaxies = False
-    max_number = 4
+    max_number = 3
     batch_size = 100
 
 seed = 993
@@ -51,7 +51,7 @@ SAVE_PATH = "/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset"
 print("saving data at " + SAVE_PATH)
 
 stamp_size = 15
-maxshift = 1.5
+maxshift = 2
 
 if dataset == "training":
     index_range = [0, 150000]
@@ -87,7 +87,7 @@ draw_generator = btk.draw_blends.CatsimGenerator(
 
 total_galaxy_stamps = num_batches * batch_size
 stamp_counter = 0
-
+shift_rng = np.random.default_rng(12345)
 for batch_num in range(num_batches):
 
     print("simulating file number:" + str(batch_num))
@@ -106,9 +106,12 @@ for batch_num in range(num_batches):
             isolated_image = batch["isolated_images"][blended_image_num][galaxy_num]
             x_pos = batch["blend_list"][blended_image_num]["y_peak"][galaxy_num]
             y_pos = batch["blend_list"][blended_image_num]["x_peak"][galaxy_num]
-            shift_rng = np.random.default_rng(12345)
-            x_shift = shift_rng.random() - 0.5
-            y_shift = shift_rng.random() - 0.5
+
+            # x_shift = shift_rng.random() - 0.5
+            # y_shift = shift_rng.random() - 0.5
+            x_shift = 0
+            y_shift = 0
+
             pos = (x_pos + x_shift, y_pos + y_shift)
             gal_blended = extract_cutouts(
                 blended_image,

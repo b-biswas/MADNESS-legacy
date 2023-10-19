@@ -16,10 +16,7 @@ import scarlet
 import scarlet.psf
 import sep
 
-from maddeb.metrics import (
-    compute_apperture_photometry,
-    compute_pixel_cosdist,
-)
+from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -44,7 +41,7 @@ density_level = density + "_density"
 psf_fwhm = []
 for band in ["u", "g", "r", "i", "z", "y"]:
     filt = survey.get_filter(band)
-    psf_fwhm.append(filt.psf_fwhm.value * 5)
+    psf_fwhm.append(filt.psf_fwhm.value)
 
 
 # Define function to make predictions with scarlet
@@ -82,7 +79,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     )
 
     model_psf = scarlet.GaussianPSF(
-        sigma=(0.382, 0.365, 0.344, 0.335, 0.327, 0.323)
+        sigma=np.asarray(psf_fwhm) / 2.355
     )  # These numbers are derived from the FWHM given for LSST filters in the galcheat v1.0 repo https://github.com/aboucaud/galcheat/blob/main/galcheat/data/LSST.yaml
     model_frame = scarlet.Frame(image.shape, psf=model_psf, channels=filters, wcs=wcs)
 
@@ -231,7 +228,7 @@ for file_num in range(num_repetations):
 
         theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
 
-        scarlet_photometry_current = compute_apperture_photometry(
+        scarlet_photometry_current = compute_aperture_photometry(
             field_image=blend["blend_images"][field_num],
             predictions=scarlet_current_predictions,
             xpos=blend["blend_list"][field_num]["x_peak"],
@@ -239,7 +236,7 @@ for file_num in range(num_repetations):
             a=5 * a,
             b=5 * b,
             theta=theta,
-            psf_fwhm=psf_fwhm,
+            psf_fwhm=np.array(psf_fwhm) * 5,
             bkg_rms=bkg_rms,
         )
         scarlet_current_res.update(scarlet_photometry_current)

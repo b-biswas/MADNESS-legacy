@@ -14,10 +14,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from maddeb.Deblender import Deblend
-from maddeb.metrics import (
-    compute_apperture_photometry,
-    compute_pixel_cosdist,
-)
+from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
 from maddeb.utils import get_data_dir_path
 
 # logging level set to INFO
@@ -29,6 +26,9 @@ survey = btk.survey.get_surveys("LSST")
 
 density = sys.argv[1]
 run_name = sys.argv[2]
+map_solution = sys.argv[3].lower() == "true"
+
+LOG.info(map_solution)
 
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -93,15 +93,14 @@ for file_num in range(num_repetations):
         # )
 
         convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            rtol=0.001,
-            atol=0.0001 * 45 * 45 * len(current_blend) * 3,
-            min_num_steps=60,
-            window_size=25,
+            rtol=0.05,
+            min_num_steps=40,
+            window_size=15,
         )
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.2,
-            decay_steps=30,
+            initial_learning_rate=0.25,
+            decay_steps=20,
             decay_rate=0.9,
             staircase=False,
         )
@@ -118,6 +117,7 @@ for file_num in range(num_repetations):
             optimizer=optimizer,
             use_debvader=True,
             compute_sig_dynamically=False,
+            map_solution=map_solution,
         )
         padding_infos = deb.get_padding_infos()
         for component_num in range(deb.num_components):
@@ -174,7 +174,7 @@ for file_num in range(num_repetations):
 
         theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
 
-        madness_photometry_current = compute_apperture_photometry(
+        madness_photometry_current = compute_aperture_photometry(
             field_image=blend["blend_images"][field_num],
             predictions=current_field_predictions,
             xpos=blend["blend_list"][field_num]["x_peak"],
@@ -189,7 +189,7 @@ for file_num in range(num_repetations):
         madness_current_res = pd.DataFrame.from_dict(madness_current_res)
         madness_results.append(madness_current_res)
 
-        actual_results_current = compute_apperture_photometry(
+        actual_results_current = compute_aperture_photometry(
             field_image=blend["blend_images"][field_num],
             predictions=blend["isolated_images"][field_num],
             xpos=blend["blend_list"][field_num]["x_peak"],
@@ -206,7 +206,7 @@ for file_num in range(num_repetations):
         actual_results_current = pd.DataFrame.from_dict(actual_results_current)
         actual_photometry.append(actual_results_current)
 
-        blended_results_current = compute_apperture_photometry(
+        blended_results_current = compute_aperture_photometry(
             field_image=blend["blend_images"][field_num],
             predictions=None,
             xpos=blend["blend_list"][field_num]["x_peak"],
@@ -243,7 +243,7 @@ for file_num in range(num_repetations):
         results_path,
         density_level,
         run_name,
-        "madness_results",
+        "madness_results" if map_solution else "debvader_results",
         str(file_num) + ".pkl",
     )
     # np.save(save_file_name,

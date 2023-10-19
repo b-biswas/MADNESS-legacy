@@ -46,9 +46,9 @@ class CustomSampling(SamplingFunction):
 
     def __init__(
         self,
+        index_range,
         max_number=2,
         min_number=1,
-        index_range=None,
         stamp_size=24.0,
         maxshift=None,
         unique=True,
@@ -81,7 +81,7 @@ class CustomSampling(SamplingFunction):
         self.maxshift = maxshift if maxshift else self.stamp_size / 10.0
         self.index_range = index_range
         self.unique = unique
-        self.indexes = list(np.arange(index_range[0], index_range[1] + 1))
+        self.indexes = list(np.arange(index_range[0], index_range[1]))
 
     @property
     def compatible_catalogs(self):

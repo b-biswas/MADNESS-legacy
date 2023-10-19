@@ -13,7 +13,7 @@ from galcheat.utilities import mean_sky_level
 from maddeb.callbacks import changeAlpha, define_callbacks
 from maddeb.dataset_generator import batched_CATSIMDataset
 from maddeb.FlowVAEnet import FlowVAEnet
-from maddeb.losses import deblender_loss_fn_wrapper
+from maddeb.losses import deblender_encoder_loss_wrapper, deblender_loss_fn_wrapper
 from maddeb.utils import get_data_dir_path
 
 tfd = tfp.distributions
@@ -67,6 +67,8 @@ path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
+    train_data_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_training",
+    val_data_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_validation",
     tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_tfDataset",
     linear_norm_coeff=linear_norm_coeff,
     batch_size=batch_size,
@@ -74,7 +76,7 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
     y_col_name="isolated_gal_stamps",
 )
 
-if train_models == "all" or "GenerativeModel" in train_models:
+if train_models.lower() == "all" or "vae" in train_models:
 
     ssim_fraction = 0.25
     # Define all used callbacks
@@ -125,7 +127,8 @@ if train_models == "all" or "GenerativeModel" in train_models:
         track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
-            sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff
+            sigma_cutoff=noise_sigma,
+            linear_norm_coeff=linear_norm_coeff,
         ),
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),
@@ -133,7 +136,7 @@ if train_models == "all" or "GenerativeModel" in train_models:
 
     np.save(path_weights + "/train_vae_history.npy", hist_vae.history)
 
-if train_models == "all" or "NormalizingFlow" in train_models:
+if train_models.lower() == "all" or "nf" in train_models:
 
     num_nf_layers = 6
     f_net = FlowVAEnet(
@@ -160,13 +163,13 @@ if train_models == "all" or "NormalizingFlow" in train_models:
         callbacks=callbacks,
         optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.01),
         epochs=flow_epochs,
-        verbose=1,
+        verbose=2,
     )
 
     np.save(os.path.join(path_weights, "train_flow_history.npy"), hist_flow.history)
 
 
-if train_models == "all" or "Deblender" in train_models:
+if train_models.lower() == "all" or "deblender" in train_models:
 
     f_net.flow.trainable = False
     # deblend_prior = f_net.td
@@ -181,6 +184,13 @@ if train_models == "all" or "Deblender" in train_models:
     f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
     # f_net.randomize_encoder()
 
+    f_net_original = FlowVAEnet(
+        latent_dim=latent_dim,
+        kl_prior=None,
+        kl_weight=0,
+    )
+    f_net_original.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
+
     # Define all used callbacks
     callbacks = define_callbacks(
         os.path.join(path_weights, "deblender"),
@@ -191,6 +201,8 @@ if train_models == "all" or "Deblender" in train_models:
     # f_net.vae_model.get_layer("latent_space").activity_regularizer=None
 
     ds_blended_train, ds_blended_val = batched_CATSIMDataset(
+        train_data_dir=None,
+        val_data_dir=None,
         tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/blended_tfDataset",
         linear_norm_coeff=linear_norm_coeff,
         batch_size=batch_size,
@@ -198,17 +210,16 @@ if train_models == "all" or "Deblender" in train_models:
         y_col_name="isolated_gal_stamps",
     )
 
-    hist_deblender = f_net.train_vae(
+    hist_deblender = f_net.train_encoder(
         ds_blended_train,
         ds_blended_val,
         callbacks=callbacks,
         epochs=deblender_epochs,
-        train_encoder=True,
-        train_decoder=False,
-        track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
-        loss_function=deblender_loss_fn_wrapper(
-            sigma_cutoff=noise_sigma, linear_norm_coeff=linear_norm_coeff
+        loss_function=deblender_encoder_loss_wrapper(
+            original_encoder=f_net_original.encoder,
+            noise_sigma=noise_sigma,
+            latent_dim=latent_dim,
         ),
         verbose=2,
         # loss_function=vae_loss_fn_wrapper(sigma=noise_sigma, linear_norm_coeff=linear_norm_coeff),

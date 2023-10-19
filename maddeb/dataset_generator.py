@@ -80,7 +80,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         # Make sure that some data exists
         assert len(list_of_images) > 0
 
-        Logger(f"File list is populated .. there is {len(list_of_images)} files")
+        Logger(f"File list is populated .. there are {len(list_of_images)} files")
 
         return list_of_images
 
@@ -186,6 +186,8 @@ def batched_CATSIMDataset(
     batch_size,
     x_col_name="blended_gal_stamps",
     y_col_name="isolated_gal_stamps",
+    train_data_dir=None,
+    val_data_dir=None,
 ):
     """Load generated tf dataset.
 
@@ -203,6 +205,12 @@ def batched_CATSIMDataset(
     y_col_name: string
         column name for loss computation of the ML models.
         Defaults to "isolated_gal_stamps".
+    train_data_dir: string
+        Path to .npy files for training.
+        Ignored if TF Dataset is already present in output_dir.
+    val_data_dir: string
+        Path to .npy files for validation.
+        Ignored if TF Dataset is already present in output_dir.
 
     Returns
     -------
@@ -266,8 +274,8 @@ def batched_CATSIMDataset(
         return ds
 
     ds = loadCATSIMDataset(
-        train_data_dir=None,
-        val_data_dir=None,
+        train_data_dir=train_data_dir,
+        val_data_dir=val_data_dir,
         output_dir=tf_dataset_dir,
     )
 

@@ -113,6 +113,49 @@ def deblender_loss_fn_wrapper(
     return deblender_ssim_loss_fn
 
 
+def deblender_encoder_loss_wrapper(
+    original_encoder,
+    noise_sigma,
+    latent_dim=16,
+):
+    """AI is creating summary for deblender_encoder_loss_wrapper.
+
+    Parameters
+    ----------
+    original_encoder:
+        original trained encoder (VAE as generative model).
+    noise_sigma: list/array
+        noise level in the bands.
+    latent_dim: int
+        Number of latent dimensions. Defaults to 16.
+
+    Return
+    ------
+    deblender_encoder_loss:
+        function to compute l2 norm
+
+    """
+
+    @tf.function
+    def deblender_encoder_loss(y, predicted_galaxy):
+
+        z_predicted = tfp.layers.MultivariateNormalTriL(
+            latent_dim,
+        )(predicted_galaxy)
+
+        y = y + tf.random.normal(y.shape[1:], [0] * noise_sigma.shape[0], noise_sigma)
+        z_original = tfp.layers.MultivariateNormalTriL(
+            latent_dim,
+        )(original_encoder(y)).sample()
+
+        l2_norm = tf.sqrt(tf.reduce_sum((z_predicted - z_original) ** 2))
+        loss = tf.reduce_mean(l2_norm)
+
+        return loss
+
+    return deblender_encoder_loss
+
+
 @tf.function(experimental_compile=True)
 def flow_loss_fn(x, output):
     """Compute the loss under predicted distribution.
@@ -124,8 +167,8 @@ def flow_loss_fn(x, output):
     output: tensor
         log probability output over a batch from Normalizing Flow
 
-    Returns
-    -------
+    Return
+    ------
     objective: float
         objective to be minimized by the minimizer.
 
