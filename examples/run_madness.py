@@ -96,15 +96,14 @@ for file_num in range(num_repetations):
         # )
 
         convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            rtol=0.001,
-            atol=0.0001 * 45 * 45 * len(current_blend) * 3,
-            min_num_steps=60,
-            window_size=25,
+            rtol=0.05,
+            min_num_steps=40,
+            window_size=15,
         )
         # convergence_criterion = None
         lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.2,
-            decay_steps=30,
+            initial_learning_rate=0.25,
+            decay_steps=20,
             decay_rate=0.9,
             staircase=False,
         )
