@@ -2,11 +2,11 @@
 
 import itertools
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from matplotlib.cbook import _reshape_2D
-import matplotlib as mpl
 
 
 # Function adapted from matplotlib.cbook
@@ -181,7 +181,7 @@ def boxplot_func(
     y_label_hist,
     x_ticks=None,
     x_ticklabels=None,
-    y_ticks=None, 
+    y_ticks=None,
     y_ticklabels=None,
     whis=[5, 95],
     percents=[25, 75],
@@ -222,9 +222,13 @@ def boxplot_func(
     y_label_hist: str
         y label for the histogram
     x_ticks: list
-        x_ticks for the histogram
-    x_tickslabels: list
-        x_ticklables for the histogram
+        x_ticks for the lower histogram
+    x_ticklabels: list
+        x_ticklables for the lower histogram
+    y_ticks:
+        y_ticks for the top histogram
+    y_ticklabels:
+        y_ticklables for the top histogram
     whis: int/float
         percentile limit for the whiskers
     percents: int/float
@@ -237,11 +241,11 @@ def boxplot_func(
         location of the legend.
     palette:
         color palette
-    ls: 
+    ls:
         list of line styles
     nbins:
         number of bins to split data
-    x_major_grid: 
+    x_major_grid:
         hide grids corresponding to major ticks in x-axis
 
     Returns
@@ -266,11 +270,9 @@ def boxplot_func(
     whislo = []
     whishi = []
 
-    import matplotlib as mpl
-
     mpl.rcdefaults()
-    mpl.rcParams['text.usetex'] = True
-    mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
+    mpl.rcParams["text.usetex"] = True
+    mpl.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
 
     # Drop error if necessary
     if errors is not None:
@@ -278,7 +280,7 @@ def boxplot_func(
     else:
         df_plot = df_in
 
-    df_plot = df_plot[(df_plot[x]>xlim[0]) & (df_plot[x]<xlim[1])]
+    df_plot = df_plot[(df_plot[x] > xlim[0]) & (df_plot[x] < xlim[1])]
 
     # Drop NaN in dataframe
     df_plot = df_plot.dropna()
@@ -295,7 +297,7 @@ def boxplot_func(
     idx = np.digitize(df_plot[x], x_bins)
 
     sns.set(font_scale=1.25)
-    sns.set_style("whitegrid", {"grid.color": ".85", 'grid.linestyle': '--'})
+    sns.set_style("whitegrid", {"grid.color": ".85", "grid.linestyle": "--"})
     # Initialize figure
     fig, axes = plt.subplots(
         2, 1, figsize=(6, 4), gridspec_kw={"height_ratios": [10, 2]}
@@ -356,17 +358,17 @@ def boxplot_func(
             loc=legend_location,
         )
 
-    ax.grid(axis='x', visible=True, which='minor')
+    ax.grid(axis="x", visible=True, which="minor")
 
-    ax.tick_params(axis='x', which='minor', width=0)
+    ax.tick_params(axis="x", which="minor", width=0)
 
     ax.set_xticks([])
     ax.set_xlim(0, nbins)
     ax.set_xticks(np.arange(nbins), minor=True)
 
-    ax.grid(axis='y', visible=False, which='major')
-    ax.axhline(0, ls="--", color=plt.cm.gray(.85), linewidth=1)
-    if y_ticks is not None: 
+    ax.grid(axis="y", visible=False, which="major")
+    ax.axhline(0, ls="--", color=plt.cm.gray(0.85), linewidth=1)
+    if y_ticks is not None:
         ax.set_yticks(y_ticks)
         ax.set_yticklabel(y_ticklabels)
     ax.yaxis.tick_left()
@@ -376,15 +378,32 @@ def boxplot_func(
 
     # Top plot: distribution of the parameter
     if x_scale == "log":
-        sns.histplot(df_plot[x], kde=False, log_scale=True, bins=250, ax=axes[1], color="0.25", alpha=.2, element="poly")
+        sns.histplot(
+            df_plot[x],
+            kde=False,
+            log_scale=True,
+            bins=250,
+            ax=axes[1],
+            color="0.25",
+            alpha=0.2,
+            element="poly",
+        )
         # axes[0].set_xlim(np.log10(xlim[0]), np.log10(xlim[1]))
     else:
-        sns.histplot(df_plot[x], kde=False, ax=axes[1], bins=250, color="0.25", alpha=.2, element="poly")
-    
+        sns.histplot(
+            df_plot[x],
+            kde=False,
+            ax=axes[1],
+            bins=250,
+            color="0.25",
+            alpha=0.2,
+            element="poly",
+        )
+
     axes[1].set_xlim(xlim[0], xlim[1])
 
-    axes[1].grid(visible=True, which='minor')
-    axes[1].grid(visible=x_major_grid, which='major')
+    axes[1].grid(visible=True, which="minor")
+    axes[1].grid(visible=x_major_grid, which="major")
 
     axes[1].set_yticks([])
     axes[1].set_ylabel(y_label_hist)
@@ -394,13 +413,11 @@ def boxplot_func(
         axes[1].set_xticklabels(x_ticks if x_ticklabels is None else x_ticklabels)
 
     axes[1].set_xticks(x_bins, minor=True)
-    axes[1].tick_params(which='minor', width=0)
+    axes[1].tick_params(which="minor", width=0)
     axes[1].set_xticklabels([], minor=True)
 
     axes[1].set_xlabel(x_label)
     axes[1].xaxis.tick_bottom()
-
-
 
     fig.align_ylabels(axes)
     fig.tight_layout()

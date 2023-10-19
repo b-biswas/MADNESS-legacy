@@ -222,7 +222,6 @@ class FlowVAEnet:
 
         # LOG.info("Initial learning rate: " + str(lr))
 
-
         LOG.info("Number of epochs: " + str(epochs))
 
         if loss_function is None:

@@ -13,7 +13,7 @@ from galcheat.utilities import mean_sky_level
 from maddeb.callbacks import changeAlpha, define_callbacks
 from maddeb.dataset_generator import batched_CATSIMDataset
 from maddeb.FlowVAEnet import FlowVAEnet
-from maddeb.losses import deblender_loss_fn_wrapper, deblender_encoder_loss_wrapper
+from maddeb.losses import deblender_encoder_loss_wrapper, deblender_loss_fn_wrapper
 from maddeb.utils import get_data_dir_path
 
 tfd = tfp.distributions
@@ -127,7 +127,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         track_kl=True,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
-            sigma_cutoff=noise_sigma, 
+            sigma_cutoff=noise_sigma,
             linear_norm_coeff=linear_norm_coeff,
         ),
         verbose=2,
@@ -217,8 +217,8 @@ if train_models.lower() == "all" or "deblender" in train_models:
         epochs=deblender_epochs,
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_encoder_loss_wrapper(
-            original_encoder = f_net_original.encoder,
-            noise_sigma=noise_sigma, 
+            original_encoder=f_net_original.encoder,
+            noise_sigma=noise_sigma,
             latent_dim=latent_dim,
         ),
         verbose=2,

@@ -14,10 +14,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from maddeb.Deblender import Deblend
-from maddeb.metrics import (
-    compute_aperture_photometry,
-    compute_pixel_cosdist,
-)
+from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
 from maddeb.utils import get_data_dir_path
 
 # logging level set to INFO
@@ -29,7 +26,7 @@ survey = btk.survey.get_surveys("LSST")
 
 density = sys.argv[1]
 run_name = sys.argv[2]
-map_solution = sys.argv[3].lower() == 'true'
+map_solution = sys.argv[3].lower() == "true"
 
 LOG.info(map_solution)
 

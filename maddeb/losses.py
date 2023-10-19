@@ -114,18 +114,28 @@ def deblender_loss_fn_wrapper(
 
 
 def deblender_encoder_loss_wrapper(
-    original_encoder, noise_sigma, latent_dim=16,
+    original_encoder,
+    noise_sigma,
+    latent_dim=16,
 ):
-    """AI is creating summary for deblender_encoder_loss_wrapper
+    """AI is creating summary for deblender_encoder_loss_wrapper.
 
-    Args:
-        original_encoder ([type]): [description]
-        noise_sigma ([type]): [description]
-        latent_dim (int, optional): [description]. Defaults to 16.
+    Parameters
+    ----------
+    original_encoder:
+        original trained encoder (VAE as generative model).
+    noise_sigma: list/array
+        noise level in the bands.
+    latent_dim: int
+        Number of latent dimensions. Defaults to 16.
 
-    Returns:
-        [type]: [description]
+    Return
+    ------
+    deblender_encoder_loss:
+        function to compute l2 norm
+
     """
+
     @tf.function
     def deblender_encoder_loss(y, predicted_galaxy):
 
@@ -133,18 +143,17 @@ def deblender_encoder_loss_wrapper(
             latent_dim,
         )(predicted_galaxy)
 
-        y = y + tf.random.normal(y.shape[1:], [0]*noise_sigma.shape[0], noise_sigma)
+        y = y + tf.random.normal(y.shape[1:], [0] * noise_sigma.shape[0], noise_sigma)
         z_original = tfp.layers.MultivariateNormalTriL(
             latent_dim,
         )(original_encoder(y)).sample()
 
-        l2_norm = tf.sqrt(tf.reduce_sum((z_predicted-z_original)**2))
+        l2_norm = tf.sqrt(tf.reduce_sum((z_predicted - z_original) ** 2))
         loss = tf.reduce_mean(l2_norm)
 
         return loss
-    
-    return deblender_encoder_loss
 
+    return deblender_encoder_loss
 
 
 @tf.function(experimental_compile=True)
@@ -158,8 +167,8 @@ def flow_loss_fn(x, output):
     output: tensor
         log probability output over a batch from Normalizing Flow
 
-    Returns
-    -------
+    Return
+    ------
     objective: float
         objective to be minimized by the minimizer.
 

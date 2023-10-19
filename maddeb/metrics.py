@@ -76,8 +76,8 @@ def compute_pixel_cosdist(
             )
 
             ssim = structural_similarity(
-                predicted_galaxy[band_number]/np.amax(predicted_galaxy[band_number]),
-                simulated_galaxy[band_number]/np.amax(simulated_galaxy[band_number]),
+                predicted_galaxy[band_number] / np.amax(predicted_galaxy[band_number]),
+                simulated_galaxy[band_number] / np.amax(simulated_galaxy[band_number]),
             )
 
             results[band + "_cosd"].append(pixel_covariance)
@@ -92,6 +92,7 @@ def compute_pixel_cosdist(
 
         results["galaxy_num"].append(gal_num)
     return results
+
 
 @jit
 def cosdist_helper(predicted_band_galaxy, simulated_band_galaxy, sig):

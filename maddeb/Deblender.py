@@ -134,8 +134,9 @@ class Deblend:
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
         map_solution: bool
-            To obtain the map solution (MADNESS) or debvader solution. 
+            To obtain the map solution (MADNESS) or debvader solution.
             Both `map_solution` and `use_debvader` cannot be False at the same time.
+
         """
         # tf.config.run_functions_eagerly(False)
         self.linear_norm_coeff = linear_norm_coeff
@@ -409,7 +410,6 @@ class Deblend:
         """Compute padding info to convert galaxy cutout into field."""
         padding_infos_list = []
         for detected_position in self.detected_positions:
-
             starting_pos_x = round(detected_position[0]) - int(
                 (self.cutout_size - 1) / 2
             )
@@ -486,7 +486,7 @@ class Deblend:
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
         map_solution: bool
-            To obtain the map solution or debvader solution. 
+            To obtain the map solution or debvader solution.
             Both `map_solution` and `use_debvader` cannot be False at the same time.
 
         Returns
@@ -498,10 +498,12 @@ class Deblend:
         # X = self.postage_stamp
         # if not self.channel_last:
         #     X = np.transpose(X, axes=(1, 2, 0))
-        LOG.info("use debvader: "+ str(use_debvader))
-        LOG.info("MAP solution: "+ str(map_solution))
+        LOG.info("use debvader: " + str(use_debvader))
+        LOG.info("MAP solution: " + str(map_solution))
         if not map_solution and not use_debvader:
-            raise ValueError("Both use_debvader and map_solution cannot be False at the same time") 
+            raise ValueError(
+                "Both use_debvader and map_solution cannot be False at the same time"
+            )
 
         m, n, b = np.shape(self.postage_stamp)
 
@@ -582,10 +584,14 @@ class Deblend:
                     postage_stamp=tf.convert_to_tensor(
                         self.postage_stamp, dtype=tf.float32
                     ),
-                    compute_sig_dynamically=tf.convert_to_tensor(compute_sig_dynamically),
+                    compute_sig_dynamically=tf.convert_to_tensor(
+                        compute_sig_dynamically
+                    ),
                     sig_sq=sig_sq,
                     use_scatter_and_sub=tf.convert_to_tensor(True),
-                    index_pos_to_sub=tf.convert_to_tensor(index_pos_to_sub, dtype=tf.int32),
+                    index_pos_to_sub=tf.convert_to_tensor(
+                        index_pos_to_sub, dtype=tf.int32
+                    ),
                     padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
                 ),
                 trainable_variables=[z],
@@ -613,10 +619,10 @@ class Deblend:
             LOG.info("--- Gradient descent complete ---")
             LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
         else:
-            results=None
+            results = None
         self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
         self.z = z
-        
+
         # print(self.components)
 
         return results

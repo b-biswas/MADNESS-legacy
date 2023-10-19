@@ -16,10 +16,7 @@ import scarlet
 import scarlet.psf
 import sep
 
-from maddeb.metrics import (
-    compute_aperture_photometry,
-    compute_pixel_cosdist,
-)
+from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -82,7 +79,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     )
 
     model_psf = scarlet.GaussianPSF(
-        sigma=np.asarray(psf_fwhm)/2.355
+        sigma=np.asarray(psf_fwhm) / 2.355
     )  # These numbers are derived from the FWHM given for LSST filters in the galcheat v1.0 repo https://github.com/aboucaud/galcheat/blob/main/galcheat/data/LSST.yaml
     model_frame = scarlet.Frame(image.shape, psf=model_psf, channels=filters, wcs=wcs)
 
@@ -239,7 +236,7 @@ for file_num in range(num_repetations):
             a=5 * a,
             b=5 * b,
             theta=theta,
-            psf_fwhm=np.array(psf_fwhm)*5,
+            psf_fwhm=np.array(psf_fwhm) * 5,
             bkg_rms=bkg_rms,
         )
         scarlet_current_res.update(scarlet_photometry_current)
