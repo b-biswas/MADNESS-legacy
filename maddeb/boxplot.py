@@ -192,6 +192,7 @@ def boxplot_func(
     ls=None,
     nbins=11,
     x_major_grid=False,
+    sns_font_scale=1.2,
 ):
     """Return boxplot figure, median and standard deviation.
 
@@ -247,6 +248,8 @@ def boxplot_func(
         number of bins to split data
     x_major_grid:
         hide grids corresponding to major ticks in x-axis
+    sns_font_scale:
+        fontscale parameter for seaborn
 
     Returns
     -------
@@ -296,7 +299,7 @@ def boxplot_func(
 
     idx = np.digitize(df_plot[x], x_bins)
 
-    sns.set(font_scale=1.25)
+    sns.set(font_scale=sns_font_scale)
     sns.set_style("whitegrid", {"grid.color": ".85", "grid.linestyle": "--"})
     # Initialize figure
     fig, axes = plt.subplots(
