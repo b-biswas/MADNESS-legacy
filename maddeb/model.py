@@ -317,7 +317,7 @@ def create_model_fvae(
 
     vae_model = Model(inputs=x_input, outputs=decoder(z))
     flow_model = Model(
-        inputs=x_input, outputs=flow(z.sample())
+        inputs=x_input, outputs=flow(z)
     )  # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
     return vae_model, flow_model, encoder, decoder, flow, td
