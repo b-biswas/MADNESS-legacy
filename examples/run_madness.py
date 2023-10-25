@@ -5,7 +5,7 @@ import math
 import os
 import sys
 
-import btk
+import galcheat
 import hickle
 import numpy as np
 import pandas as pd
@@ -22,11 +22,16 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 
-survey = btk.survey.get_surveys("LSST")
+survey_name = sys.argv[1]
 
-density = sys.argv[1]
-run_name = sys.argv[2]
-map_solution = sys.argv[3].lower() == "true"
+if survey_name not in ["LSST"]:
+    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+
+survey = galcheat.get_survey(survey_name)
+
+density = sys.argv[2]
+run_name = sys.argv[3]
+map_solution = sys.argv[4].lower() == "true"
 
 LOG.info(map_solution)
 
@@ -41,12 +46,12 @@ density_level = density + "_density"
 
 
 weights_path = os.path.join(get_data_dir_path(), f"catsim_{run_name}16d")
-deb = Deblend(latent_dim=16, weights_path=weights_path)
+deb = Deblend(latent_dim=16, weights_path=weights_path, survey=survey)
 
 psf_fwhm = []
-for band in ["u", "g", "r", "i", "z", "y"]:
+for band in survey.available_filters:
     filt = survey.get_filter(band)
-    psf_fwhm.append(filt.psf_fwhm.value * 5)
+    psf_fwhm.append(filt.psf_fwhm.value)
 
 num_repetations = 300
 
@@ -152,7 +157,7 @@ for file_num in range(num_repetations):
         # madness_results.append(madness_current_res)
 
         bkg_rms = {}
-        for band in range(6):
+        for band in range(len(survey.available_filters)):
             bkg_rms[band] = sep.Background(
                 blend["blend_images"][field_num][band]
             ).globalrms
@@ -179,10 +184,10 @@ for file_num in range(num_repetations):
             predictions=current_field_predictions,
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
-            a=5 * a,
-            b=5 * b,
+            a=a / survey.pixel_scale.value,
+            b=b / survey.pixel_scale.value,
             theta=theta,
-            psf_fwhm=psf_fwhm,
+            psf_fwhm=np.array(psf_fwhm) / survey.pixel_scale.value,
             bkg_rms=bkg_rms,
         )
         madness_current_res.update(madness_photometry_current)
@@ -194,10 +199,10 @@ for file_num in range(num_repetations):
             predictions=blend["isolated_images"][field_num],
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
-            a=5 * a,
-            b=5 * b,
+            a=a / survey.pixel_scale.value,
+            b=b / survey.pixel_scale.value,
             theta=theta,
-            psf_fwhm=psf_fwhm,
+            psf_fwhm=np.array(psf_fwhm) / survey.pixel_scale.value,
             bkg_rms=bkg_rms,
         )
         actual_results_current["field_num"] = field_num * num_galaxies
@@ -211,10 +216,10 @@ for file_num in range(num_repetations):
             predictions=None,
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
-            a=5 * a,
-            b=5 * b,
+            a=a / survey.pixel_scale.value,
+            b=b / survey.pixel_scale.value,
             theta=theta,
-            psf_fwhm=psf_fwhm,
+            psf_fwhm=np.array(psf_fwhm) / survey.pixel_scale.value,
             bkg_rms=bkg_rms,
         )
         blended_results_current["field_num"] = field_num * num_galaxies

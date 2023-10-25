@@ -4,6 +4,7 @@ import logging
 import os
 import time
 
+import galcheat
 import numpy as np
 import sep
 import tensorflow as tf
@@ -28,6 +29,7 @@ class Deblend:
         self,
         latent_dim=16,
         weights_path=None,
+        survey=galcheat.get_survey("LSST"),
     ):
         """Initialize class variables.
 
@@ -39,16 +41,19 @@ class Deblend:
             base path to load weights.
             flow weights are loaded from weights_path/flow6/val_loss
             vae weights are loaded from weights_path/deblender/val_loss
+        survey: galcheat.survey object
+            galcheat survey object to fetch survey details
 
         """
         self.latent_dim = latent_dim
+        self.survey = survey
         self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
 
         if weights_path is None:
             data_dir_path = get_data_dir_path()
-            weights_path = os.path.join(data_dir_path, "catsim_kl116d")
+            weights_path = os.path.join(data_dir_path, survey.name)
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(weights_path, "flow6/val_loss")
+            weights_path=os.path.join(weights_path, "flow/val_loss")
         )
         self.flow_vae_net.flow_model.trainable = False
 
@@ -451,10 +456,8 @@ class Deblend:
     def compute_noise_sigma(self):
         """Compute noise level with sep."""
         sig = []
-        for i in range(6):
-
+        for i in range(len(self.survey.available_filters)):
             sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
-        print(sig)
 
         return np.array(sig)
 

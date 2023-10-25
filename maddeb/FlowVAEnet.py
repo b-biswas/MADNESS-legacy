@@ -2,6 +2,7 @@
 
 import logging
 
+import galcheat
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
@@ -21,7 +22,7 @@ class FlowVAEnet:
 
     def __init__(
         self,
-        input_shape=[45, 45, 6],
+        stamp_shape=45,
         latent_dim=16,
         filters_encoder=[32, 128, 256, 512],
         filters_decoder=[64, 96, 128],
@@ -30,13 +31,14 @@ class FlowVAEnet:
         num_nf_layers=6,
         kl_prior=None,
         kl_weight=None,
+        survey=galcheat.get_survey("LSST"),
     ):
         """Create the required models according to the specifications.
 
         Parameters
         ----------
-        input_shape: list
-            shape of input tensor
+        stamp_shape: int
+            size of input postage stamp
         latent_dim: int
             size of the latent space
         filters_encoder: list
@@ -53,9 +55,11 @@ class FlowVAEnet:
             KL prior to be applied on the latent space.
         kl_weight: float
             Weight to be multiplied tot he kl_prior
+        survey: galcheat.survey object
+            galcheat survey object to fetch survey details
 
         """
-        self.input_shape = input_shape
+        self.input_shape = [stamp_shape, stamp_shape, len(survey.available_filters)]
         self.latent_dim = latent_dim
 
         self.filters_encoder = filters_encoder
@@ -64,7 +68,7 @@ class FlowVAEnet:
         self.filters_decoder = filters_decoder
         self.kernels_decoder = kernels_decoder
 
-        self.nb_of_bands = input_shape[2]
+        self.nb_of_bands = len(survey.available_filters)
         self.num_nf_layers = num_nf_layers
 
         (

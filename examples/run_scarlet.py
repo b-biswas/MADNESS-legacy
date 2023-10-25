@@ -6,7 +6,7 @@ import os
 import sys
 import time
 
-import btk
+import galcheat
 import galsim
 import hickle
 import matplotlib.pyplot as plt
@@ -22,11 +22,16 @@ from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
+survey_name = sys.argv[1]
 
-survey = btk.survey.get_surveys("LSST")
+if survey_name not in ["LSST"]:
+    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+
+survey = galcheat.get_survey(survey_name)
+
+density = sys.argv[2]
 
 num_repetations = 300
-density = sys.argv[1]
 
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -39,7 +44,7 @@ results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 density_level = density + "_density"
 
 psf_fwhm = []
-for band in ["u", "g", "r", "i", "z", "y"]:
+for band in survey.available_filters:
     filt = survey.get_filter(band)
     psf_fwhm.append(filt.psf_fwhm.value)
 
@@ -233,10 +238,10 @@ for file_num in range(num_repetations):
             predictions=scarlet_current_predictions,
             xpos=blend["blend_list"][field_num]["x_peak"],
             ypos=blend["blend_list"][field_num]["y_peak"],
-            a=5 * a,
-            b=5 * b,
+            a=a / survey.pixel_scale.value,
+            b=b / survey.pixel_scale.value,
             theta=theta,
-            psf_fwhm=np.array(psf_fwhm) * 5,
+            psf_fwhm=np.array(psf_fwhm) / survey.pixel_scale.value,
             bkg_rms=bkg_rms,
         )
         scarlet_current_res.update(scarlet_photometry_current)
