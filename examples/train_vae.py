@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-import btk
+import galcheat
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -33,15 +33,20 @@ latent_dim = 16
 linear_norm_coeff = 10000
 patience = 30
 
+survey_name = sys.argv[1]
+
+if survey_name not in ["LSST"]:
+    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+
 train_models = sys.argv[
-    1
+    2
 ]  # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
 
-kl_weight_exp = int(sys.argv[2])
+kl_weight_exp = int(sys.argv[3])
 kl_weight = 10**-kl_weight_exp
 LOG.info(f"KL weight{kl_weight}")
 
-survey = btk.survey.get_surveys("LSST")
+survey = galcheat.get_survey("LSST")
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
@@ -58,12 +63,14 @@ f_net = FlowVAEnet(
     latent_dim=latent_dim,
     kl_prior=kl_prior,
     kl_weight=kl_weight,
+    survey=survey,
 )
 
 # Keras Callbacks
 data_path = get_data_dir_path()
 
-path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
+# path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
+path_weights = os.path.join(data_path, survey.name)
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
@@ -144,6 +151,7 @@ if train_models.lower() == "all" or "nf" in train_models:
         kl_prior=None,
         kl_weight=0,
         num_nf_layers=num_nf_layers,
+        survey=survey,
     )
 
     f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
@@ -180,6 +188,7 @@ if train_models.lower() == "all" or "deblender" in train_models:
         latent_dim=latent_dim,
         kl_prior=kl_prior,
         kl_weight=0,
+        survey=survey,
     )
     f_net.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
     # f_net.randomize_encoder()
@@ -188,6 +197,7 @@ if train_models.lower() == "all" or "deblender" in train_models:
         latent_dim=latent_dim,
         kl_prior=None,
         kl_weight=0,
+        survey=survey,
     )
     f_net_original.load_vae_weights(os.path.join(path_weights, "vae", "val_loss"))
 
