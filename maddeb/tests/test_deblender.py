@@ -16,7 +16,7 @@ def test_deblending():
         load_weights=False,
     )
 
-    data = np.random.rand(15, 15, 6)
+    data = np.random.rand(6, 15, 15)
 
     detected_pos = [[9, 10], [11, 11]]
 
@@ -26,9 +26,9 @@ def test_deblending():
         num_components=len(detected_pos),  # redundant parameter
         use_log_prob=True,
         linear_norm_coeff=1,
-        max_iter=3,
+        max_iter=20,
         use_debvader=True,
         compute_sig_dynamically=False,
         map_solution=True,
-        channel_last=True,
+        channel_last=False,
     )

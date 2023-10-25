@@ -128,7 +128,6 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
-        lr=0.075,
         compute_sig_dynamically=False,
         map_solution=True,
     ):
@@ -160,8 +159,6 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
-        lr: float
-            learning rate for optimization.
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
@@ -199,7 +196,6 @@ class Deblend:
             convergence_criterion=convergence_criterion,
             use_debvader=use_debvader,
             optimizer=optimizer,
-            lr=lr,
             compute_sig_dynamically=compute_sig_dynamically,
             map_solution=map_solution,
         )
@@ -474,6 +470,7 @@ class Deblend:
             nb_of_bands=b,
             channel_last=True,
         )
+
         z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
             self.flow_vae_net.encoder(cutouts)
         )
@@ -493,7 +490,6 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
-        lr=0.075,
         compute_sig_dynamically=False,
         map_solution=True,
     ):
@@ -509,8 +505,6 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
-        lr: float
-            learning rate for optimization.
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
@@ -551,7 +545,7 @@ class Deblend:
                 channel_last=True,
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
-                self.flow_vae_net.encoder(cutouts)
+                self.flow_vae_net.encoder(cutouts[0])
             )
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
@@ -559,13 +553,12 @@ class Deblend:
         # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
         if map_solution:
             if optimizer is None:
-                if isinstance(lr, tf.keras.optimizers.schedules):
-                    lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=0.2,
-                        decay_steps=30,
-                        decay_rate=0.9,
-                        staircase=False,
-                    )
+                lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
+                    initial_learning_rate=0.25,
+                    decay_steps=20,
+                    decay_rate=0.9,
+                    staircase=False,
+                )
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
             LOG.info("\n--- Starting gradient descent in the latent space ---")
