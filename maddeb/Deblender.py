@@ -53,7 +53,7 @@ class Deblend:
             data_dir_path = get_data_dir_path()
             weights_path = os.path.join(data_dir_path, survey.name)
         self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(weights_path, "flow6/val_loss")
+            weights_path=os.path.join(weights_path, "flow/val_loss")
         )
         self.flow_vae_net.flow_model.trainable = False
 
