@@ -13,7 +13,7 @@ from maddeb.utils import get_data_dir_path
 tfd = tfp.distributions
 
 
-def test_deblending():
+def test_vae_training():
     """Test training."""
     vae_epochs = 2
 
@@ -33,8 +33,9 @@ def test_deblending():
         kl_prior=kl_prior,
         kl_weight=1,
     )
-
-    data = np.random.rand(20, 11, 11, 6)
+    #print(f_net.summary)
+    print(f_net.decoder.summary)
+    data = np.random.rand(8, 11, 11, 6)
 
     # Keras Callbacks
     data_path = get_data_dir_path()
@@ -48,8 +49,8 @@ def test_deblending():
     )
 
     _ = f_net.train_vae(
-        (data[:5], data[5:10]),
-        (data[10:15], data[15:]),
+        (data[:2], data[2:4]),
+        (data[4:6], data[6:]),
         callbacks=callbacks + [ch_alpha],
         epochs=int(0.5 * vae_epochs),
         train_encoder=True,
