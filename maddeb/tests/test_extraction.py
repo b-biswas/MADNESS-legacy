@@ -52,7 +52,7 @@ def test_cutouts_border():
         nb_of_bands=nb_of_bands,
         channel_last=False,
     )
-    print(cutout.shape)
+
     np.testing.assert_array_equal(cutout[0], image[:5, :5])
     assert len(list_idx) == 1
 
