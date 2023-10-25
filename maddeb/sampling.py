@@ -2,9 +2,9 @@
 import warnings
 
 import numpy as np
-
 from btk import DEFAULT_SEED
 from btk.sampling_functions import SamplingFunction, _get_random_center_shift
+
 
 class CustomSampling(SamplingFunction):
     """Default sampling function used for producing blend tables."""

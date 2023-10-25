@@ -3,7 +3,9 @@ import numpy as np
 
 from maddeb.Deblender import Deblend
 
+
 def test_deblending():
+    """Test deblending."""
     deb = Deblend(
         stamp_shape=5,
         latent_dim=4,

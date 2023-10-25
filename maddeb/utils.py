@@ -2,6 +2,7 @@
 
 import os
 
+
 def listdir_fullpath(d):
     """List of files in a directory.
 
@@ -33,5 +34,3 @@ def get_data_dir_path():
     data_dir = os.path.join(curdir, "data")
 
     return data_dir
-
-

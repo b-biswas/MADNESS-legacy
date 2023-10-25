@@ -57,12 +57,17 @@ class Deblend:
             kernels used for the convolutional layers in decoder
         num_nf_layers: int
             number of layers in the flow network
+        dense_layer_units: int
+            number of units in the dense layer
         weights_path: string
             base path to load weights.
             flow weights are loaded from weights_path/flow6/val_loss
             vae weights are loaded from weights_path/deblender/val_loss
         survey: galcheat.survey object
             galcheat survey object to fetch survey details
+        load_weights: bool
+            Should be used as True to load pre-trained weights.
+            if False, random weights are used(used for testing purposes).
 
         """
         self.latent_dim = latent_dim

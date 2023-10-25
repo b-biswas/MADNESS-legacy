@@ -70,7 +70,7 @@ f_net = FlowVAEnet(
 data_path = get_data_dir_path()
 
 # path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
-path_weights = os.path.join(data_path, survey.name+"_")
+path_weights = os.path.join(data_path, survey.name + "_")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
