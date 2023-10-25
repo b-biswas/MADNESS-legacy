@@ -27,16 +27,36 @@ class Deblend:
 
     def __init__(
         self,
+        stamp_shape=45,
         latent_dim=16,
+        filters_encoder=[32, 128, 256, 512],
+        filters_decoder=[64, 96, 128],
+        kernels_encoder=[5, 5, 5, 5],
+        kernels_decoder=[5, 5, 5],
+        dense_layer_units=512,
+        num_nf_layers=6,
         weights_path=None,
+        load_weights=True,
         survey=galcheat.get_survey("LSST"),
     ):
         """Initialize class variables.
 
         Parameters
         ----------
+        stamp_shape: int
+            size of input postage stamp
         latent_dim: int
             size of latent space.
+        filters_encoder: list
+            filters used for the convolutional layers in encoder
+        filters_decoder: list
+            filters used for the convolutional layers in decoder
+        kernels_encoder: list
+            kernels used for the convolutional layers in encoder
+        kernels_decoder: list
+            kernels used for the convolutional layers in decoder
+        num_nf_layers: int
+            number of layers in the flow network
         weights_path: string
             base path to load weights.
             flow weights are loaded from weights_path/flow6/val_loss
@@ -47,22 +67,32 @@ class Deblend:
         """
         self.latent_dim = latent_dim
         self.survey = survey
-        self.flow_vae_net = FlowVAEnet(latent_dim=latent_dim)
+        self.flow_vae_net = FlowVAEnet(
+            stamp_shape=stamp_shape,
+            latent_dim=latent_dim,
+            filters_encoder=filters_encoder,
+            kernels_encoder=kernels_encoder,
+            filters_decoder=filters_decoder,
+            kernels_decoder=kernels_decoder,
+            dense_layer_units=dense_layer_units,
+            num_nf_layers=num_nf_layers,
+        )
 
-        if weights_path is None:
-            data_dir_path = get_data_dir_path()
-            weights_path = os.path.join(data_dir_path, survey.name)
-        self.flow_vae_net.load_flow_weights(
-            weights_path=os.path.join(weights_path, "flow/val_loss")
-        )
-        self.flow_vae_net.flow_model.trainable = False
+        if load_weights:
+            if weights_path is None:
+                data_dir_path = get_data_dir_path()
+                weights_path = os.path.join(data_dir_path, survey.name)
+            self.flow_vae_net.load_flow_weights(
+                weights_path=os.path.join(weights_path, "flow/val_loss")
+            )
+            self.flow_vae_net.flow_model.trainable = False
 
-        self.flow_vae_net.load_vae_weights(
-            weights_path=os.path.join(weights_path, "vae/val_loss")
-        )
-        self.flow_vae_net.load_encoder_weights(
-            weights_path=os.path.join(weights_path, "deblender/val_loss")
-        )
+            self.flow_vae_net.load_vae_weights(
+                weights_path=os.path.join(weights_path, "vae/val_loss")
+            )
+            self.flow_vae_net.load_encoder_weights(
+                weights_path=os.path.join(weights_path, "deblender/val_loss")
+            )
         self.flow_vae_net.vae_model.trainable = False
 
         # self.flow_vae_net.vae_model.trainable = False
@@ -72,7 +102,7 @@ class Deblend:
 
         self.postage_stamp = None
         self.detected_positions = None
-        self.cutout_size = None
+        self.cutout_size = stamp_shape
         self.num_components = None
         self.channel_last = None
         self.noise_sigma = None
@@ -90,7 +120,6 @@ class Deblend:
         postage_stamp,
         detected_positions,
         noise_sigma=None,
-        cutout_size=45,
         num_components=1,
         max_iter=60,
         use_log_prob=True,
@@ -114,8 +143,6 @@ class Deblend:
             as in array and not image
         noise_sigma: list of float
             backgound noise-level in each band
-        cutout_size: int
-            size of cutouts (in the VAE input/output)
         num_components: int
             number of galaxies present in the image.
         max_iter: int
@@ -160,7 +187,6 @@ class Deblend:
                 np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
             )
         self.detected_positions = detected_positions
-        self.cutout_size = cutout_size
 
         if channel_last:
             self.num_bands = np.shape(postage_stamp)[-1]
