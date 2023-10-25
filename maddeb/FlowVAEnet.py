@@ -188,7 +188,7 @@ class FlowVAEnet:
             validation_data=validation_generator,
             callbacks=callbacks,
             workers=8,
-            use_multiprocessing=False,
+            use_multiprocessing=True,
         )
         return hist
 
@@ -252,7 +252,7 @@ class FlowVAEnet:
             validation_data=validation_generator,
             callbacks=callbacks,
             workers=8,
-            use_multiprocessing=False,
+            use_multiprocessing=True,
         )
         return hist
 
@@ -314,7 +314,7 @@ class FlowVAEnet:
             validation_data=validation_generator,
             callbacks=callbacks,
             workers=8,
-            use_multiprocessing=False,
+            use_multiprocessing=True,
         )
 
         return hist
