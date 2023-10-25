@@ -1,5 +1,6 @@
 """Metrics for comparison."""
 
+import galcheat
 import numpy as np
 import sep
 from numba import jit
@@ -11,6 +12,7 @@ def compute_pixel_cosdist(
     simulated_galaxies,
     field_image,
     get_blendedness=True,
+    survey=galcheat.get_survey("LSST"),
 ):
     """Calculate pixel covariances and fluxes.
 
@@ -24,6 +26,8 @@ def compute_pixel_cosdist(
         the entire simulated field.
     get_blendedness: bool
         to return the blendedness metric
+    survey: galcheat.survey object
+        galcheat survey object to fetch survey details
 
     Returns
     -------
@@ -43,7 +47,7 @@ def compute_pixel_cosdist(
     if get_blendedness:
         columns = columns + ["_blendedness"]
 
-    for band in ["u", "g", "r", "i", "z", "y"]:
+    for band in survey.available_filters:
         for col_name in columns:
             results[band + col_name] = []
     results["galaxy_num"] = []
@@ -53,7 +57,7 @@ def compute_pixel_cosdist(
         predicted_galaxy = predicted_galaxies[gal_num]
         simulated_galaxy = simulated_galaxies[gal_num]
 
-        for band_number, band in enumerate(["u", "g", "r", "i", "z", "y"]):
+        for band_number, band in enumerate(survey.available_filters):
 
             sig = sep.Background(field_image[band_number]).globalrms
             # print(sig)
@@ -171,6 +175,7 @@ def compute_aperture_photometry(
     theta,
     psf_fwhm=None,
     r=2,
+    survey=galcheat.get_survey("LSST"),
 ):
     """Calculate aperture photometry.
 
@@ -196,6 +201,8 @@ def compute_aperture_photometry(
         fwhm of PSF in pixels
     r: int
         factor by which the major-minor-axis is multiplied
+    survey: galcheat.survey object
+        galcheat survey object to fetch survey details
 
     Returns
     -------
@@ -204,7 +211,7 @@ def compute_aperture_photometry(
 
     """
     results = {}
-    for band in ["u", "g", "r", "i", "z", "y"]:
+    for band in survey.available_filters:
         for column in ["_phot_flux", "_phot_fluxerrs", "_phot_flags"]:
             results[band + column] = []
 
@@ -228,7 +235,7 @@ def compute_aperture_photometry(
 
         galaxy = galaxy.copy(order="C")
 
-        for band_num, band in enumerate(["u", "g", "r", "i", "z", "y"]):
+        for band_num, band in enumerate(survey.available_filters):
 
             flux, fluxerr, flag = sep.sum_ellipse(
                 data=galaxy[band_num],
