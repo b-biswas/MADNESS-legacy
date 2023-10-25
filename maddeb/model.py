@@ -24,6 +24,7 @@ def create_encoder(
     latent_dim,
     filters,
     kernels,
+    dense_layer_units,
 ):
     """Create the encoder.
 
@@ -37,6 +38,8 @@ def create_encoder(
         filters used for the convolutional layers
     kernels: list
         kernels used for the convolutional layers
+    dense_layer_units: int
+            number of units in the dense layer
 
     Returns
     -------
@@ -61,7 +64,7 @@ def create_encoder(
 
     h = Flatten()(h)
     h = PReLU()(h)
-    h = Dense(512)(h)
+    h = Dense(dense_layer_units)(h)
     h = PReLU()(h)
     h = Dense(
         tfp.layers.MultivariateNormalTriL.params_size(latent_dim),
@@ -76,6 +79,7 @@ def create_decoder(
     latent_dim,
     filters,
     kernels,
+    dense_layer_units,
 ):
     """Create the decoder.
 
@@ -91,6 +95,8 @@ def create_decoder(
         kernels used for the convolutional layers
     sigma_cutoff: list of float
         backgound noise-level in each band
+    dense_layer_units: int
+            number of units in the dense layer
 
     Returns
     -------
@@ -99,7 +105,7 @@ def create_decoder(
 
     """
     input_layer = Input(shape=(latent_dim,))
-    h = Dense(512, activation=None)(input_layer)
+    h = Dense(dense_layer_units, activation=None)(input_layer)
     h = PReLU()(h)
     w = int(np.ceil(input_shape[0] / 2 ** (len(filters))))
     h = Dense(w * w * filters[-1], activation=None)(tf.cast(h, tf.float32))
@@ -225,6 +231,7 @@ def create_model_fvae(
     kernels_encoder,
     filters_decoder,
     kernels_decoder,
+    dense_layer_units,
     num_nf_layers=6,
     kl_prior=None,
     kl_weight=None,
@@ -251,6 +258,8 @@ def create_model_fvae(
         KL prior to be applied on the latent space.
     kl_weight: float
         Weight to be multiplied tot he kl_prior
+    dense_layer_units: int
+            number of units in the dense layer
 
     Returns
     -------
@@ -275,6 +284,7 @@ def create_model_fvae(
         latent_dim,
         filters_encoder,
         kernels_encoder,
+        dense_layer_units,
     )
 
     # create the decoder
@@ -283,6 +293,7 @@ def create_model_fvae(
         latent_dim,
         filters_decoder,
         kernels_decoder,
+        dense_layer_units,
     )
 
     # create the flow transformation
@@ -306,7 +317,7 @@ def create_model_fvae(
 
     vae_model = Model(inputs=x_input, outputs=decoder(z))
     flow_model = Model(
-        inputs=x_input, outputs=flow(z.sample())
+        inputs=x_input, outputs=flow(z)
     )  # without sample I get the following error: AttributeError: 'MultivariateNormalTriL' object has no attribute 'graph'
 
     return vae_model, flow_model, encoder, decoder, flow, td
