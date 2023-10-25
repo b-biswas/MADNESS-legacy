@@ -28,6 +28,7 @@ class FlowVAEnet:
         filters_decoder=[64, 96, 128],
         kernels_encoder=[5, 5, 5, 5],
         kernels_decoder=[5, 5, 5],
+        dense_layer_units=512,
         num_nf_layers=6,
         kl_prior=None,
         kl_weight=None,
@@ -57,6 +58,8 @@ class FlowVAEnet:
             Weight to be multiplied tot he kl_prior
         survey: galcheat.survey object
             galcheat survey object to fetch survey details
+        dense_layer_units: int
+            number of units in the dense layer
 
         """
         self.input_shape = [stamp_shape, stamp_shape, len(survey.available_filters)]
@@ -85,6 +88,7 @@ class FlowVAEnet:
             kernels_encoder=self.kernels_encoder,
             filters_decoder=self.filters_decoder,
             kernels_decoder=self.kernels_decoder,
+            dense_layer_units=dense_layer_units,
             num_nf_layers=self.num_nf_layers,
             kl_prior=kl_prior,
             kl_weight=kl_weight,
@@ -172,8 +176,12 @@ class FlowVAEnet:
             experimental_run_tf_function=False,
             metrics=metrics,
         )
+
         hist = self.vae_model.fit(
-            x=train_generator,
+            x=train_generator[0]
+            if isinstance(train_generator, tuple)
+            else train_generator,
+            y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,
@@ -236,7 +244,10 @@ class FlowVAEnet:
             experimental_run_tf_function=False,
         )
         hist = self.encoder.fit(
-            x=train_generator,
+            x=train_generator[0]
+            if isinstance(train_generator, tuple)
+            else train_generator,
+            y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,
@@ -297,7 +308,10 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         hist = self.flow_model.fit(
-            x=train_generator,
+            x=train_generator[0]
+            if isinstance(train_generator, tuple)
+            else train_generator,
+            y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
             shuffle=True,

@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from maddeb.extraction import extract_cutouts
-from maddeb.utils import CustomSampling
+from maddeb.sampling import CustomSampling
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 

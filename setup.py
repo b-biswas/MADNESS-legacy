@@ -6,11 +6,12 @@ with open("README.md") as readme_file:
     readme = readme_file.read()
 
 requirements = [
+    "galcheat",
     "matplotlib",
     "numpy",
     "pandas",
-    "tensorflow==2.3.0",
-    "tensorflow-probability==0.11.0",
+    "tensorflow",
+    "tensorflow-probability",
     "scikit-image",
     "sep",
 ]
@@ -30,8 +31,8 @@ setup(
     packages=["maddeb"],
     install_requires=requirements,
     classifiers=[
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     package_data={"maddeb": ["data/*"]},
 )
