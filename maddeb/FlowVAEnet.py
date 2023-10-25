@@ -177,8 +177,7 @@ class FlowVAEnet:
             experimental_run_tf_function=False,
             metrics=metrics,
         )
-        print(type(train_generator))
-        print(isinstance(train_generator, tuple))
+
         hist = self.vae_model.fit(
             x=train_generator[0] if isinstance(train_generator, tuple) else train_generator,
             y=train_generator[1] if isinstance(train_generator, tuple) else None,
