@@ -111,7 +111,7 @@ class Deblend:
         self.num_components = None
         self.channel_last = None
         self.noise_sigma = None
-        self.num_bands = None
+        self.num_bands = len(survey.available_filters)
         self.field_size = None
         self.use_log_prob = None
         self.linear_norm_coeff = None
@@ -133,6 +133,7 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
+        use_scatter_and_sub=True,
         compute_sig_dynamically=False,
         map_solution=True,
     ):
@@ -164,6 +165,8 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
+        use_scatter_and_sub: bool
+            uses tf.scatter_and_sub for substraction instead of padding.
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
@@ -188,19 +191,16 @@ class Deblend:
             self.postage_stamp = (
                 np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
             )
+            print(postage_stamp.shape)
         self.detected_positions = detected_positions
 
-        if channel_last:
-            self.num_bands = np.shape(postage_stamp)[-1]
-            self.field_size = np.shape(postage_stamp)[1]
-        else:
-            self.num_bands = np.shape(postage_stamp)[0]
-            self.field_size = np.shape(postage_stamp)[1]
+        self.field_size = np.shape(postage_stamp)[1]
 
         self.results = self.gradient_decent(
             convergence_criterion=convergence_criterion,
             use_debvader=use_debvader,
             optimizer=optimizer,
+            use_scatter_and_sub=use_scatter_and_sub,
             compute_sig_dynamically=compute_sig_dynamically,
             map_solution=map_solution,
         )
@@ -231,7 +231,7 @@ class Deblend:
         reconstructions: tf tensor
             reconstructions to be subtracted
         use_scatter_and_sub: bool
-            to use tf.tensor_scatter_nd_sub or no
+            uses tf.scatter_and_sub for substraction instead of padding.
         index_pos_to_sub:
             index position for substraction is `use_scatter_and_sub` is True
         padding_infos:
@@ -307,6 +307,10 @@ class Deblend:
                     )
 
         else:
+            if padding_infos is None:
+                raise ValueError(
+                    "Pass padding infos or use the scatter_and_sub function instead"
+                )
 
             def one_step(i, residual_field):
                 # padding = tf.cast(padding_infos[i], dtype=tf.int32)
@@ -354,7 +358,7 @@ class Deblend:
         reconstructions: tf tensor
             reconstructions to be subtracted
         use_scatter_and_sub: bool
-            to use tf.tensor_scatter_nd_sub or no
+            uses tf.scatter_and_sub for substraction instead of padding.
         index_pos_to_sub:
             index position for substraction is `use_scatter_and_sub` is True
         padding_infos:
@@ -468,7 +472,11 @@ class Deblend:
         """Compute noise level with sep."""
         sig = []
         for i in range(len(self.survey.available_filters)):
-            sig.append(sep.Background(self.postage_stamp[:, :, i]).globalrms)
+            sig.append(
+                sep.Background(
+                    np.ascontiguousarray(self.postage_stamp[:, :, i])
+                ).globalrms
+            )
 
         return np.array(sig)
 
@@ -478,6 +486,7 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
+        use_scatter_and_sub=True,
         compute_sig_dynamically=False,
         map_solution=True,
     ):
@@ -493,6 +502,8 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
+        use_scatter_and_sub: bool
+            uses tf.scatter_and_sub for substraction instead of padding.
         compute_sig_dynamically: bool
             to estimate noise level in image. (can be slow)
             Otherwise it uses sep to compute the background noise.
@@ -516,8 +527,6 @@ class Deblend:
                 "Both use_debvader and map_solution cannot be False at the same time"
             )
 
-        m, n, b = np.shape(self.postage_stamp)
-
         if not use_debvader:
             # check constraint parameter over here
             z = tf.Variable(self.flow_vae_net.td.sample(self.num_components))
@@ -529,7 +538,7 @@ class Deblend:
                 self.postage_stamp,
                 pos=self.detected_positions,
                 cutout_size=self.cutout_size,
-                nb_of_bands=b,
+                nb_of_bands=self.num_bands,
                 channel_last=True,
             )
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
@@ -598,11 +607,11 @@ class Deblend:
                         compute_sig_dynamically
                     ),
                     sig_sq=sig_sq,
-                    use_scatter_and_sub=tf.convert_to_tensor(True),
+                    use_scatter_and_sub=tf.convert_to_tensor(use_scatter_and_sub),
                     index_pos_to_sub=tf.convert_to_tensor(
                         index_pos_to_sub, dtype=tf.int32
                     ),
-                    padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.float32),
+                    padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.int32),
                 ),
                 trainable_variables=[z],
                 num_steps=self.max_iter,
@@ -663,7 +672,7 @@ class Deblend:
         reconstructions: tf tensor
             reconstructions to be subtracted
         use_scatter_and_sub: bool
-            to use tf.tensor_scatter_nd_sub or no
+            uses tf.scatter_and_sub for substraction instead of padding.
         index_pos_to_sub:
             index position for substraction is `use_scatter_and_sub` is True
         padding_infos:
