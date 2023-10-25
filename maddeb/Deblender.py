@@ -459,23 +459,6 @@ class Deblend:
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
 
-    def run_debvader(self):
-        """Feed forward to use encoder as Deblender."""
-        m, n, b = np.shape(self.postage_stamp)
-
-        cutouts = extract_cutouts(
-            self.postage_stamp,
-            pos=self.detected_positions,
-            cutout_size=self.cutout_size,
-            nb_of_bands=b,
-            channel_last=True,
-        )
-
-        z = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
-            self.flow_vae_net.encoder(cutouts)
-        )
-        self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
-
     def compute_noise_sigma(self):
         """Compute noise level with sep."""
         sig = []
