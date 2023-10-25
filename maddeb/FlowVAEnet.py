@@ -59,7 +59,7 @@ class FlowVAEnet:
             galcheat survey object to fetch survey details
 
         """
-        self.input_shape = [stamp_shape, stamp_shape, len(survey.get_filter)]
+        self.input_shape = [stamp_shape, stamp_shape, len(survey.available_filters)]
         self.latent_dim = latent_dim
 
         self.filters_encoder = filters_encoder
@@ -68,7 +68,7 @@ class FlowVAEnet:
         self.filters_decoder = filters_decoder
         self.kernels_decoder = kernels_decoder
 
-        self.nb_of_bands = len(survey.get_filter)
+        self.nb_of_bands = len(survey.available_filters)
         self.num_nf_layers = num_nf_layers
 
         (
