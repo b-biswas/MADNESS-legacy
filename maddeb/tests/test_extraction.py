@@ -1,10 +1,11 @@
+"""Test extract cutouts."""
 import numpy as np
 
 from maddeb.extraction import extract_cutouts
 
 
 def test_cutouts_border():
-
+    """Test extract cutouts function."""
     field_size = 15
     nb_of_bands = 3
     cutout_size = 5
