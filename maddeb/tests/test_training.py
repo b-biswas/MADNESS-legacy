@@ -33,8 +33,7 @@ def test_vae_training():
         kl_prior=kl_prior,
         kl_weight=1,
     )
-    #print(f_net.summary)
-    print(f_net.decoder.summary)
+
     data = np.random.rand(8, 11, 11, 6)
 
     # Keras Callbacks
