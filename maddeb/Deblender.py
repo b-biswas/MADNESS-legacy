@@ -189,9 +189,9 @@ class Deblend:
             self.postage_stamp = postage_stamp / linear_norm_coeff
         else:
             self.postage_stamp = (
-                np.transpose(postage_stamp, axes=[1, 2, 0]) / linear_norm_coeff
+                np.transpose(postage_stamp, axes=[0, 2, 3, 1]) / linear_norm_coeff
             )
-            print(postage_stamp.shape)
+
         self.detected_positions = detected_positions
 
         self.field_size = np.shape(postage_stamp)[1]
@@ -214,6 +214,7 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
+    # @tf.function
     def compute_residual(
         self,
         postage_stamp,
@@ -221,6 +222,7 @@ class Deblend:
         use_scatter_and_sub=False,
         index_pos_to_sub=None,
         padding_infos=None,
+        num_components=1,
     ):
         """Compute residual in a field.
 
@@ -251,62 +253,33 @@ class Deblend:
         # residual_field = tf.cast(residual_field, tf.float32)
 
         if use_scatter_and_sub:
+            tf.print("correct")
 
-            if index_pos_to_sub is not None:
+            def one_step(i, residual_field):
+                indices = index_pos_to_sub[i]
+                reconstruction = reconstructions[i]
 
-                def one_step(i, residual_field):
-                    indices = index_pos_to_sub[i]
-                    reconstruction = reconstructions[i]
-
-                    residual_field = tf.tensor_scatter_nd_sub(
-                        residual_field,
-                        indices,
-                        tf.reshape(
-                            reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
-                        ),
-                    )
-
-                    return i + 1, residual_field
-
-                c = lambda i, *_: i < self.num_components
-
-                _, residual_field = tf.while_loop(
-                    c,
-                    one_step,
-                    (0, residual_field),
-                    maximum_iterations=self.num_components,
+                residual_field = tf.tensor_scatter_nd_sub(
+                    residual_field,
+                    indices,
+                    tf.reshape(
+                        reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
+                    ),
                 )
 
-            else:
-                for i in range(self.num_components):
-                    detected_position = self.detected_positions[i]
+                return i + 1, residual_field
 
-                    starting_pos_x = round(detected_position[0]) - int(
-                        (self.cutout_size - 1) / 2
-                    )
-                    starting_pos_y = round(detected_position[1]) - int(
-                        (self.cutout_size - 1) / 2
-                    )
+            c = lambda i, *_: i < num_components
 
-                    indices = (
-                        np.indices((self.cutout_size, self.cutout_size, self.num_bands))
-                        .reshape(3, -1)
-                        .T
-                    )
-                    indices[:, 0] += int(starting_pos_x)
-                    indices[:, 1] += int(starting_pos_y)
-
-                    reconstruction = reconstructions[i]
-
-                    residual_field = tf.tensor_scatter_nd_sub(
-                        residual_field,
-                        indices,
-                        tf.reshape(
-                            reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
-                        ),
-                    )
+            _, residual_field = tf.while_loop(
+                c,
+                one_step,
+                (0, residual_field),
+                maximum_iterations=num_components,
+            )
 
         else:
+            tf.print("wrong")
             if padding_infos is None:
                 raise ValueError(
                     "Pass padding infos or use the scatter_and_sub function instead"
@@ -322,13 +295,13 @@ class Deblend:
                 residual_field = residual_field - reconstruction
                 return i + 1, residual_field
 
-            c = lambda i, _: i < self.num_components
+            c = lambda i, _: i < num_components
 
             _, residual_field = tf.while_loop(
                 c,
                 one_step,
                 (tf.constant(0, dtype=tf.int32), residual_field),
-                maximum_iterations=self.num_components,
+                maximum_iterations=num_components,
             )
         return residual_field
 
@@ -341,6 +314,7 @@ class Deblend:
         use_scatter_and_sub,
         index_pos_to_sub,
         padding_infos,
+        num_components,
     ):
         """Compute loss at each epoch of Deblending optimization.
 
@@ -385,6 +359,7 @@ class Deblend:
             use_scatter_and_sub=use_scatter_and_sub,
             index_pos_to_sub=index_pos_to_sub,
             padding_infos=padding_infos,
+            num_components=num_components,
         )
 
         if compute_sig_dynamically:
@@ -400,9 +375,7 @@ class Deblend:
         reconstruction_loss = reconstruction_loss / 2
 
         log_prob = tf.math.reduce_sum(
-            self.flow_vae_net.flow(
-                tf.reshape(z, (self.num_components, self.latent_dim))
-            )
+            self.flow_vae_net.flow(tf.reshape(z, (num_components, self.latent_dim)))
         )
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
@@ -421,60 +394,67 @@ class Deblend:
     def get_index_pos_to_sub(self):
         """Get index position to run tf.tensor_scatter_nd_sub."""
         index_list = []
-        for i in range(self.num_components):
-            detected_position = self.detected_positions[i]
+        for field_num in range(len(self.num_components)):
+            inner_list = []
+            for i in range(self.num_components[field_num]):
+                detected_position = self.detected_positions[field_num][i]
 
-            starting_pos_x = round(detected_position[0]) - int(
-                (self.cutout_size - 1) / 2
-            )
-            starting_pos_y = round(detected_position[1]) - int(
-                (self.cutout_size - 1) / 2
-            )
+                starting_pos_x = round(detected_position[0]) - int(
+                    (self.cutout_size - 1) / 2
+                )
+                starting_pos_y = round(detected_position[1]) - int(
+                    (self.cutout_size - 1) / 2
+                )
 
-            indices = (
-                np.indices((self.cutout_size, self.cutout_size, self.num_bands))
-                .reshape(3, -1)
-                .T
-            )
-            indices[:, 0] += int(starting_pos_x)
-            indices[:, 1] += int(starting_pos_y)
-            index_list.append(indices)
+                indices = (
+                    np.indices((self.cutout_size, self.cutout_size, self.num_bands))
+                    .reshape(3, -1)
+                    .T
+                )
+                indices[:, 0] += int(starting_pos_x)
+                indices[:, 1] += int(starting_pos_y)
+                inner_list.append(indices)
+            index_list.append(inner_list)
 
         return np.array(index_list)
 
     def get_padding_infos(self):
         """Compute padding info to convert galaxy cutout into field."""
         padding_infos_list = []
-        for detected_position in self.detected_positions:
-            starting_pos_x = round(detected_position[0]) - int(
-                (self.cutout_size - 1) / 2
-            )
-            starting_pos_y = round(detected_position[1]) - int(
-                (self.cutout_size - 1) / 2
-            )
+        for field_num in range(len(self.num_components)):
+            inner_list = []
+            for detected_position in self.detected_positions[field_num]:
+                starting_pos_x = round(detected_position[0]) - int(
+                    (self.cutout_size - 1) / 2
+                )
+                starting_pos_y = round(detected_position[1]) - int(
+                    (self.cutout_size - 1) / 2
+                )
 
-            padding = [
-                [
-                    starting_pos_x,
-                    self.field_size - (starting_pos_x + int(self.cutout_size)),
-                ],
-                [
-                    starting_pos_y,
-                    self.field_size - (starting_pos_y + int(self.cutout_size)),
-                ],
-                [0, 0],
-            ]
+                padding = [
+                    [
+                        starting_pos_x,
+                        self.field_size - (starting_pos_x + int(self.cutout_size)),
+                    ],
+                    [
+                        starting_pos_y,
+                        self.field_size - (starting_pos_y + int(self.cutout_size)),
+                    ],
+                    [0, 0],
+                ]
 
+                inner_list.append(padding)
             padding_infos_list.append(padding)
         return np.array(padding_infos_list)
 
     def compute_noise_sigma(self):
         """Compute noise level with sep."""
         sig = []
+        print(self.postage_stamp.shape)
         for i in range(len(self.survey.available_filters)):
             sig.append(
                 sep.Background(
-                    np.ascontiguousarray(self.postage_stamp[:, :, i])
+                    np.ascontiguousarray(self.postage_stamp[0][:, :, i])
                 ).globalrms
             )
 
@@ -604,10 +584,12 @@ class Deblend:
                         self.postage_stamp, dtype=tf.float32
                     ),
                     compute_sig_dynamically=tf.convert_to_tensor(
-                        compute_sig_dynamically
+                        [compute_sig_dynamically] * len(self.num_components),
                     ),
                     sig_sq=sig_sq,
-                    use_scatter_and_sub=tf.convert_to_tensor(use_scatter_and_sub),
+                    use_scatter_and_sub=tf.convert_to_tensor(
+                        [use_scatter_and_sub] * len(self.num_components)
+                    ),
                     index_pos_to_sub=tf.convert_to_tensor(
                         index_pos_to_sub, dtype=tf.int32
                     ),
@@ -645,6 +627,30 @@ class Deblend:
         # print(self.components)
 
         return results
+
+    def compute_loss_vectorized(self, arg):
+
+        (
+            z,
+            postage_stamp,
+            compute_sig_dynamically,
+            sig_sq,
+            use_scatter_and_sub,
+            index_pos_to_sub,
+            padding_infos,
+            num_components,
+        ) = arg
+
+        self.compute_loss(
+            z=z,
+            postage_stamp=postage_stamp,
+            compute_sig_dynamically=compute_sig_dynamically,
+            sig_sq=sig_sq,
+            use_scatter_and_sub=use_scatter_and_sub,
+            index_pos_to_sub=index_pos_to_sub,
+            padding_infos=padding_infos,
+            num_components=num_components,
+        )
 
     def generate_grad_step_loss(
         self,
@@ -686,18 +692,22 @@ class Deblend:
 
         """
 
-        @tf.function(autograph=False)
+        # @tf.function
         def training_loss():
             """Compute training loss."""
-            loss, *_ = self.compute_loss(
-                z=z,
-                postage_stamp=postage_stamp,
-                compute_sig_dynamically=compute_sig_dynamically,
-                sig_sq=sig_sq,
-                use_scatter_and_sub=use_scatter_and_sub,
-                index_pos_to_sub=index_pos_to_sub,
-                padding_infos=padding_infos,
+            loss, *_ = tf.vectorized_map(
+                self.compute_loss_vectorized,
+                (
+                    z,
+                    postage_stamp,
+                    compute_sig_dynamically,
+                    sig_sq,
+                    use_scatter_and_sub,
+                    index_pos_to_sub,
+                    padding_infos,
+                    tf.convert_to_tensor(self.num_components, dtype=tf.int32),
+                ),
             )
-            return loss
+            return tf.reduce_sum(loss)
 
         return training_loss
