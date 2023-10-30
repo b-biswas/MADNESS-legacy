@@ -22,6 +22,84 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
+def vectorized_compute_residual(args):
+    (
+        postage_stamp, #todo: rename this to field
+        reconstructions,
+        use_scatter_and_sub,
+        index_pos_to_sub,
+        padding_infos,
+        num_components,
+    ) = args
+
+    residual_field = compute_residual(
+        postage_stamp, #todo: rename this to field
+        reconstructions,
+        use_scatter_and_sub=use_scatter_and_sub,
+        index_pos_to_sub=index_pos_to_sub,
+        padding_infos=padding_infos,
+        num_components=num_components,
+    )
+
+    return residual_field
+
+def compute_residual(
+        postage_stamp,
+        reconstructions=None,
+        use_scatter_and_sub=False,
+        index_pos_to_sub=None,
+        padding_infos=None,
+        num_components=1,
+    ):
+        """Compute residual in a field.
+
+        Parameters
+        ----------
+        postage_stamp: tf tensor
+            field with all the galaxies
+        reconstructions: tf tensor
+            reconstructions to be subtracted
+        use_scatter_and_sub: bool
+            uses tf.scatter_and_sub for substraction instead of padding.
+        index_pos_to_sub:
+            index position for substraction is `use_scatter_and_sub` is True
+        padding_infos:
+            padding parameters for reconstructions to that they can be subtracted from the field.
+            Used when `use_scatter_and_sub` is False.
+
+        Returns
+        -------
+        residual_field: tf tensor
+            residual of the field after subtracting the reconsturctions.
+
+        """
+        residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
+
+        def one_step(i, residual_field):
+            indices = index_pos_to_sub[i]
+            reconstruction = reconstructions[i]
+
+            residual_field = tf.tensor_scatter_nd_sub(
+                residual_field,
+                indices,
+                tf.reshape(
+                    reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
+                ),
+            )
+
+            return i + 1, residual_field
+
+        c = lambda i, *_: i < num_components
+
+        _, residual_field = tf.while_loop(
+            c,
+            one_step,
+            (0, residual_field),
+            maximum_iterations=num_components,
+        )
+
+        return residual_field
+
 class Deblend:
     """Run the deblender."""
 
@@ -193,6 +271,8 @@ class Deblend:
             )
 
         self.detected_positions = detected_positions
+        self.max_number = detected_positions.shape[1]
+        self.num_fields = detected_positions.shape[0]
 
         self.field_size = np.shape(postage_stamp)[1]
 
@@ -215,95 +295,7 @@ class Deblend:
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
     # @tf.function
-    def compute_residual(
-        self,
-        postage_stamp,
-        reconstructions=None,
-        use_scatter_and_sub=False,
-        index_pos_to_sub=None,
-        padding_infos=None,
-        num_components=1,
-    ):
-        """Compute residual in a field.
-
-        Parameters
-        ----------
-        postage_stamp: tf tensor
-            field with all the galaxies
-        reconstructions: tf tensor
-            reconstructions to be subtracted
-        use_scatter_and_sub: bool
-            uses tf.scatter_and_sub for substraction instead of padding.
-        index_pos_to_sub:
-            index position for substraction is `use_scatter_and_sub` is True
-        padding_infos:
-            padding parameters for reconstructions to that they can be subtracted from the field.
-            Used when `use_scatter_and_sub` is False.
-
-        Returns
-        -------
-        residual_field: tf tensor
-            residual of the field after subtracting the reconsturctions.
-
-        """
-        if reconstructions is None:
-            reconstructions = tf.convert_to_tensor(self.components, dtype=tf.float32)
-        residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
-
-        # residual_field = tf.cast(residual_field, tf.float32)
-
-        if use_scatter_and_sub:
-            tf.print("correct")
-
-            def one_step(i, residual_field):
-                indices = index_pos_to_sub[i]
-                reconstruction = reconstructions[i]
-
-                residual_field = tf.tensor_scatter_nd_sub(
-                    residual_field,
-                    indices,
-                    tf.reshape(
-                        reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
-                    ),
-                )
-
-                return i + 1, residual_field
-
-            c = lambda i, *_: i < num_components
-
-            _, residual_field = tf.while_loop(
-                c,
-                one_step,
-                (0, residual_field),
-                maximum_iterations=num_components,
-            )
-
-        else:
-            tf.print("wrong")
-            if padding_infos is None:
-                raise ValueError(
-                    "Pass padding infos or use the scatter_and_sub function instead"
-                )
-
-            def one_step(i, residual_field):
-                # padding = tf.cast(padding_infos[i], dtype=tf.int32)
-                padding = padding_infos[i]
-                reconstruction = tf.pad(
-                    tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
-                )
-                # tf.where(mask, tf.zeros_like(tensor), tensor)
-                residual_field = residual_field - reconstruction
-                return i + 1, residual_field
-
-            c = lambda i, _: i < num_components
-
-            _, residual_field = tf.while_loop(
-                c,
-                one_step,
-                (tf.constant(0, dtype=tf.int32), residual_field),
-                maximum_iterations=num_components,
-            )
-        return residual_field
+    
 
     def compute_loss(
         self,
@@ -352,20 +344,25 @@ class Deblend:
 
         """
         reconstructions = self.flow_vae_net.decoder(z)
+        
+        reconstructions = tf.reshape(reconstructions,[self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
 
-        residual_field = self.compute_residual(
-            postage_stamp,
-            reconstructions,
-            use_scatter_and_sub=use_scatter_and_sub,
-            index_pos_to_sub=index_pos_to_sub,
-            padding_infos=padding_infos,
-            num_components=num_components,
+        residual_field = tf.map_fn(
+            vectorized_compute_residual,
+            elems = (
+                postage_stamp, #todo: rename this to field
+                reconstructions,
+                use_scatter_and_sub,
+                index_pos_to_sub,
+                padding_infos,
+                num_components,
+            ),
+            parallel_iterations=20,
+            fn_output_signature=tf.TensorSpec(
+                    postage_stamp.shape[1:], 
+                    dtype=tf.float32, 
+                ),
         )
-
-        if compute_sig_dynamically:
-            sig_sq = tf.stop_gradient(
-                tf.math.reduce_std(residual_field, axis=[0, 1]) ** 2
-            )
 
         reconstruction_loss = residual_field**2 / sig_sq
         # tf.print(sig_sq, output_stream=sys.stdout)
@@ -375,7 +372,7 @@ class Deblend:
         reconstruction_loss = reconstruction_loss / 2
 
         log_prob = tf.math.reduce_sum(
-            self.flow_vae_net.flow(tf.reshape(z, (num_components, self.latent_dim)))
+            self.flow_vae_net.flow(tf.reshape(z, (self.num_fields*self.max_number, self.latent_dim)))
         )
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
@@ -394,7 +391,7 @@ class Deblend:
     def get_index_pos_to_sub(self):
         """Get index position to run tf.tensor_scatter_nd_sub."""
         index_list = []
-        for field_num in range(len(self.num_components)):
+        for field_num in range(self.num_fields):
             inner_list = []
             for i in range(self.num_components[field_num]):
                 detected_position = self.detected_positions[field_num][i]
@@ -421,7 +418,7 @@ class Deblend:
     def get_padding_infos(self):
         """Compute padding info to convert galaxy cutout into field."""
         padding_infos_list = []
-        for field_num in range(len(self.num_components)):
+        for field_num in range(self.num_fields):
             inner_list = []
             for detected_position in self.detected_positions[field_num]:
                 starting_pos_x = round(detected_position[0]) - int(
@@ -444,7 +441,7 @@ class Deblend:
                 ]
 
                 inner_list.append(padding)
-            padding_infos_list.append(padding)
+            padding_infos_list.append(inner_list)
         return np.array(padding_infos_list)
 
     def compute_noise_sigma(self):
@@ -509,7 +506,7 @@ class Deblend:
 
         if not use_debvader:
             # check constraint parameter over here
-            z = tf.Variable(self.flow_vae_net.td.sample(self.num_components))
+            z = tf.Variable(self.flow_vae_net.td.sample((self.num_fields * self.max_number)))
 
         else:
             # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
@@ -526,6 +523,10 @@ class Deblend:
             )
             LOG.info("\n\nUsing encoder for initial point")
             z = tf.Variable(initZ.mean())
+
+            z = tf.reshape(z, (self.num_fields * self.max_number, 16))
+
+        tf.print(z.shape)
 
         # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
         if map_solution:
@@ -574,7 +575,7 @@ class Deblend:
                 np.add(sig_sq, np.square(noise_level)),
                 dtype=tf.float32,
             )
-
+            tf.print(sig_sq.shape)
             # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
             results = tfp.math.minimize(
@@ -584,16 +585,17 @@ class Deblend:
                         self.postage_stamp, dtype=tf.float32
                     ),
                     compute_sig_dynamically=tf.convert_to_tensor(
-                        [compute_sig_dynamically] * len(self.num_components),
+                        [compute_sig_dynamically] * self.num_fields,
                     ),
                     sig_sq=sig_sq,
                     use_scatter_and_sub=tf.convert_to_tensor(
-                        [use_scatter_and_sub] * len(self.num_components)
+                        [use_scatter_and_sub] * self.num_fields,
                     ),
                     index_pos_to_sub=tf.convert_to_tensor(
                         index_pos_to_sub, dtype=tf.int32
                     ),
                     padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.int32),
+                    num_components=tf.convert_to_tensor(self.num_components, dtype=tf.int32),
                 ),
                 trainable_variables=[z],
                 num_steps=self.max_iter,
@@ -621,8 +623,8 @@ class Deblend:
             LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
         else:
             results = None
-        self.components = self.flow_vae_net.decoder(z) * self.linear_norm_coeff
-        self.z = z
+        self.components = tf.reshape(self.flow_vae_net.decoder(z) * self.linear_norm_coeff, [self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
+        self.z = tf.reshape(z, (self.num_fields, self.max_number, 16))
 
         # print(self.components)
 
@@ -641,7 +643,7 @@ class Deblend:
             num_components,
         ) = arg
 
-        self.compute_loss(
+        loss, *_ = self.compute_loss(
             z=z,
             postage_stamp=postage_stamp,
             compute_sig_dynamically=compute_sig_dynamically,
@@ -651,6 +653,7 @@ class Deblend:
             padding_infos=padding_infos,
             num_components=num_components,
         )
+        return loss
 
     def generate_grad_step_loss(
         self,
@@ -661,6 +664,7 @@ class Deblend:
         use_scatter_and_sub,
         index_pos_to_sub,
         padding_infos,
+        num_components,
     ):
         """Return function compute training loss that has no arguments.
 
@@ -691,23 +695,36 @@ class Deblend:
             computes loss without taking any arguments.
 
         """
-
+        
         # @tf.function
         def training_loss():
             """Compute training loss."""
-            loss, *_ = tf.vectorized_map(
-                self.compute_loss_vectorized,
-                (
-                    z,
-                    postage_stamp,
-                    compute_sig_dynamically,
-                    sig_sq,
-                    use_scatter_and_sub,
-                    index_pos_to_sub,
-                    padding_infos,
-                    tf.convert_to_tensor(self.num_components, dtype=tf.int32),
-                ),
+            # loss = tf.vectorized_map(
+            #     self.compute_loss_vectorized,
+            #     (
+            #         z,
+            #         postage_stamp,
+            #         compute_sig_dynamically,
+            #         sig_sq,
+            #         use_scatter_and_sub,
+            #         index_pos_to_sub,
+            #         padding_infos,
+            #         num_components,
+            #     ),
+            # )
+            loss, *_ = self.compute_loss(
+                z=z,
+                postage_stamp=postage_stamp,
+                compute_sig_dynamically=compute_sig_dynamically,
+                sig_sq=sig_sq,
+                use_scatter_and_sub=use_scatter_and_sub,
+                index_pos_to_sub=index_pos_to_sub,
+                padding_infos=padding_infos,
+                num_components=num_components,
             )
-            return tf.reduce_sum(loss)
+            tf.print(loss.shape)
+            mean_loss = tf.reduce_mean(loss)
+
+            return mean_loss
 
         return training_loss
