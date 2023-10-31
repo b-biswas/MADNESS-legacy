@@ -43,6 +43,7 @@ def vectorized_compute_residual(args):
 
     return residual_field
 
+@tf.function
 def compute_residual(
         postage_stamp,
         reconstructions=None,
@@ -347,7 +348,7 @@ class Deblend:
         
         reconstructions = tf.reshape(reconstructions,[self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
 
-        residual_field = tf.map_fn(
+        residual_field = tf.vectorized_map(
             vectorized_compute_residual,
             elems = (
                 postage_stamp, #todo: rename this to field
@@ -357,11 +358,11 @@ class Deblend:
                 padding_infos,
                 num_components,
             ),
-            parallel_iterations=20,
-            fn_output_signature=tf.TensorSpec(
-                    postage_stamp.shape[1:], 
-                    dtype=tf.float32, 
-                ),
+            # parallel_iterations=5,
+            # fn_output_signature=tf.TensorSpec(
+            #         postage_stamp.shape[1:], 
+            #         dtype=tf.float32, 
+            #     ),
         )
 
         reconstruction_loss = residual_field**2 / sig_sq
@@ -369,11 +370,11 @@ class Deblend:
 
         reconstruction_loss = tf.math.reduce_sum(reconstruction_loss)
 
-        reconstruction_loss = reconstruction_loss / 2
+        reconstruction_loss = reconstruction_loss / 2 
 
         log_prob = tf.math.reduce_sum(
             self.flow_vae_net.flow(tf.reshape(z, (self.num_fields*self.max_number, self.latent_dim)))
-        )
+        ) 
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
@@ -393,7 +394,12 @@ class Deblend:
         index_list = []
         for field_num in range(self.num_fields):
             inner_list = []
-            for i in range(self.num_components[field_num]):
+            for i in range(self.max_number):
+                indices = (
+                    np.indices((self.cutout_size, self.cutout_size, self.num_bands))
+                    .reshape(3, -1)
+                    .T
+                )
                 detected_position = self.detected_positions[field_num][i]
 
                 starting_pos_x = round(detected_position[0]) - int(
@@ -401,12 +407,6 @@ class Deblend:
                 )
                 starting_pos_y = round(detected_position[1]) - int(
                     (self.cutout_size - 1) / 2
-                )
-
-                indices = (
-                    np.indices((self.cutout_size, self.cutout_size, self.num_bands))
-                    .reshape(3, -1)
-                    .T
                 )
                 indices[:, 0] += int(starting_pos_x)
                 indices[:, 1] += int(starting_pos_y)
@@ -511,22 +511,29 @@ class Deblend:
         else:
             # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
             # use the encoder to find a good starting point.
-            cutouts = extract_cutouts(
-                self.postage_stamp,
-                pos=self.detected_positions,
-                cutout_size=self.cutout_size,
-                nb_of_bands=self.num_bands,
-                channel_last=True,
+            cutouts = np.zeros(
+                (
+                    self.num_fields*self.max_number, 
+                    self.cutout_size, 
+                    self.cutout_size, 
+                    self.num_bands,
+                )
             )
+            for field_num in range(self.num_fields):
+                cutouts[field_num*self.max_number : field_num*self.max_number + self.num_components[field_num]] = extract_cutouts(
+                    self.postage_stamp[field_num],
+                    pos=self.detected_positions[field_num][:self.num_components[field_num]],
+                    cutout_size=self.cutout_size,
+                    nb_of_bands=self.num_bands,
+                    channel_last=True,
+                )[0]
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
-                self.flow_vae_net.encoder(cutouts[0])
+                self.flow_vae_net.encoder(cutouts)
             )
             LOG.info("\n\nUsing encoder for initial point")
-            z = tf.Variable(initZ.mean())
+            z = tf.Variable(tf.reshape(initZ.mean(), (self.num_fields * self.max_number, 16)))
 
-            z = tf.reshape(z, (self.num_fields * self.max_number, 16))
-
-        tf.print(z.shape)
+        # tf.print(z.shape)
 
         # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
         if map_solution:
@@ -548,16 +555,8 @@ class Deblend:
             t0 = time.time()
 
             index_pos_to_sub = self.get_index_pos_to_sub()
-            # index_pos_to_sub = tf.TensorArray(
-            #   tf.int32,
-            #   size=np.shape(index_pos_to_sub)[0],
-            #   clear_after_read=False).unstack(index_pos_to_sub)
 
             padding_infos = self.get_padding_infos()
-            # padding_infos = tf.TensorArray(
-            #   tf.int32,
-            #   size=np.shape(padding_infos)[0],
-            #   clear_after_read=False).unstack(padding_infos)
 
             def trace_fn(traceable_quantities):
                 return {"loss": traceable_quantities.loss}
@@ -572,10 +571,10 @@ class Deblend:
             sig_sq = self.postage_stamp / self.linear_norm_coeff
             # sig_sq[sig_sq <= (5 * noise_level)] = 0
             sig_sq = tf.convert_to_tensor(
-                np.add(sig_sq, np.square(noise_level)),
+                sig_sq + noise_level**2,
                 dtype=tf.float32,
             )
-            tf.print(sig_sq.shape)
+            # tf.print(sig_sq.shape)
             # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
             results = tfp.math.minimize(
@@ -696,7 +695,7 @@ class Deblend:
 
         """
         
-        # @tf.function
+        @tf.function
         def training_loss():
             """Compute training loss."""
             # loss = tf.vectorized_map(
@@ -722,7 +721,7 @@ class Deblend:
                 padding_infos=padding_infos,
                 num_components=num_components,
             )
-            tf.print(loss.shape)
+            # tf.print(loss.shape)
             mean_loss = tf.reduce_mean(loss)
 
             return mean_loss
