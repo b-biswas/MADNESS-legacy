@@ -370,11 +370,11 @@ class Deblend:
                 num_components,
                 sig_sq
             ),
-            parallel_iterations=5,
-            fn_output_signature=tf.TensorSpec(
-                    postage_stamp.shape[1:], 
-                    dtype=tf.float32, 
-                ),
+            # parallel_iterations=5,
+            # fn_output_signature=tf.TensorSpec(
+            #         postage_stamp.shape[1:], 
+            #         dtype=tf.float32, 
+            #     ),
         )
 
         #reconstruction_loss = residual_field**2 / sig_sq
