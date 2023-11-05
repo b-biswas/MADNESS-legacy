@@ -32,8 +32,8 @@ survey = galcheat.get_survey(survey_name)
 density = sys.argv[2]
 run_name = sys.argv[3]
 map_solution = sys.argv[4].lower() == "true"
-
-LOG.info(map_solution)
+max_number = 20
+#LOG.info(map_solution)
 
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -45,7 +45,7 @@ results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 density_level = density + "_density"
 
 
-weights_path = os.path.join(get_data_dir_path(), f"catsim_{run_name}16d")
+weights_path = os.path.join(get_data_dir_path(), f"LSST")
 deb = Deblend(latent_dim=16, weights_path=weights_path, survey=survey)
 
 psf_fwhm = []
@@ -56,7 +56,7 @@ for band in survey.available_filters:
 num_repetations = 300
 
 for file_num in range(num_repetations):
-    LOG.info("Processing file " + str(file_num))
+    LOG.info(f"\n\n######### Processing file: {file_num} #########")
     blend = hickle.load(
         os.path.join(
             simulation_path,
@@ -79,55 +79,57 @@ for file_num in range(num_repetations):
     madness_photometry = []
     blended_photometry = []
 
+    detected_positions = np.zeros((len(blend['blend_list']), max_number, 2)) 
+    num_components = []
+    for field_num in range(len(blend['blend_list'])):
+        for gal_num in range(len(blend['blend_list'][field_num])):
+            detected_positions[field_num][gal_num][0] = blend['blend_list'][field_num]['y_peak'][gal_num]
+            detected_positions[field_num][gal_num][1] = blend['blend_list'][field_num]['x_peak'][gal_num]
+        num_components.append(len(blend['blend_list'][field_num]))
+
+    convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
+        rtol=0.05,
+        min_num_steps=40,
+        window_size=15,
+    )
+    # convergence_criterion = None
+    lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=0.075,
+        decay_steps=30,
+        decay_rate=0.8,
+        staircase=True,
+    )
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
+
+    deb(
+        field_images,
+        detected_positions,
+        num_components=num_components,  # redundant parameter
+        use_log_prob=True,
+        linear_norm_coeff=linear_norm_coeff,
+        max_iter=200,
+        convergence_criterion=convergence_criterion,
+        optimizer=optimizer,
+        use_debvader=True,
+        map_solution=map_solution,
+    )
+    padding_infos_all_fields = deb.get_padding_infos()
+
     for field_num in range(len(blend["blend_list"])):
+        #LOG.info(field_num)
 
         current_field_predictions = []
         current_madness_models = {"images": [], "field_num": [], "galaxy_num": []}
 
         current_blend = blend["blend_list"][field_num]
-        # print(blends)
-        detected_positions = []
-        for j in range(len(current_blend)):
-            detected_positions.append(
-                [current_blend["y_peak"][j], current_blend["x_peak"][j]]
-            )
 
-        # tf.config.run_functions_eagerly(False)
-        # convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-        #     atol=0.00001 * 45 * 45 * len(blend) * 3, min_num_steps=100, window_size=20
-        # )
-
-        convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
-            rtol=0.05,
-            min_num_steps=40,
-            window_size=15,
-        )
-        # convergence_criterion = None
-        lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=0.25,
-            decay_steps=20,
-            decay_rate=0.9,
-            staircase=False,
-        )
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
-
-        deb(
-            field_images[field_num],
-            detected_positions,
-            num_components=len(current_blend),  # redundant parameter
-            use_log_prob=True,
-            linear_norm_coeff=linear_norm_coeff,
-            max_iter=500,
-            convergence_criterion=convergence_criterion,
-            optimizer=optimizer,
-            use_debvader=True,
-            compute_sig_dynamically=False,
-            map_solution=map_solution,
-        )
-        padding_infos = deb.get_padding_infos()
-        for component_num in range(deb.num_components):
+        padding_infos = padding_infos_all_fields[field_num]
+        for component_num in range(deb.num_components[field_num]):
+            #LOG.info(component_num)
+            #LOG.info(padding_infos)
             prediction = np.pad(
-                deb.components[component_num], padding_infos[component_num]
+                deb.components[field_num][component_num], 
+                padding_infos[component_num],
             )
             prediction = np.transpose(prediction, axes=(2, 0, 1))
             current_field_predictions.append(prediction)
