@@ -60,7 +60,7 @@ def vectorized_compute_reconst_loss(args):
 #@tf.function(jit_compile=True)
 def compute_residual(
         blended_field,
-        reconstructions=None,
+        reconstructions,
         use_scatter_and_sub=True,
         index_pos_to_sub=None,
         num_components=1,
@@ -334,8 +334,8 @@ class Deblend:
         The final returned image has same value of channel_last as input image.
         """
         if self.channel_last:
-            return self.components.copy()
-        return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
+            return self.components
+        return np.moveaxis(self.components, -1, -3)
 
     def compute_loss(
         self,
