@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+from functools import partial
 
 import galcheat
 import numpy as np
@@ -24,42 +25,52 @@ LOG = logging.getLogger(__name__)
 
 
 def vectorized_compute_reconst_loss(args):
+    """Compute reconstuction loss after being passed to tf.map_fn.
+
+    Parameters
+    ----------
+    args: nested tensor
+        (blended_field, reconstructions, index_pos_to_sub, num_components, sig_sq).
+        passees all parameters to compute_residual function.
+
+    Returns
+    -------
+    reconstuction loss: tensor
+        reconstruction loss term of the loss function.
+
+    """
     (
-        postage_stamp, #todo: rename this to field
+        blended_field, 
         reconstructions,
-        use_scatter_and_sub,
         index_pos_to_sub,
-        padding_infos,
         num_components,
         sig_sq,
     ) = args
-
+    #tf.print("reached 1")
     residual_field = compute_residual(
-        postage_stamp, #todo: rename this to field
+        blended_field,
         reconstructions,
-        use_scatter_and_sub=use_scatter_and_sub,
         index_pos_to_sub=index_pos_to_sub,
-        padding_infos=padding_infos,
         num_components=num_components,
     )
     reconst_loss = residual_field**2 / sig_sq
+    #tf.print("reached 2")
+    return tf.math.reduce_sum(reconst_loss)/2
 
-    return tf.reduce_sum(reconst_loss)/2
-
-@tf.function
+#@tf.function(jit_compile=True)
 def compute_residual(
-        postage_stamp,
+        blended_field,
         reconstructions=None,
-        use_scatter_and_sub=False,
+        use_scatter_and_sub=True,
         index_pos_to_sub=None,
-        padding_infos=None,
         num_components=1,
+        padding_infos=None,
     ):
     """Compute residual in a field.
 
     Parameters
     ----------
-    postage_stamp: tf tensor
+    blended_field: tf tensor
         field with all the galaxies
     reconstructions: tf tensor
         reconstructions to be subtracted
@@ -67,6 +78,8 @@ def compute_residual(
         uses tf.scatter_and_sub for substraction instead of padding.
     index_pos_to_sub:
         index position for substraction is `use_scatter_and_sub` is True
+    num_components: int
+        numer of components/galaxies in the field
     padding_infos:
         padding parameters for reconstructions to that they can be subtracted from the field.
         Used when `use_scatter_and_sub` is False.
@@ -77,31 +90,62 @@ def compute_residual(
         residual of the field after subtracting the reconsturctions.
 
     """
-    residual_field = tf.convert_to_tensor(postage_stamp, dtype=tf.float32)
+    residual_field = tf.convert_to_tensor(blended_field, dtype=tf.float32)
 
-    def one_step(i, residual_field):
-        indices = index_pos_to_sub[i]
-        reconstruction = reconstructions[i]
+    if use_scatter_and_sub:
 
-        residual_field = tf.tensor_scatter_nd_sub(
-            residual_field,
-            indices,
-            tf.reshape(
-                reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
-            ),
+        def one_step(i, residual_field):
+            indices = index_pos_to_sub[i]
+            reconstruction = reconstructions[i]
+
+            residual_field = tf.tensor_scatter_nd_sub(
+                residual_field,
+                indices,
+                tf.reshape(
+                    reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
+                ),
+            )
+
+            return i + 1, residual_field
+
+        c = lambda i, *_: i < num_components
+
+        _, residual_field = tf.while_loop(
+            c,
+            one_step,
+            (0, residual_field),
+            maximum_iterations=num_components,
+            parallel_iterations=1,
         )
 
-        return i + 1, residual_field
+        return residual_field
 
-    c = lambda i, *_: i < num_components
+    else:
 
-    _, residual_field = tf.while_loop(
-        c,
-        one_step,
-        (0, residual_field),
-        maximum_iterations=num_components,
-    )
+        if padding_infos is None:
+            raise ValueError(
+                "Pass padding infos or use the scatter_and_sub function instead"
+            )
 
+        def one_step(i, residual_field):
+            # padding = tf.cast(padding_infos[i], dtype=tf.int32)
+            padding = padding_infos[i]
+            reconstruction = tf.pad(
+                tf.gather(reconstructions, i), padding, "CONSTANT", name="padding"
+            )
+            # tf.where(mask, tf.zeros_like(tensor), tensor)
+            residual_field = residual_field - reconstruction
+            return i + 1, residual_field
+
+        c = lambda i, _: i < num_components
+
+        _, residual_field = tf.while_loop(
+            c,
+            one_step,
+            (tf.constant(0, dtype=tf.int32), residual_field),
+            maximum_iterations=num_components,
+            parallel_iterations=1,
+        )
     return residual_field
 
 class Deblend:
@@ -187,7 +231,7 @@ class Deblend:
 
         # self.flow_vae_net.vae_model.summary()
 
-        self.postage_stamp = None
+        self.blended_fields = None
         self.detected_positions = None
         self.cutout_size = stamp_shape
         self.num_components = None
@@ -204,10 +248,10 @@ class Deblend:
 
     def __call__(
         self,
-        postage_stamp,
+        blended_fields,
         detected_positions,
+        num_components,
         noise_sigma=None,
-        num_components=1,
         max_iter=60,
         use_log_prob=True,
         channel_last=False,
@@ -215,29 +259,27 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
-        use_scatter_and_sub=True,
-        compute_sig_dynamically=False,
         map_solution=True,
     ):
         """Run the Deblending operation.
 
         Parameters
         ----------
-        postage_stamp: np.ndarray
-            input stamp/field that is to be deblended
+        blended_fields: np.ndarray
+            batch of blended fields.
         detected_positions: list
             List of detected positions.
             as in array and not image
+        num_components: list
+            list of number of galaxies present in the image.
         noise_sigma: list of float
             backgound noise-level in each band
-        num_components: int
-            number of galaxies present in the image.
         max_iter: int
             number of iterations in the deblending step
         use_log_prob: bool
             decides whether or not to use the log_prob output of the flow deblender in the optimization.
         channel_last: bool
-            if channel is the last column of the postage_stamp
+            if channel is the last column of the blended_fields
         linear_norm_coeff: int/list
             list stores the bandwise linear normalizing/scaling factor.
             if int is passed, same scaling factor is used for all.
@@ -247,11 +289,6 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
-        use_scatter_and_sub: bool
-            uses tf.scatter_and_sub for substraction instead of padding.
-        compute_sig_dynamically: bool
-            to estimate noise level in image. (can be slow)
-            Otherwise it uses sep to compute the background noise.
         map_solution: bool
             To obtain the map solution (MADNESS) or debvader solution.
             Both `map_solution` and `use_debvader` cannot be False at the same time.
@@ -260,7 +297,7 @@ class Deblend:
         # tf.config.run_functions_eagerly(False)
         self.linear_norm_coeff = linear_norm_coeff
         self.max_iter = max_iter
-        self.num_components = num_components
+        self.num_components = tf.convert_to_tensor(num_components, dtype=tf.int32)
         self.use_log_prob = use_log_prob
         self.components = None
         self.channel_last = channel_last
@@ -268,24 +305,26 @@ class Deblend:
         self.noise_sigma = noise_sigma
 
         if self.channel_last:
-            self.postage_stamp = postage_stamp / linear_norm_coeff
+            self.blended_fields = tf.convert_to_tensor(
+                blended_fields / linear_norm_coeff, 
+                dtype=tf.float32,
+            )
         else:
-            self.postage_stamp = (
-                np.transpose(postage_stamp, axes=[0, 2, 3, 1]) / linear_norm_coeff
+            self.blended_fields = tf.convert_to_tensor(
+                np.transpose(blended_fields, axes=[0, 2, 3, 1]) / linear_norm_coeff,
+                dtype=tf.float32,
             )
 
-        self.detected_positions = detected_positions
-        self.max_number = detected_positions.shape[1]
-        self.num_fields = detected_positions.shape[0]
+        self.detected_positions = np.array(detected_positions)
+        self.max_number = self.detected_positions.shape[1]
+        self.num_fields = self.detected_positions.shape[0]
 
-        self.field_size = np.shape(postage_stamp)[1]
+        self.field_size = np.shape(blended_fields)[2]
 
         self.results = self.gradient_decent(
             convergence_criterion=convergence_criterion,
             use_debvader=use_debvader,
             optimizer=optimizer,
-            use_scatter_and_sub=use_scatter_and_sub,
-            compute_sig_dynamically=compute_sig_dynamically,
             map_solution=map_solution,
         )
 
@@ -298,19 +337,11 @@ class Deblend:
             return self.components.copy()
         return np.transpose(self.components, axes=(0, 3, 1, 2)).copy()
 
-    # @tf.function
-    
-
     def compute_loss(
         self,
         z,
-        postage_stamp,
-        compute_sig_dynamically,
         sig_sq,
-        use_scatter_and_sub,
         index_pos_to_sub,
-        padding_infos,
-        num_components,
     ):
         """Compute loss at each epoch of Deblending optimization.
 
@@ -318,22 +349,10 @@ class Deblend:
         ----------
         z: tf tensor
             latent space representations of the reconstructions.
-        postage_stamp: tf tensor
-            field with all the galaxies
-        compute_sig_dynamically: bool
-            to estimate noise level in image. (can be slow)
-            Otherwise it uses sep to compute the background noise.
         sig_sq: tf tensor
             Factor for division to convert the MSE to Gaussian approx to poisson noise.
-        reconstructions: tf tensor
-            reconstructions to be subtracted
-        use_scatter_and_sub: bool
-            uses tf.scatter_and_sub for substraction instead of padding.
         index_pos_to_sub:
             index position for substraction is `use_scatter_and_sub` is True
-        padding_infos:
-            padding parameters for reconstructions to that they can be subtracted from the field.
-            Used when `use_scatter_and_sub` is False.
 
         Returns
         -------
@@ -351,43 +370,40 @@ class Deblend:
         
         reconstructions = tf.reshape(reconstructions,[self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
 
-        tf.print(postage_stamp.shape)
-        tf.print(reconstructions.shape)
-        tf.print(use_scatter_and_sub.shape)
-        tf.print(index_pos_to_sub.shape)
-        tf.print(padding_infos.shape)
-        tf.print(num_components.shape)
-        tf.print(sig_sq.shape)
+        # tf.print(postage_stamp.shape)
+        # tf.print(reconstructions.shape)
+        # tf.print(index_pos_to_sub.shape)
+        # tf.print(num_components.shape)
+        # tf.print(sig_sq.shape)
 
-        reconstruction_loss = tf.vectorized_map(
+        reconstruction_loss = tf.map_fn(
             vectorized_compute_reconst_loss,
             elems = (
-                postage_stamp, #todo: rename this to field
+                self.blended_fields,
                 reconstructions,
-                use_scatter_and_sub,
                 index_pos_to_sub,
-                padding_infos,
-                num_components,
+                self.num_components,
                 sig_sq
             ),
-            # parallel_iterations=5,
-            # fn_output_signature=tf.TensorSpec(
-            #         postage_stamp.shape[1:], 
-            #         dtype=tf.float32, 
-            #     ),
+            parallel_iterations=20,
+            fn_output_signature=tf.TensorSpec(
+                    [], 
+                    dtype=tf.float32, 
+                ),
         )
+        #print(f"num fields: {self.num_fields}")
 
         #reconstruction_loss = residual_field**2 / sig_sq
         # tf.print(sig_sq, output_stream=sys.stdout)
 
         #reconstruction_loss = tf.math.reduce_sum(reconstruction_loss, axis=[1, 2, 3])
-        tf.print(reconstruction_loss.shape)
+        #tf.print(reconstruction_loss.shape)
         #reconstruction_loss = reconstruction_loss / 2 
 
         log_prob = self.flow_vae_net.flow(z)
 
         log_prob = tf.reduce_sum(tf.reshape(log_prob, [self.num_fields, self.max_number]), axis=[1])
-        tf.print(log_prob.shape)
+        #tf.print(log_prob.shape)
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
@@ -460,11 +476,10 @@ class Deblend:
     def compute_noise_sigma(self):
         """Compute noise level with sep."""
         sig = []
-        print(self.postage_stamp.shape)
         for i in range(len(self.survey.available_filters)):
             sig.append(
                 sep.Background(
-                    np.ascontiguousarray(self.postage_stamp[0][:, :, i])
+                    np.ascontiguousarray(self.blended_fields.numpy()[0][:, :, i])
                 ).globalrms
             )
 
@@ -476,8 +491,6 @@ class Deblend:
         convergence_criterion=None,
         use_debvader=True,
         optimizer=None,
-        use_scatter_and_sub=True,
-        compute_sig_dynamically=False,
         map_solution=True,
     ):
         """Perform the gradient descent step to separate components (galaxies).
@@ -492,11 +505,6 @@ class Deblend:
             Use encoder as a deblender to set initial position for deblending.
         optimizer: tf.keras.optimizers
             Optimizer ot use used for gradient descent.
-        use_scatter_and_sub: bool
-            uses tf.scatter_and_sub for substraction instead of padding.
-        compute_sig_dynamically: bool
-            to estimate noise level in image. (can be slow)
-            Otherwise it uses sep to compute the background noise.
         map_solution: bool
             To obtain the map solution or debvader solution.
             Both `map_solution` and `use_debvader` cannot be False at the same time.
@@ -507,11 +515,7 @@ class Deblend:
             variation of the loss over deblending iterations.
 
         """
-        # X = self.postage_stamp
-        # if not self.channel_last:
-        #     X = np.transpose(X, axes=(1, 2, 0))
         LOG.info("use debvader: " + str(use_debvader))
-        LOG.info("MAP solution: " + str(map_solution))
         if not map_solution and not use_debvader:
             raise ValueError(
                 "Both use_debvader and map_solution cannot be False at the same time"
@@ -522,8 +526,9 @@ class Deblend:
             z = tf.Variable(self.flow_vae_net.td.sample((self.num_fields * self.max_number)))
 
         else:
-            # z = tf.Variable(name="z", initial_value=tf.random_normal_initializer(mean=0, stddev=1)(shape=[self.num_components, self.latent_dim], dtype=tf.float32))
             # use the encoder to find a good starting point.
+            LOG.info("\nUsing encoder for initial point")
+            t0 = time.time()
             cutouts = np.zeros(
                 (
                     self.num_fields*self.max_number, 
@@ -534,7 +539,7 @@ class Deblend:
             )
             for field_num in range(self.num_fields):
                 cutouts[field_num*self.max_number : field_num*self.max_number + self.num_components[field_num]] = extract_cutouts(
-                    self.postage_stamp[field_num],
+                    self.blended_fields.numpy()[field_num],
                     pos=self.detected_positions[field_num][:self.num_components[field_num]],
                     cutout_size=self.cutout_size,
                     nb_of_bands=self.num_bands,
@@ -543,71 +548,55 @@ class Deblend:
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
             )
-            LOG.info("\n\nUsing encoder for initial point")
-            z = tf.Variable(tf.reshape(initZ.mean(), (self.num_fields * self.max_number, 16)))
+            LOG.info("Time taken for initialization: " + str(time.time() - t0))
+            z = tf.Variable(tf.reshape(initZ.mean(), (self.num_fields * self.max_number, self.latent_dim)))
 
-        # tf.print(z.shape)
-
-        # self.optimizer = tf.keras.optimizers.Adam(lr=lr)
         if map_solution:
             if optimizer is None:
                 lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-                    initial_learning_rate=0.25,
-                    decay_steps=20,
-                    decay_rate=0.9,
-                    staircase=False,
+                    initial_learning_rate=0.075,
+                    decay_steps=30,
+                    decay_rate=0.8,
+                    staircase=True,
                 )
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
 
             LOG.info("\n--- Starting gradient descent in the latent space ---")
-            LOG.info("Maximum number of iterations: " + str(self.max_iter))
+            LOG.info(f"Maximum number of iterations: {self.max_iter}")
             # LOG.info("Learning rate: " + str(optimizer.lr.numpy()))
-            LOG.info("Number of Galaxies: " + str(self.num_components))
-            LOG.info("Dimensions of latent space: " + str(self.latent_dim))
+            LOG.info(f"Number of fields: {self.num_fields}")
+            LOG.info(f"Number of Galaxies: {self.num_components}")
+            LOG.info(f"Dimensions of latent space: {self.latent_dim}")
 
             t0 = time.time()
 
             index_pos_to_sub = self.get_index_pos_to_sub()
 
-            padding_infos = self.get_padding_infos()
-
-            def trace_fn(traceable_quantities):
-                return {"loss": traceable_quantities.loss}
+            index_pos_to_sub = tf.convert_to_tensor(
+                self.get_index_pos_to_sub(),
+                dtype=tf.int32,
+            )
+            #padding_infos = self.get_padding_infos()
 
             if self.noise_sigma is None:
                 noise_level = self.compute_noise_sigma()
 
+            noise_level = tf.convert_to_tensor(
+                noise_level,
+                dtype=tf.float32,
+            )
             # Calculate sigma^2 with gaussian approximation to poisson noise.
             # Note here that self.postage stamp is normalized but it must be divided again
             # to ensure that the loglikelihood does not change due to scaling/normalizing
 
-            sig_sq = self.postage_stamp / self.linear_norm_coeff
+            sig_sq = self.blended_fields / self.linear_norm_coeff + noise_level**2
             # sig_sq[sig_sq <= (5 * noise_level)] = 0
-            sig_sq = tf.convert_to_tensor(
-                sig_sq + noise_level**2,
-                dtype=tf.float32,
-            )
-            # tf.print(sig_sq.shape)
-            # sig_sq = tf.convert_to_tensor(np.square(noise_level), dtype=tf.float32)
 
             results = tfp.math.minimize(
                 loss_fn=self.generate_grad_step_loss(
                     z=z,
-                    postage_stamp=tf.convert_to_tensor(
-                        self.postage_stamp, dtype=tf.float32
-                    ),
-                    compute_sig_dynamically=tf.convert_to_tensor(
-                        [compute_sig_dynamically] * self.num_fields,
-                    ),
                     sig_sq=sig_sq,
-                    use_scatter_and_sub=tf.convert_to_tensor(
-                        [use_scatter_and_sub] * self.num_fields,
-                    ),
-                    index_pos_to_sub=tf.convert_to_tensor(
-                        index_pos_to_sub, dtype=tf.int32
-                    ),
-                    padding_infos=tf.convert_to_tensor(padding_infos, dtype=tf.int32),
-                    num_components=tf.convert_to_tensor(self.num_components, dtype=tf.int32),
+                    index_pos_to_sub=index_pos_to_sub,
                 ),
                 trainable_variables=[z],
                 num_steps=self.max_iter,
@@ -615,71 +604,27 @@ class Deblend:
                 convergence_criterion=convergence_criterion,
             )
 
-            plt.plot(np.arange(len(results)), results)
-            plt.savefig("gradd")
-
-            # for i in range(self.max_iter):
-            # print("log prob flow:" + str(log_likelihood.numpy()))
-            # print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-
             """ LOG.info(f"Final loss {output.objective_value.numpy()}")
             LOG.info("converged "+ str(output.converged.numpy()))
             LOG.info("converged "+ str(output.num_iterations.numpy()))
 
             z_flatten = output.position
             z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
-            # for i in range(self.max_iter):
-            # print("log prob flow:" + str(log_likelihood.numpy()))
-            # print("reconstruction loss"+str(reconstruction_loss.numpy()))
-            #    self.gradient_descent_step(z, self.postage_stamp, use_scatter_and_sub=True, index_pos_to_sub=index_pos_to_sub, padding_infos=padding_infos)
-
+            
             LOG.info("--- Gradient descent complete ---")
-            LOG.info("\nTime taken for gradient descent: " + str(time.time() - t0))
+            LOG.info("Time taken for gradient descent: " + str(time.time() - t0))
         else:
             results = None
         self.components = tf.reshape(self.flow_vae_net.decoder(z) * self.linear_norm_coeff, [self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
-        self.z = tf.reshape(z, (self.num_fields, self.max_number, 16))
-
-        # print(self.components)
+        self.z = tf.reshape(z, (self.num_fields, self.max_number, self.latent_dim))
 
         return results
-
-    def compute_loss_vectorized(self, arg):
-
-        (
-            z,
-            postage_stamp,
-            compute_sig_dynamically,
-            sig_sq,
-            use_scatter_and_sub,
-            index_pos_to_sub,
-            padding_infos,
-            num_components,
-        ) = arg
-
-        loss, *_ = self.compute_loss(
-            z=z,
-            postage_stamp=postage_stamp,
-            compute_sig_dynamically=compute_sig_dynamically,
-            sig_sq=sig_sq,
-            use_scatter_and_sub=use_scatter_and_sub,
-            index_pos_to_sub=index_pos_to_sub,
-            padding_infos=padding_infos,
-            num_components=num_components,
-        )
-        return loss
 
     def generate_grad_step_loss(
         self,
         z,
-        postage_stamp,
-        compute_sig_dynamically,
         sig_sq,
-        use_scatter_and_sub,
         index_pos_to_sub,
-        padding_infos,
-        num_components,
     ):
         """Return function compute training loss that has no arguments.
 
@@ -687,22 +632,10 @@ class Deblend:
         ----------
         z: tf tensor
             latent space representations of the reconstructions.
-        postage_stamp: tf tensor
-            field with all the galaxies
-        compute_sig_dynamically: bool
-            to estimate noise level in image. (can be slow)
-            Otherwise it uses sep to compute the background noise.
         sig_sq: tf tensor
             Factor for division to convert the MSE to Gaussian approx to poisson noise.
-        reconstructions: tf tensor
-            reconstructions to be subtracted
-        use_scatter_and_sub: bool
-            uses tf.scatter_and_sub for substraction instead of padding.
         index_pos_to_sub:
             index position for substraction is `use_scatter_and_sub` is True
-        padding_infos:
-            padding parameters for reconstructions to that they can be subtracted from the field.
-            Used when `use_scatter_and_sub` is False.
 
         Returns
         -------
@@ -711,33 +644,14 @@ class Deblend:
 
         """
         
-        # @tf.function
+        @tf.function
         def training_loss():
             """Compute training loss."""
-            # loss = tf.vectorized_map(
-            #     self.compute_loss_vectorized,
-            #     (
-            #         z,
-            #         postage_stamp,
-            #         compute_sig_dynamically,
-            #         sig_sq,
-            #         use_scatter_and_sub,
-            #         index_pos_to_sub,
-            #         padding_infos,
-            #         num_components,
-            #     ),
-            # )
             loss, *_ = self.compute_loss(
                 z=z,
-                postage_stamp=postage_stamp,
-                compute_sig_dynamically=compute_sig_dynamically,
                 sig_sq=sig_sq,
-                use_scatter_and_sub=use_scatter_and_sub,
                 index_pos_to_sub=index_pos_to_sub,
-                padding_infos=padding_infos,
-                num_components=num_components,
             )
-            #tf.print(loss.shape)
 
             return loss
 
