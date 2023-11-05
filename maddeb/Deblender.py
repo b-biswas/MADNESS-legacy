@@ -418,31 +418,53 @@ class Deblend:
 
         return final_loss, reconstruction_loss, log_prob
 
+    # def get_index_pos_to_sub(self):
+    #     """Get index position to run tf.tensor_scatter_nd_sub."""
+    #     index_list = []
+    #     for field_num in range(self.num_fields):
+    #         inner_list = []
+    #         for i in range(self.max_number):
+    #             indices = (
+    #                 np.indices((self.cutout_size, self.cutout_size, self.num_bands))
+    #                 .reshape(3, -1)
+    #                 .T
+    #             )
+    #             detected_position = self.detected_positions[field_num][i]
+
+    #             starting_pos_x = round(detected_position[0]) - int(
+    #                 (self.cutout_size - 1) / 2
+    #             )
+    #             starting_pos_y = round(detected_position[1]) - int(
+    #                 (self.cutout_size - 1) / 2
+    #             )
+    #             indices[:, 0] += int(starting_pos_x)
+    #             indices[:, 1] += int(starting_pos_y)
+    #             inner_list.append(indices)
+    #         index_list.append(inner_list)
+
+    #     return np.array(index_list)
+    
     def get_index_pos_to_sub(self):
         """Get index position to run tf.tensor_scatter_nd_sub."""
-        index_list = []
-        for field_num in range(self.num_fields):
-            inner_list = []
-            for i in range(self.max_number):
-                indices = (
-                    np.indices((self.cutout_size, self.cutout_size, self.num_bands))
-                    .reshape(3, -1)
-                    .T
-                )
-                detected_position = self.detected_positions[field_num][i]
 
-                starting_pos_x = round(detected_position[0]) - int(
+        indices = (
+            np.indices((self.cutout_size, self.cutout_size, self.num_bands))
+            .reshape(3, -1)
+            .T
+        )
+        indices = np.repeat(np.expand_dims(indices, axis=0), self.max_number, axis=0)
+        indices = np.repeat(np.expand_dims(indices, axis=0), self.num_fields, axis=0)
+        
+        starting_positions = np.round(self.detected_positions).astype(int) - int(
                     (self.cutout_size - 1) / 2
                 )
-                starting_pos_y = round(detected_position[1]) - int(
-                    (self.cutout_size - 1) / 2
-                )
-                indices[:, 0] += int(starting_pos_x)
-                indices[:, 1] += int(starting_pos_y)
-                inner_list.append(indices)
-            index_list.append(inner_list)
+        
+        indices = np.moveaxis(indices, 2, 0)
+        
+        indices[:, :, :, 0:2] += starting_positions
+        indices = np.moveaxis(indices, 0, 2)
 
-        return np.array(index_list)
+        return indices
 
     def get_padding_infos(self):
         """Compute padding info to convert galaxy cutout into field."""
