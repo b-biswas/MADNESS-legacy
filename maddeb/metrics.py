@@ -74,14 +74,14 @@ def compute_pixel_cosdist(
             #             plt.imshow(madness_predictions[blend_number][galaxy_number][band_number])
             #             plt.show()
             pixel_covariance = cosdist_helper(
-                predicted_galaxy[band_number],
-                simulated_galaxy[band_number],
+                np.float32(predicted_galaxy[band_number]),
+                np.float32(simulated_galaxy[band_number]),
                 sig,
             )
 
             ssim = structural_similarity(
-                predicted_galaxy[band_number] / np.amax(predicted_galaxy[band_number]),
-                simulated_galaxy[band_number] / np.amax(simulated_galaxy[band_number]),
+                np.float32(predicted_galaxy[band_number] / np.amax(predicted_galaxy[band_number])),
+                np.float32(simulated_galaxy[band_number] / np.amax(simulated_galaxy[band_number])),
             )
 
             results[band + "_cosd"].append(pixel_covariance)
