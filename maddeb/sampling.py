@@ -97,7 +97,7 @@ class CustomSampling(SamplingFunction):
 
             else:
                 current_indexes = self.rng.choice(self.indexes, size=number_of_objects)
-            print(current_indexes)
+            # print(current_indexes)
             blend_table = table[current_indexes]
         else:
             blend_table = table[indexes]
