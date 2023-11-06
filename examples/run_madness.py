@@ -33,7 +33,7 @@ density = sys.argv[2]
 run_name = sys.argv[3]
 map_solution = sys.argv[4].lower() == "true"
 max_number = 20
-#LOG.info(map_solution)
+# LOG.info(map_solution)
 
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -45,7 +45,7 @@ results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
 density_level = density + "_density"
 
 
-weights_path = os.path.join(get_data_dir_path(), f"LSST")
+weights_path = os.path.join(get_data_dir_path(), "LSST")
 deb = Deblend(latent_dim=16, weights_path=weights_path, survey=survey)
 
 psf_fwhm = []
@@ -79,13 +79,17 @@ for file_num in range(num_repetations):
     madness_photometry = []
     blended_photometry = []
 
-    detected_positions = np.zeros((len(blend['blend_list']), max_number, 2)) 
+    detected_positions = np.zeros((len(blend["blend_list"]), max_number, 2))
     num_components = []
-    for field_num in range(len(blend['blend_list'])):
-        for gal_num in range(len(blend['blend_list'][field_num])):
-            detected_positions[field_num][gal_num][0] = blend['blend_list'][field_num]['y_peak'][gal_num]
-            detected_positions[field_num][gal_num][1] = blend['blend_list'][field_num]['x_peak'][gal_num]
-        num_components.append(len(blend['blend_list'][field_num]))
+    for field_num in range(len(blend["blend_list"])):
+        for gal_num in range(len(blend["blend_list"][field_num])):
+            detected_positions[field_num][gal_num][0] = blend["blend_list"][field_num][
+                "y_peak"
+            ][gal_num]
+            detected_positions[field_num][gal_num][1] = blend["blend_list"][field_num][
+                "x_peak"
+            ][gal_num]
+        num_components.append(len(blend["blend_list"][field_num]))
 
     convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
         rtol=0.05,
@@ -116,7 +120,7 @@ for file_num in range(num_repetations):
     padding_infos_all_fields = deb.get_padding_infos()
 
     for field_num in range(len(blend["blend_list"])):
-        #LOG.info(field_num)
+        # LOG.info(field_num)
 
         current_field_predictions = []
         current_madness_models = {"images": [], "field_num": [], "galaxy_num": []}
@@ -125,10 +129,10 @@ for file_num in range(num_repetations):
 
         padding_infos = padding_infos_all_fields[field_num]
         for component_num in range(deb.num_components[field_num]):
-            #LOG.info(component_num)
-            #LOG.info(padding_infos)
+            # LOG.info(component_num)
+            # LOG.info(padding_infos)
             prediction = np.pad(
-                deb.components[field_num][component_num], 
+                deb.components[field_num][component_num],
                 padding_infos[component_num],
             )
             prediction = np.transpose(prediction, axes=(2, 0, 1))

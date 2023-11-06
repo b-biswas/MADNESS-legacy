@@ -1,8 +1,7 @@
 """Test Deblending."""
 import numpy as np
 
-from maddeb.Deblender import Deblend
-from maddeb.Deblender import compute_residual
+from maddeb.Deblender import Deblend, compute_residual
 
 
 def test_deblending():
@@ -21,12 +20,12 @@ def test_deblending():
 
     data = np.random.rand(2, 15, 15, 6)
 
-    detected_pos = [[[9, 10], [11, 11]], [[10, 10], [0,0]]]
+    detected_pos = [[[9, 10], [11, 11]], [[10, 10], [0, 0]]]
 
     deb(
         blended_fields=data.copy(),
         detected_positions=detected_pos,
-        num_components=[2, 1],  
+        num_components=[2, 1],
         use_log_prob=True,
         linear_norm_coeff=1,
         max_iter=2,
@@ -51,7 +50,7 @@ def test_deblending():
     residual1 = compute_residual(
         blended_field=data[0],
         reconstructions=np.moveaxis(deb.get_components()[0], -3, -1),
-        use_scatter_and_sub=True, 
+        use_scatter_and_sub=True,
         index_pos_to_sub=index_pos_to_sub[0],
     ).numpy()
 
@@ -59,11 +58,12 @@ def test_deblending():
     residual2 = compute_residual(
         blended_field=data[0],
         reconstructions=np.moveaxis(deb.get_components()[0], -3, -1),
-        use_scatter_and_sub=False, 
+        use_scatter_and_sub=False,
         padding_infos=padding_infos[0],
     ).numpy()
 
     np.testing.assert_array_equal(residual1, residual2)
+
 
 def test_scatter_and_sub():
     """Test scatter and sub."""
@@ -99,14 +99,14 @@ def test_scatter_and_sub():
     residual1 = compute_residual(
         blended_field=data[0],
         reconstructions=deb.get_components()[0],
-        use_scatter_and_sub=True, 
+        use_scatter_and_sub=True,
         index_pos_to_sub=index_pos_to_sub[0],
     ).numpy()
     padding_infos = deb.get_padding_infos()
     residual2 = compute_residual(
         blended_field=data[0],
         reconstructions=deb.get_components()[0],
-        use_scatter_and_sub=False, 
+        use_scatter_and_sub=False,
         padding_infos=padding_infos[0],
     ).numpy()
 

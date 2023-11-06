@@ -3,14 +3,12 @@
 import logging
 import os
 import time
-from functools import partial
 
 import galcheat
 import numpy as np
 import sep
 import tensorflow as tf
 import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
 
 from maddeb.extraction import extract_cutouts
 from maddeb.FlowVAEnet import FlowVAEnet
@@ -40,13 +38,13 @@ def vectorized_compute_reconst_loss(args):
 
     """
     (
-        blended_field, 
+        blended_field,
         reconstructions,
         index_pos_to_sub,
         num_components,
         sig_sq,
     ) = args
-    #tf.print("reached 1")
+    # tf.print("reached 1")
     residual_field = compute_residual(
         blended_field,
         reconstructions,
@@ -54,18 +52,19 @@ def vectorized_compute_reconst_loss(args):
         num_components=num_components,
     )
     reconst_loss = residual_field**2 / sig_sq
-    #tf.print("reached 2")
-    return tf.math.reduce_sum(reconst_loss)/2
+    # tf.print("reached 2")
+    return tf.math.reduce_sum(reconst_loss) / 2
 
-#@tf.function(jit_compile=True)
+
+# @tf.function(jit_compile=True)
 def compute_residual(
-        blended_field,
-        reconstructions,
-        use_scatter_and_sub=True,
-        index_pos_to_sub=None,
-        num_components=1,
-        padding_infos=None,
-    ):
+    blended_field,
+    reconstructions,
+    use_scatter_and_sub=True,
+    index_pos_to_sub=None,
+    num_components=1,
+    padding_infos=None,
+):
     """Compute residual in a field.
 
     Parameters
@@ -101,9 +100,7 @@ def compute_residual(
             residual_field = tf.tensor_scatter_nd_sub(
                 residual_field,
                 indices,
-                tf.reshape(
-                    reconstruction, [tf.math.reduce_prod(reconstruction.shape)]
-                ),
+                tf.reshape(reconstruction, [tf.math.reduce_prod(reconstruction.shape)]),
             )
 
             return i + 1, residual_field
@@ -147,6 +144,7 @@ def compute_residual(
             parallel_iterations=1,
         )
     return residual_field
+
 
 class Deblend:
     """Run the deblender."""
@@ -306,7 +304,7 @@ class Deblend:
 
         if self.channel_last:
             self.blended_fields = tf.convert_to_tensor(
-                blended_fields / linear_norm_coeff, 
+                blended_fields / linear_norm_coeff,
                 dtype=tf.float32,
             )
         else:
@@ -367,8 +365,17 @@ class Deblend:
 
         """
         reconstructions = self.flow_vae_net.decoder(z)
-        
-        reconstructions = tf.reshape(reconstructions,[self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
+
+        reconstructions = tf.reshape(
+            reconstructions,
+            [
+                self.num_fields,
+                self.max_number,
+                self.cutout_size,
+                self.cutout_size,
+                self.num_bands,
+            ],
+        )
 
         # tf.print(postage_stamp.shape)
         # tf.print(reconstructions.shape)
@@ -378,32 +385,34 @@ class Deblend:
 
         reconstruction_loss = tf.map_fn(
             vectorized_compute_reconst_loss,
-            elems = (
+            elems=(
                 self.blended_fields,
                 reconstructions,
                 index_pos_to_sub,
                 self.num_components,
-                sig_sq
+                sig_sq,
             ),
             parallel_iterations=20,
             fn_output_signature=tf.TensorSpec(
-                    [], 
-                    dtype=tf.float32, 
-                ),
+                [],
+                dtype=tf.float32,
+            ),
         )
-        #print(f"num fields: {self.num_fields}")
+        # print(f"num fields: {self.num_fields}")
 
-        #reconstruction_loss = residual_field**2 / sig_sq
+        # reconstruction_loss = residual_field**2 / sig_sq
         # tf.print(sig_sq, output_stream=sys.stdout)
 
-        #reconstruction_loss = tf.math.reduce_sum(reconstruction_loss, axis=[1, 2, 3])
-        #tf.print(reconstruction_loss.shape)
-        #reconstruction_loss = reconstruction_loss / 2 
+        # reconstruction_loss = tf.math.reduce_sum(reconstruction_loss, axis=[1, 2, 3])
+        # tf.print(reconstruction_loss.shape)
+        # reconstruction_loss = reconstruction_loss / 2
 
         log_prob = self.flow_vae_net.flow(z)
 
-        log_prob = tf.reduce_sum(tf.reshape(log_prob, [self.num_fields, self.max_number]), axis=[1])
-        #tf.print(log_prob.shape)
+        log_prob = tf.reduce_sum(
+            tf.reshape(log_prob, [self.num_fields, self.max_number]), axis=[1]
+        )
+        # tf.print(log_prob.shape)
 
         # tf.print(reconstruction_loss, output_stream=sys.stdout)
         # tf.print(log_likelihood, output_stream=sys.stdout)
@@ -443,10 +452,9 @@ class Deblend:
     #         index_list.append(inner_list)
 
     #     return np.array(index_list)
-    
+
     def get_index_pos_to_sub(self):
         """Get index position to run tf.tensor_scatter_nd_sub."""
-
         indices = (
             np.indices((self.cutout_size, self.cutout_size, self.num_bands))
             .reshape(3, -1)
@@ -454,13 +462,13 @@ class Deblend:
         )
         indices = np.repeat(np.expand_dims(indices, axis=0), self.max_number, axis=0)
         indices = np.repeat(np.expand_dims(indices, axis=0), self.num_fields, axis=0)
-        
+
         starting_positions = np.round(self.detected_positions).astype(int) - int(
-                    (self.cutout_size - 1) / 2
-                )
-        
+            (self.cutout_size - 1) / 2
+        )
+
         indices = np.moveaxis(indices, 2, 0)
-        
+
         indices[:, :, :, 0:2] += starting_positions
         indices = np.moveaxis(indices, 0, 2)
 
@@ -545,7 +553,9 @@ class Deblend:
 
         if not use_debvader:
             # check constraint parameter over here
-            z = tf.Variable(self.flow_vae_net.td.sample((self.num_fields * self.max_number)))
+            z = tf.Variable(
+                self.flow_vae_net.td.sample(self.num_fields * self.max_number)
+            )
 
         else:
             # use the encoder to find a good starting point.
@@ -553,25 +563,36 @@ class Deblend:
             t0 = time.time()
             cutouts = np.zeros(
                 (
-                    self.num_fields*self.max_number, 
-                    self.cutout_size, 
-                    self.cutout_size, 
+                    self.num_fields * self.max_number,
+                    self.cutout_size,
+                    self.cutout_size,
                     self.num_bands,
                 )
             )
             for field_num in range(self.num_fields):
-                cutouts[field_num*self.max_number : field_num*self.max_number + self.num_components[field_num]] = extract_cutouts(
+                cutouts[
+                    field_num * self.max_number : field_num * self.max_number
+                    + self.num_components[field_num]
+                ] = extract_cutouts(
                     self.blended_fields.numpy()[field_num],
-                    pos=self.detected_positions[field_num][:self.num_components[field_num]],
+                    pos=self.detected_positions[field_num][
+                        : self.num_components[field_num]
+                    ],
                     cutout_size=self.cutout_size,
                     nb_of_bands=self.num_bands,
                     channel_last=True,
-                )[0]
+                )[
+                    0
+                ]
             initZ = tfp.layers.MultivariateNormalTriL(self.latent_dim)(
                 self.flow_vae_net.encoder(cutouts)
             )
             LOG.info("Time taken for initialization: " + str(time.time() - t0))
-            z = tf.Variable(tf.reshape(initZ.mean(), (self.num_fields * self.max_number, self.latent_dim)))
+            z = tf.Variable(
+                tf.reshape(
+                    initZ.mean(), (self.num_fields * self.max_number, self.latent_dim)
+                )
+            )
 
         if map_solution:
             if optimizer is None:
@@ -598,7 +619,7 @@ class Deblend:
                 self.get_index_pos_to_sub(),
                 dtype=tf.int32,
             )
-            #padding_infos = self.get_padding_infos()
+            # padding_infos = self.get_padding_infos()
 
             if self.noise_sigma is None:
                 noise_level = self.compute_noise_sigma()
@@ -632,12 +653,21 @@ class Deblend:
 
             z_flatten = output.position
             z = tf.reshape(z_flatten, shape=[self.num_components, self.latent_dim]) """
-            
+
             LOG.info("--- Gradient descent complete ---")
             LOG.info("Time taken for gradient descent: " + str(time.time() - t0))
         else:
             results = None
-        self.components = tf.reshape(self.flow_vae_net.decoder(z) * self.linear_norm_coeff, [self.num_fields, self.max_number, self.cutout_size, self.cutout_size, self.num_bands])
+        self.components = tf.reshape(
+            self.flow_vae_net.decoder(z) * self.linear_norm_coeff,
+            [
+                self.num_fields,
+                self.max_number,
+                self.cutout_size,
+                self.cutout_size,
+                self.num_bands,
+            ],
+        )
         self.z = tf.reshape(z, (self.num_fields, self.max_number, self.latent_dim))
 
         return results
@@ -665,7 +695,7 @@ class Deblend:
             computes loss without taking any arguments.
 
         """
-        
+
         @tf.function
         def training_loss():
             """Compute training loss."""
