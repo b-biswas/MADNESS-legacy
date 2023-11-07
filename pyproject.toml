@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "Galaxy deblender from variational autoencoders"
 authors = ["Biswajit Biswas <biswas@apc.in2p3.fr>"]
 readme = "README.md"
-include = ["maddeb/data/*"]
+include = ["maddeb/data/*", "btksims"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -16,13 +16,11 @@ tensorflow-datasets = "*"
 scikit-image = "*"
 sep = "*"
 galcheat = "*"
-btksims = {version = "*", optional=true}
+btksims = {path = "btksims", optional=true}
 matplotlib = {version = "*", optional=true}
 seaborn = {version = "*", optional=true}
-galsim = {version = "*", optional=true}
 pytest = {version="*", optional=true}
 pre-commit = {version="*", optional=true} 
-blending_toolkit = {git="https://github.com/b-biswas/BlendingToolKit", branch = "madness-branch", optional=true }
 jupyter = {version="*", optional=true}
 ipykernel = {version="*", optional=true}
 
@@ -32,7 +30,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
-sims = ["btksims", "blending_toolkit", "matplotlib", "galsim", "seaborn"]
-notebooks = ["jupyter", "ipykernel", "btksims", "blending_toolkit", "matplotlib", "seaborn"]
-dev = ["pytest", "pre-commit", "jupyter", "ipykernel", "btksims", "blending_toolkit", "matplotlib", "galsim", "seaborn"]
+sims = ["btksims"]
+notebooks = ["jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
+dev = ["pytest", "pre-commit", "jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
 
