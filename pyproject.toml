@@ -20,7 +20,7 @@ matplotlib = {version = "*", optional=true}
 seaborn = {version = "*", optional=true}
 galsim = {version = "*", optional=true}
 pytest = {version="*", optional=true}
-precommit = {version="*", optional=true} 
+pre-commit = {version="*", optional=true} 
 blending_toolkit = {git="https://github.com/b-biswas/BlendingToolKit", branch = "madness-branch", optional=true }
 jupyter = {version="*", optional=true}
 ipykernel = {version="*", optional=true}
