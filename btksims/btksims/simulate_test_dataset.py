@@ -7,7 +7,7 @@ import sys
 import btk
 import hickle
 
-from maddeb.sampling import CustomSampling
+from btksims.sampling import CustomSampling
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)

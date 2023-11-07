@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "maddeb"
+version = "0.0.1"
+description = "Galaxy deblender from variational autoencoders"
+authors = ["Biswajit Biswas <biswas@apc.in2p3.fr>"]
+readme = "README.md"
+include = ["maddeb/data/*", "btksims"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "*"
+pandas = "*"
+tensorflow = "*"
+tensorflow-probability = "*"
+tensorflow-datasets = "*"
+scikit-image = "*"
+sep = "*"
+galcheat = "*"
+btksims = {path = "btksims", optional=true}
+matplotlib = {version = "*", optional=true}
+seaborn = {version = "*", optional=true}
+pytest = {version="*", optional=true}
+pre-commit = {version="*", optional=true} 
+jupyter = {version="*", optional=true}
+ipykernel = {version="*", optional=true}
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.extras]
+sims = ["btksims"]
+notebooks = ["jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
+dev = ["pytest", "pre-commit", "jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
+
