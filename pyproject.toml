@@ -12,10 +12,11 @@ numpy = "*"
 pandas = "*"
 tensorflow = "*"
 tensorflow-probability = "*"
+tensorflow-datasets = "*"
 scikit-image = "*"
 sep = "*"
 galcheat = "*"
-simulations = {version = "*", optional=true}
+btksims = {version = "*", optional=true}
 matplotlib = {version = "*", optional=true}
 seaborn = {version = "*", optional=true}
 galsim = {version = "*", optional=true}
@@ -24,14 +25,14 @@ pre-commit = {version="*", optional=true}
 blending_toolkit = {git="https://github.com/b-biswas/BlendingToolKit", branch = "madness-branch", optional=true }
 jupyter = {version="*", optional=true}
 ipykernel = {version="*", optional=true}
-tensorflow-datasets = {version="*", optional=true}
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
-sims = ["simulations", "blending_toolkit", "tensorflow-datasets", "matplotlib", "galsim", "seaborn"]
-notebooks = ["jupyter", "ipykernel"]
-dev = ["jupyter", "ipykernel", "matplotlib", "galsim", "seaborn", "pytest", "pre-commit"]
+sims = ["btksims", "blending_toolkit", "matplotlib", "galsim", "seaborn"]
+notebooks = ["jupyter", "ipykernel", "btksims", "blending_toolkit", "matplotlib", "seaborn"]
+dev = ["pytest", "pre-commit", "jupyter", "ipykernel", "btksims", "blending_toolkit", "matplotlib", "galsim", "seaborn"]
 
