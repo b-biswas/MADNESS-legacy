@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from maddeb.extraction import extract_cutouts
-from maddeb.sampling import CustomSampling
+from btksims.sampling import CustomSampling
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
