@@ -5,8 +5,8 @@ description = "btk simulations with for training and testing MADNESS deblender"
 authors = ["Biswajit Biswas <biswas@apc.in2p3.fr>"]
 
 [tool.poetry.dependencies]
-blending_toolkit = {git="https://github.com/b-biswas/BlendingToolKit", branch = "madness-branch", optional=true }
-galsim = {version = "*", optional=true}
+blending_toolkit = {git="https://github.com/b-biswas/BlendingToolKit", branch = "madness-branch"}
+galsim = {version = "*"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
