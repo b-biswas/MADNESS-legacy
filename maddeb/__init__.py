@@ -1,2 +1,18 @@
 """init file."""
-__version__ = "0.0.1"
+from importlib import metadata
+
+__version__ = metadata.version("maddeb")
+
+from . import (
+    Deblender,
+    FlowVAEnet,
+    batch_generator,
+    boxplot,
+    callbacks,
+    dataset_generator,
+    extraction,
+    losses,
+    metrics,
+    model,
+    utils,
+)

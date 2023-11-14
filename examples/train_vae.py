@@ -8,13 +8,14 @@ import galcheat
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import yaml
 from galcheat.utilities import mean_sky_level
 
 from maddeb.callbacks import changeAlpha, define_callbacks
 from maddeb.dataset_generator import batched_CATSIMDataset
 from maddeb.FlowVAEnet import FlowVAEnet
 from maddeb.losses import deblender_encoder_loss_wrapper, deblender_loss_fn_wrapper
-from maddeb.utils import get_data_dir_path
+from maddeb.utils import get_data_dir_path, get_maddeb_config_path
 
 tfd = tfp.distributions
 
@@ -48,6 +49,9 @@ LOG.info(f"KL weight{kl_weight}")
 
 survey = galcheat.get_survey("LSST")
 
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
+
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
     filt = survey.get_filter(name)
@@ -74,9 +78,9 @@ path_weights = os.path.join(data_path, survey.name + "_")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
-    train_data_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_training",
-    val_data_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_validation",
-    tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/isolated_tfDataset",
+    train_data_dir=None,
+    val_data_dir=None,
+    tf_dataset_dir=os.path.join(maddeb_config["TF_DATASET_PATH"], "isolated_tfDataset"),
     linear_norm_coeff=linear_norm_coeff,
     batch_size=batch_size,
     x_col_name="blended_gal_stamps",
@@ -213,7 +217,7 @@ if train_models.lower() == "all" or "deblender" in train_models:
     ds_blended_train, ds_blended_val = batched_CATSIMDataset(
         train_data_dir=None,
         val_data_dir=None,
-        tf_dataset_dir="/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/blended_tfDataset",
+        tf_dataset_dir=os.path.join(maddeb_config.TF_DATASET_PATH, "blended_tfDataset"),
         linear_norm_coeff=linear_norm_coeff,
         batch_size=batch_size,
         x_col_name="blended_gal_stamps",

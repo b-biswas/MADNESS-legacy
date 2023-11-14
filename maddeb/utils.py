@@ -34,3 +34,18 @@ def get_data_dir_path():
     data_dir = os.path.join(curdir, "data")
 
     return data_dir
+
+
+def get_maddeb_config_path():
+    """Fetch path to maddeb config yaml file.
+
+    Returns
+    -------
+    data_dir: str
+        path to data folder
+
+    """
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    get_maddeb_config_path = os.path.join(curdir, "maddeb_config.yaml")
+
+    return get_maddeb_config_path
