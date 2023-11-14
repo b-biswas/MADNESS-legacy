@@ -20,6 +20,7 @@ tensorflow-datasets = "*"
 scikit-image = "*"
 sep = "*"
 galcheat = "*"
+numba = "*"
 btksims = {path="btksims", optional=true, develop=true}
 matplotlib = {version="*", optional=true}
 seaborn = {version="*", optional=true}
