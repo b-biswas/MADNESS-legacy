@@ -6,17 +6,15 @@ import sys
 
 import btk
 import hickle
+import yaml
 
 from btksims.sampling import CustomSampling
+from btksims.utils import get_btksims_config_path
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
-
-COSMOS_CATALOG_PATHS = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
-
-simulation_path = "/sps/lsst/users/bbiswas/simulations/test_data/"
 
 stamp_size = 41
 density = sys.argv[1]
@@ -30,6 +28,14 @@ if density == "high":
 else:
     min_number = 8
     max_number = 15
+
+with open(get_btksims_config_path()) as f:
+    btksims_config = yaml.safe_load(f)
+
+COSMOS_CATALOG_PATHS = btksims_config["CAT_PATH"]
+
+simulation_path = btksims_config["TEST_DATA_SAVE_PATH"]
+
 
 batch_size = 20
 maxshift = 15

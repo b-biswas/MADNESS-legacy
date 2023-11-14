@@ -12,9 +12,11 @@ import btk.sampling_functions
 import btk.survey
 import numpy as np
 import pandas as pd
+import yaml
 
-from maddeb.extraction import extract_cutouts
 from btksims.sampling import CustomSampling
+from btksims.utils import get_btksims_config_path
+from maddeb.extraction import extract_cutouts
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
@@ -32,6 +34,9 @@ blend_type = sys.argv[2]  # set to 4 to generate blended scenes
 if blend_type not in ["isolated", "blended"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
 
+with open(get_btksims_config_path()) as f:
+    btksims_config = yaml.safe_load(f)
+
 if blend_type == "isolated":
     max_number = 1
     unique_galaxies = True
@@ -46,8 +51,8 @@ else:
 
 seed = 993
 
-CATSIM_CATALOG_PATH = "/sps/lsst/users/bbiswas/OneDegSq_snr_10.fits"
-SAVE_PATH = "/sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset"
+CATSIM_CATALOG_PATH = btksims_config.CAT_PATH
+SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"]
 print("saving data at " + SAVE_PATH)
 
 stamp_size = 15
