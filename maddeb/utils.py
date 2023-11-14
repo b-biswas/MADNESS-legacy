@@ -35,6 +35,7 @@ def get_data_dir_path():
 
     return data_dir
 
+
 def get_maddeb_config_path():
     """Fetch path to maddeb config yaml file.
 

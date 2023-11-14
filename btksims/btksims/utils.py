@@ -1,4 +1,6 @@
-import os 
+"""Define utils."""
+import os
+
 
 def get_btksims_config_path():
     """Fetch path to maddeb config yaml file.
