@@ -1,0 +1,3 @@
+TF_DATASET_PATH: /sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset/
+TEST_DATA_PATH: /sps/lsst/users/bbiswas/simulations/test_data/
+RESULTS_PATH: /sps/lsst/users/bbiswas/MADNESS_results/

@@ -12,10 +12,11 @@ import pandas as pd
 import sep
 import tensorflow as tf
 import tensorflow_probability as tfp
+import yaml
 
 from maddeb.Deblender import Deblend
 from maddeb.metrics import compute_aperture_photometry, compute_pixel_cosdist
-from maddeb.utils import get_data_dir_path
+from maddeb.utils import get_data_dir_path, get_maddeb_config_path
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -38,10 +39,11 @@ max_number = 20
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
 
-simulation_path = os.path.join(
-    "/sps/lsst/users/bbiswas/simulations/test_data/", density
-)
-results_path = "/sps/lsst/users/bbiswas/MADNESS_results/"
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
+
+simulation_path = os.path.join(maddeb_config["TEST_DATA_PATH"], density)
+results_path = maddeb_config["RESULTS_PATH"]
 density_level = density + "_density"
 
 
