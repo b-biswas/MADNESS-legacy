@@ -4,25 +4,32 @@ version = "0.0.1"
 description = "Galaxy deblender from variational autoencoders"
 authors = ["Biswajit Biswas <biswas@apc.in2p3.fr>"]
 readme = "README.md"
+keywords = ["galaxies", "deblending", "cosmology", "generative models"]
+license = "MIT"
 include = ["maddeb/data/*", "btksims"]
+repository = "https://github.com/b-biswas/MADNESS"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 numpy = "*"
 pandas = "*"
+astropy = "*"
 tensorflow = "*"
 tensorflow-probability = "*"
 tensorflow-datasets = "*"
 scikit-image = "*"
 sep = "*"
 galcheat = "*"
-btksims = {path = "btksims", optional=true}
-matplotlib = {version = "*", optional=true}
-seaborn = {version = "*", optional=true}
+btksims = {path="btksims", optional=true, develop=true}
+matplotlib = {version="*", optional=true}
+seaborn = {version="*", optional=true}
 pytest = {version="*", optional=true}
-pre-commit = {version="*", optional=true} 
+pre-commit = {version="*", optional=true}
 jupyter = {version="*", optional=true}
 ipykernel = {version="*", optional=true}
+autograd = {version="*", optional=true}
+proxmin = {version="*", optional=true}
+pybind11 = {version="*", optional=true}
 
 
 [build-system]
@@ -33,4 +40,3 @@ build-backend = "poetry.core.masonry.api"
 sims = ["btksims"]
 notebooks = ["jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
 dev = ["pytest", "pre-commit", "jupyter", "ipykernel", "btksims", "matplotlib", "seaborn"]
-
