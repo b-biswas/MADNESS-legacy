@@ -1,3 +1,4 @@
+ORIGINAL_CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq.fits
 CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
 TRAIN_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset
 TEST_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/test_data/

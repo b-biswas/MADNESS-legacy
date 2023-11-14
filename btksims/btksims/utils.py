@@ -3,7 +3,7 @@ import os
 
 
 def get_btksims_config_path():
-    """Fetch path to maddeb config yaml file.
+    """Fetch path to btksims config yaml file.
 
     Returns
     -------
