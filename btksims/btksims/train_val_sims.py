@@ -38,61 +38,49 @@ with open(get_btksims_config_path()) as f:
     btksims_config = yaml.safe_load(f)
 
 if blend_type == "isolated":
-    max_number = 1
-    unique_galaxies = True
-    if dataset == "training":
-        batch_size = 100
-    if dataset == "validation":
-        batch_size = 100
+    sim_config = btksims_config["ISOLATED_SIM_PARAMS"]
 else:
-    unique_galaxies = False
-    max_number = 3
-    batch_size = 100
-
-seed = 993
+    sim_config = btksims_config["BLENDED_SIM_PARAMS"]
 
 CATSIM_CATALOG_PATH = btksims_config.CAT_PATH
 SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"]
 print("saving data at " + SAVE_PATH)
 
-stamp_size = 15
-maxshift = 2
-
 if dataset == "training":
-    index_range = [0, 150000]
-    num_batches = 1500
+    index_range = [sim_config["train_index_start"], sim_config["train_index_end"]]
+    num_batches = sim_config["train_num_batches"]
 elif dataset == "validation":
-    index_range = [150000, 200000]
-    num_batches = 500
+    index_range = [sim_config["val_index_start"], sim_config["val_index_end"]]
+    num_batches = sim_config["val_num_batches"]
 
 catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
-survey = btk.survey.get_surveys("LSST")
+survey = btk.survey.get_surveys(sim_config["survey_name"])
 
 sampling_function = CustomSampling(
     index_range=index_range,
-    max_number=max_number,
-    maxshift=maxshift,
-    stamp_size=stamp_size,
-    seed=seed,
-    unique=unique_galaxies,
+    max_number=sim_config["max_number"],
+    maxshift=sim_config["maxshift"],
+    stamp_size=sim_config["stamp_size"],
+    seed=sim_config["btk_seed"],
+    unique=sim_config["unique_galaxies"].lower() == "true",
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(
     catalog,
     sampling_function,
     survey,
-    batch_size=batch_size,
-    stamp_size=stamp_size,
+    batch_size=sim_config["btk_batch_size"],
+    stamp_size=sim_config["stamp_size"],
     cpus=4,
     add_noise="all",
     verbose=False,
-    seed=seed,
+    seed=sim_config["btk_seed"],
     augment_data=False,
 )
 
-total_galaxy_stamps = num_batches * batch_size
+total_galaxy_stamps = num_batches * sim_config["btk_batch_size"]
 stamp_counter = 0
-shift_rng = np.random.default_rng(12345)
+# shift_rng = np.random.default_rng(12345)
 for batch_num in range(num_batches):
 
     print("simulating file number:" + str(batch_num))

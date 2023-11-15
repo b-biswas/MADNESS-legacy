@@ -1,4 +1,55 @@
 ORIGINAL_CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq.fits
 CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
 TRAIN_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset
+TRAIN_VAL_PARAMS:
+  ISOLATED_SIM_PARAMS:
+    survey_name: LSST
+    btk_seed: 993
+    stamp_size: 15
+    maxshift: 2
+    btk_batch_size: 100
+    max_number: 1
+    min_number: 1
+    unique_galaxies: true
+    train_index_start: 0
+    train_index_end: 150000
+    val_index_start: 150000
+    val_index_end: 200000
+    train_num_batches: 1500
+    val_num_batches: 500
+  BLENDED_SIM_PARAMS:
+    survey_name: LSST
+    btk_seed: 993
+    stamp_size: 15
+    maxshift: 2
+    btk_batch_size: 100
+    max_number: 3
+    min_number: 1
+    unique_galaxies: false
+    train_index_start: 0
+    train_index_end: 150000
+    val_index_start: 150000
+    val_index_end: 200000
 TEST_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/test_data/
+TEST_PARAMS_HIGH_DESNSITY:
+    survey_name: LSST
+    btk_seed: 13
+    stamp_size: 41
+    maxshift: 15
+    btk_batch_size: 20
+    max_number: 12
+    min_number: 20
+    unique_galaxies: false
+    index_start: 200000
+    num_files: 300
+TEST_PARAMS_LOW_DESNSITY:
+    survey_name: LSST
+    btk_seed: 13
+    stamp_size: 41
+    maxshift: 15
+    btk_batch_size: 20
+    max_number: 15
+    min_number: 8
+    unique_galaxies: false
+    index_start: 200000
+    num_files: 300
