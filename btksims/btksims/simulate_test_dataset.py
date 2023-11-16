@@ -24,25 +24,24 @@ if density not in ["high", "low"]:
 with open(get_btksims_config_path()) as f:
     btksims_config = yaml.safe_load(f)
 
-COSMOS_CATALOG_PATHS = btksims_config["CAT_PATH"]
-simulation_path = btksims_config["TEST_DATA_SAVE_PATH"]
-if density == "high":
-    sim_config = btksims_config["TEST_PARAMS_HIGH_DESNSITY"]
-else:
-    sim_config = btksims_config["TEST_PARAMS_LOW_DESNSITY"]
+survey = btk.survey.get_surveys(btksims_config["survey_name"])
+simulation_path = btksims_config["TEST_DATA_SAVE_PATH"][btksims_config["survey_name"]]
+CATALOG_PATH = btksims_config["CAT_PATH"][btksims_config["survey_name"]]
 
-catalog = btk.catalog.CatsimCatalog.from_file(COSMOS_CATALOG_PATHS)
-survey = btk.survey.get_surveys(sim_config["survey_name"])
+if density == "high":
+    sim_config = btksims_config["TEST_PARAMS"]
+
+catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
 
 index_range = [sim_config["index_start"], len(catalog.table)]
 sampling_function = CustomSampling(
     index_range=index_range,
-    min_number=sim_config["min_number"],
-    max_number=sim_config["max_number"],
+    min_number=sim_config[density + "_density"]["min_number"],
+    max_number=sim_config[density + "_density"]["max_number"],
     maxshift=sim_config["maxshift"],
     stamp_size=sim_config["stamp_size"],
     seed=sim_config["btk_seed"],
-    unique=sim_config["unique_galaxies"].lower() == "true",
+    unique=sim_config["unique_galaxies"],
 )
 
 draw_generator = btk.draw_blends.CatsimGenerator(

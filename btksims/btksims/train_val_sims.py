@@ -37,35 +37,33 @@ if blend_type not in ["isolated", "blended"]:
 with open(get_btksims_config_path()) as f:
     btksims_config = yaml.safe_load(f)
 
-if blend_type == "isolated":
-    sim_config = btksims_config["ISOLATED_SIM_PARAMS"]
-else:
-    sim_config = btksims_config["BLENDED_SIM_PARAMS"]
+sim_config = btksims_config["TRAIN_VAL_PARAMS"]
 
-CATSIM_CATALOG_PATH = btksims_config.CAT_PATH
-SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"]
+survey = btk.survey.get_surveys(btksims_config["survey_name"])
+SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"][btksims_config["survey_name"]]
+CATALOG_PATH = btksims_config["CAT_PATH"][btksims_config["survey_name"]]
 print("saving data at " + SAVE_PATH)
 
-if dataset == "training":
-    index_range = [sim_config["train_index_start"], sim_config["train_index_end"]]
-    num_batches = sim_config["train_num_batches"]
-elif dataset == "validation":
-    index_range = [sim_config["val_index_start"], sim_config["val_index_end"]]
-    num_batches = sim_config["val_num_batches"]
+if type(CATALOG_PATH) == list:
+    catalog = btk.catalog.CosmosCatalog.from_file(CATALOG_PATH, exclusion_level="none")
+    generator = btk.draw_blends.CosmosGenerator
+else:
+    catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
+    generator = btk.draw_blends.CatsimGenerator
 
-catalog = btk.catalog.CatsimCatalog.from_file(CATSIM_CATALOG_PATH)
 survey = btk.survey.get_surveys(sim_config["survey_name"])
 
 sampling_function = CustomSampling(
-    index_range=index_range,
-    max_number=sim_config["max_number"],
+    index_range=sim_config[dataset]["index_range"],
+    min_number=sim_config[blend_type + "_params"]["min_number"],
+    max_number=sim_config[blend_type + "_params"]["max_number"],
     maxshift=sim_config["maxshift"],
     stamp_size=sim_config["stamp_size"],
     seed=sim_config["btk_seed"],
-    unique=sim_config["unique_galaxies"].lower() == "true",
+    unique=sim_config[blend_type + "_params"]["unique_galaxies"],
 )
 
-draw_generator = btk.draw_blends.CatsimGenerator(
+draw_generator = generator(
     catalog,
     sampling_function,
     survey,
@@ -75,13 +73,12 @@ draw_generator = btk.draw_blends.CatsimGenerator(
     add_noise="all",
     verbose=False,
     seed=sim_config["btk_seed"],
-    augment_data=False,
 )
 
-total_galaxy_stamps = num_batches * sim_config["btk_batch_size"]
+total_galaxy_stamps = sim_config[dataset]["num_batches"] * sim_config["btk_batch_size"]
 stamp_counter = 0
 # shift_rng = np.random.default_rng(12345)
-for batch_num in range(num_batches):
+for batch_num in range(sim_config[dataset]["num_batches"]):
 
     print("simulating file number:" + str(batch_num))
 
@@ -128,9 +125,12 @@ for batch_num in range(num_batches):
             postage_stamps["gal_locations_x_peak"] = [
                 batch["blend_list"][blended_image_num]["x_peak"] - pos[1]
             ]
-            postage_stamps["r_band_snr"] = [
-                batch["blend_list"][blended_image_num]["r_band_snr"]
-            ]
+            if "r_band_snr" not in batch["blend_list"][blended_image_num].columns:
+                postage_stamps["r_band_snr"] = 0
+            else:
+                postage_stamps["r_band_snr"] = [
+                    batch["blend_list"][blended_image_num]["r_band_snr"]
+                ]
 
             postage_stamps = pd.DataFrame(postage_stamps)
 
