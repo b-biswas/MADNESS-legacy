@@ -21,7 +21,6 @@ def test_cutouts_border():
         pos=galaxy_distances_to_center,
         distances_to_center=True,
         cutout_size=cutout_size,
-        nb_of_bands=nb_of_bands,
         channel_last=True,
     )
 
@@ -35,7 +34,6 @@ def test_cutouts_border():
         pos=galaxy_distances_to_center,
         distances_to_center=False,
         cutout_size=cutout_size,
-        nb_of_bands=nb_of_bands,
         channel_last=True,
     )
     np.testing.assert_array_equal(cutout[0], image[10:, 10:])
@@ -49,7 +47,6 @@ def test_cutouts_border():
         pos=galaxy_distances_to_center,
         distances_to_center=True,
         cutout_size=cutout_size,
-        nb_of_bands=nb_of_bands,
         channel_last=False,
     )
 
@@ -64,7 +61,6 @@ def test_cutouts_border():
         pos=galaxy_distances_to_center,
         distances_to_center=False,
         cutout_size=cutout_size,
-        nb_of_bands=nb_of_bands,
     )
 
     assert len(list_idx) == 0
