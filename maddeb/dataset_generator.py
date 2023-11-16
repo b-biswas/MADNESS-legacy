@@ -1,9 +1,18 @@
 """TF Dataset generator."""
 import os
 
+import galcheat
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import yaml
+
+from maddeb.utils import get_maddeb_config_path
+
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
+
+survey = galcheat.get_survey(maddeb_config["survey_name"])
 
 _DESCRIPTION = """
 #Galaxies from CATSIM WL Deblending catalogue
@@ -94,10 +103,11 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict(
                 {
                     "isolated_gal_stamps": tfds.features.Tensor(
-                        shape=(45, 45, 6), dtype=tf.float32
+                        shape=(45, 45, len(survey.available_filters)), dtype=tf.float32
                     ),
                     "blended_gal_stamps": tfds.features.Tensor(
-                        shape=(45, 45, 6), dtype=tf.dtypes.float32
+                        shape=(45, 45, len(survey.available_filters)),
+                        dtype=tf.dtypes.float32,
                     ),
                 }
             ),
