@@ -1,55 +1,54 @@
-ORIGINAL_CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq.fits
-CAT_PATH: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
-TRAIN_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/CATSIM_tfDataset
+survey_name: HSC
+ORIGINAL_CAT_PATH: 
+  HSC: [
+    "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined.fits",
+    "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined_fits.fits",
+  ] 
+  LSST: /sps/lsst/users/bbiswas/OneDegSq.fits
+CAT_PATH: 
+  HSC: [
+    "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined.fits",
+    "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined_fits.fits",
+  ]
+  LSST: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
+TRAIN_DATA_SAVE_PATH: 
+  HSC: /sps/lsst/users/bbiswas/simulations/HSC/
+  LSST: /sps/lsst/users/bbiswas/simulations/LSST/
 TRAIN_VAL_PARAMS:
-  ISOLATED_SIM_PARAMS:
-    survey_name: LSST
-    btk_seed: 993
-    stamp_size: 15
-    maxshift: 2
-    btk_batch_size: 100
+  btk_seed: 993
+  stamp_size: 15
+  maxshift: 2
+  btk_batch_size: 100
+  isolated_params:
     max_number: 1
     min_number: 1
     unique_galaxies: true
-    train_index_start: 0
-    train_index_end: 150000
-    val_index_start: 150000
-    val_index_end: 200000
-    train_num_batches: 1500
-    val_num_batches: 500
-  BLENDED_SIM_PARAMS:
-    survey_name: LSST
-    btk_seed: 993
-    stamp_size: 15
-    maxshift: 2
-    btk_batch_size: 100
+  blended_params:
     max_number: 3
     min_number: 1
     unique_galaxies: false
-    train_index_start: 0
-    train_index_end: 150000
-    val_index_start: 150000
-    val_index_end: 200000
-TEST_DATA_SAVE_PATH: /sps/lsst/users/bbiswas/simulations/test_data/
-TEST_PARAMS_HIGH_DESNSITY:
-    survey_name: LSST
+  training:
+    index_range: [0, 100000]
+    num_batches: 1000
+  validation:
+    index_range: [100000, 140000]
+    num_batches: 400
+
+TEST_DATA_SAVE_PATH: 
+  HSC: /sps/lsst/users/bbiswas/simulations/HSC/test_data/
+  LSST: /sps/lsst/users/bbiswas/simulations/LSST/test_data/
+TEST_PARAMS:
     btk_seed: 13
     stamp_size: 41
     maxshift: 15
     btk_batch_size: 20
-    max_number: 12
-    min_number: 20
+    high_density:
+      max_number: 12
+      min_number: 20
+    low_density:
+      max_number: 8
+      min_number: 15
     unique_galaxies: false
-    index_start: 200000
+    index_start: 175000
     num_files: 300
-TEST_PARAMS_LOW_DESNSITY:
-    survey_name: LSST
-    btk_seed: 13
-    stamp_size: 41
-    maxshift: 15
-    btk_batch_size: 20
-    max_number: 15
-    min_number: 8
-    unique_galaxies: false
-    index_start: 200000
-    num_files: 300
+
