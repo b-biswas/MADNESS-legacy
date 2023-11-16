@@ -579,7 +579,6 @@ class Deblend:
                         : self.num_components[field_num]
                     ],
                     cutout_size=self.cutout_size,
-                    nb_of_bands=self.num_bands,
                     channel_last=True,
                 )[
                     0
