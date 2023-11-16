@@ -1,17 +1,17 @@
 survey_name: HSC
-ORIGINAL_CAT_PATH: 
+ORIGINAL_CAT_PATH:
   HSC: [
     "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined.fits",
     "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined_fits.fits",
-  ] 
+  ]
   LSST: /sps/lsst/users/bbiswas/OneDegSq.fits
-CAT_PATH: 
+CAT_PATH:
   HSC: [
     "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined.fits",
     "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined_fits.fits",
   ]
   LSST: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
-TRAIN_DATA_SAVE_PATH: 
+TRAIN_DATA_SAVE_PATH:
   HSC: /sps/lsst/users/bbiswas/simulations/HSC/
   LSST: /sps/lsst/users/bbiswas/simulations/LSST/
 TRAIN_VAL_PARAMS:
@@ -34,7 +34,7 @@ TRAIN_VAL_PARAMS:
     index_range: [100000, 140000]
     num_batches: 400
 
-TEST_DATA_SAVE_PATH: 
+TEST_DATA_SAVE_PATH:
   HSC: /sps/lsst/users/bbiswas/simulations/HSC/test_data/
   LSST: /sps/lsst/users/bbiswas/simulations/LSST/test_data/
 TEST_PARAMS:
@@ -51,4 +51,3 @@ TEST_PARAMS:
     unique_galaxies: false
     index_start: 175000
     num_files: 300
-
