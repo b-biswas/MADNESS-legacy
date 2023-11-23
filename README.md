@@ -33,7 +33,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/b-biswas"><img src="https://avatars.githubusercontent.com/u/44917825?v=4?s=100" width="100px;" alt="Biswajit Biswas"/><br /><sub><b>Biswajit Biswas</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Code">💻</a> <a href="#ideas-b-biswas" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/b-biswas"><img src="https://avatars.githubusercontent.com/u/44917825?v=4?s=100" width="100px;" alt="Biswajit Biswas"/><br /><sub><b>Biswajit Biswas</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Code">💻</a> <a href="#ideas-b-biswas" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-b-biswas" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Tests">⚠️</a> <a href="#maintenance-b-biswas" title="Maintenance">🚧</a></td>
     </tr>
   </tbody>
 </table>
