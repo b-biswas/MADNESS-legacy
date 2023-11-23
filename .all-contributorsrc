@@ -14,7 +14,9 @@
       "profile": "https://github.com/b-biswas",
       "contributions": [
         "code",
-        "ideas"
+        "ideas",
+        "infra",
+        "test"
       ]
     }
   ],
