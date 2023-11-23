@@ -1,0 +1,27 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "junpenglao",
+      "name": "Junpeng Lao",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12952641?v=4",
+      "profile": "https://junpenglao.xyz/",
+      "contributions": [
+        "code",
+        "review"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "MADNESS",
+  "projectOwner": "b-biswas"
+}
