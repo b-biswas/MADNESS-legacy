@@ -33,7 +33,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://junpenglao.xyz/"><img src="https://avatars.githubusercontent.com/u/12952641?v=4?s=100" width="100px;" alt="Junpeng Lao"/><br /><sub><b>Junpeng Lao</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=junpenglao" title="Code">💻</a> <a href="https://github.com/b-biswas/MADNESS/pulls?q=is%3Apr+reviewed-by%3Ajunpenglao" title="Reviewed Pull Requests">👀</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://junpenglao.xyz/"><img src="https://avatars.githubusercontent.com/u/12952641?v=4?s=100" width="100px;" alt="Junpeng Lao"/><br /><sub><b>Junpeng Lao</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=junpenglao" title="Code">💻</a> <a href="https://github.com/b-biswas/MADNESS/pulls?q=is%3Apr+reviewed-by%3Ajunpenglao" title="Reviewed Pull Requests">👀</a> <a href="#ideas-junpenglao" title="Ideas, Planning, & Feedback">🤔</a></td>
     </tr>
   </tbody>
 </table>
