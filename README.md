@@ -1,6 +1,6 @@
 # MADNESS
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Maximum A posteriori with Deep NEural networks for Source Separation
@@ -38,6 +38,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://aboucaud.github.io"><img src="https://avatars.githubusercontent.com/u/3065310?v=4?s=100" width="100px;" alt="Alexandre Boucaud"/><br /><sub><b>Alexandre Boucaud</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/pulls?q=is%3Apr+reviewed-by%3Aaboucaud" title="Reviewed Pull Requests">👀</a> <a href="#ideas-aboucaud" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/aubourg"><img src="https://avatars.githubusercontent.com/u/4321664?v=4?s=100" width="100px;" alt="Eric Aubourg"/><br /><sub><b>Eric Aubourg</b></sub></a><br /><a href="#ideas-aubourg" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/roucelle"><img src="https://avatars.githubusercontent.com/u/17788009?v=4?s=100" width="100px;" alt="Cécile Roucelle"/><br /><sub><b>Cécile Roucelle</b></sub></a><br /><a href="#ideas-roucelle" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/aguinot"><img src="https://avatars.githubusercontent.com/u/39480528?v=4?s=100" width="100px;" alt="Axel Guinot"/><br /><sub><b>Axel Guinot</b></sub></a><br /><a href="#ideas-aguinot" title="Ideas, Planning, & Feedback">🤔</a></td>
     </tr>
   </tbody>
 </table>
