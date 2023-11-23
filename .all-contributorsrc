@@ -1,0 +1,30 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "b-biswas",
+      "name": "Biswajit Biswas",
+      "avatar_url": "https://avatars.githubusercontent.com/u/44917825?v=4",
+      "profile": "https://github.com/b-biswas",
+      "contributions": [
+        "code",
+        "ideas",
+        "infra",
+        "test",
+        "maintenance"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "MADNESS",
+  "projectOwner": "b-biswas"
+}
