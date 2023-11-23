@@ -1,6 +1,6 @@
 # MADNESS
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 Maximum A posteriori with Deep NEural networks for Source Separation
@@ -36,6 +36,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/b-biswas"><img src="https://avatars.githubusercontent.com/u/44917825?v=4?s=100" width="100px;" alt="Biswajit Biswas"/><br /><sub><b>Biswajit Biswas</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Code">💻</a> <a href="#ideas-b-biswas" title="Ideas, Planning, & Feedback">🤔</a> <a href="#infra-b-biswas" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/b-biswas/MADNESS/commits?author=b-biswas" title="Tests">⚠️</a> <a href="#maintenance-b-biswas" title="Maintenance">🚧</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://junpenglao.xyz/"><img src="https://avatars.githubusercontent.com/u/12952641?v=4?s=100" width="100px;" alt="Junpeng Lao"/><br /><sub><b>Junpeng Lao</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/commits?author=junpenglao" title="Code">💻</a> <a href="https://github.com/b-biswas/MADNESS/pulls?q=is%3Apr+reviewed-by%3Ajunpenglao" title="Reviewed Pull Requests">👀</a> <a href="#ideas-junpenglao" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://aboucaud.github.io"><img src="https://avatars.githubusercontent.com/u/3065310?v=4?s=100" width="100px;" alt="Alexandre Boucaud"/><br /><sub><b>Alexandre Boucaud</b></sub></a><br /><a href="https://github.com/b-biswas/MADNESS/pulls?q=is%3Apr+reviewed-by%3Aaboucaud" title="Reviewed Pull Requests">👀</a> <a href="#ideas-aboucaud" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/aubourg"><img src="https://avatars.githubusercontent.com/u/4321664?v=4?s=100" width="100px;" alt="Eric Aubourg"/><br /><sub><b>Eric Aubourg</b></sub></a><br /><a href="#ideas-aubourg" title="Ideas, Planning, & Feedback">🤔</a></td>
     </tr>
   </tbody>
 </table>
