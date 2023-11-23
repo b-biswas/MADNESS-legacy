@@ -30,6 +30,16 @@
         "review",
         "ideas"
       ]
+    },
+    {
+      "login": "aboucaud",
+      "name": "Alexandre Boucaud",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3065310?v=4",
+      "profile": "https://aboucaud.github.io",
+      "contributions": [
+        "review",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
