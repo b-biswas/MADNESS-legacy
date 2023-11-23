@@ -19,6 +19,17 @@
         "test",
         "maintenance"
       ]
+    },
+    {
+      "login": "junpenglao",
+      "name": "Junpeng Lao",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12952641?v=4",
+      "profile": "https://junpenglao.xyz/",
+      "contributions": [
+        "code",
+        "review",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
