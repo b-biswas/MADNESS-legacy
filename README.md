@@ -14,7 +14,7 @@ Till then the package needs to be installed via GitHub
 ## Installation
 For testing the deblender, the package can directly be installed from GitHub
 ```bash
-pip install git+git://github.com/b-biswas/MADNESS.git
+pip install git+https://github.com/b-biswas/MADNESS.git
 ```
 For contributing (further instructions to be added soon):
 ```bash
