@@ -3,8 +3,8 @@ TF_DATASET_PATH:
   HSC: /sps/lsst/users/bbiswas/simulations/HSC/
   LSST: /sps/lsst/users/bbiswas/simulations/LSST/
 TEST_DATA_PATH:
- HSC: /sps/lsst/users/bbiswas/simulations/HSC/test_data/
- LSST: /sps/lsst/users/bbiswas/simulations/LSST/test_data/
+  HSC: /sps/lsst/users/bbiswas/simulations/HSC/test_data/
+  LSST: /sps/lsst/users/bbiswas/simulations/LSST/test_data/
 RESULTS_PATH:
   HSC: /sps/lsst/users/bbiswas/MADNESS_results/HSC/
   LSST: /sps/lsst/users/bbiswas/MADNESS_results/LSST/
