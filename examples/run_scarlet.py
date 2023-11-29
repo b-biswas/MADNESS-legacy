@@ -3,12 +3,12 @@
 import logging
 import math
 import os
+import pickle
 import sys
 import time
 
 import galcheat
 import galsim
-import hickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -22,35 +22,29 @@ from maddeb.utils import get_maddeb_config_path
 
 # logging level set to INFO
 logging.basicConfig(format="%(message)s", level=logging.INFO)
-
 LOG = logging.getLogger(__name__)
-survey_name = sys.argv[1]
-
-if survey_name not in ["LSST"]:
-    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
-
-survey = galcheat.get_survey(survey_name)
-
-density = sys.argv[2]
-
-num_repetations = 300
-
-if density not in ["high", "low"]:
-    raise ValueError("The second arguemnt should be either isolated or blended")
-
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
 
-simulation_path = os.path.join(maddeb_config["TEST_DATA_PATH"], density)
-results_path = maddeb_config["RESULTS_PATH"]
+survey_name = maddeb_config["survey_name"]
+if survey_name not in ["LSST", "HSC"]:
+    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+survey = galcheat.get_survey(survey_name)
+
+density = sys.argv[1]
+if density not in ["high", "low"]:
+    raise ValueError("The second arguemnt should be either isolated or blended")
+
+num_repetations = 300
+simulation_path = os.path.join(maddeb_config["TEST_DATA_PATH"][survey_name], density)
+results_path = maddeb_config["RESULTS_PATH"][survey_name]
 density_level = density + "_density"
 
 psf_fwhm = []
 for band in survey.available_filters:
     filt = survey.get_filter(band)
     psf_fwhm.append(filt.psf_fwhm.value)
-
 
 # Define function to make predictions with scarlet
 def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters):
@@ -79,7 +73,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     """
     sig = []
     weights = np.ones_like(image)
-    for i in range(6):
+    for i in range(len(survey.available_filters)):
         sig.append(sep.Background(image[i]).globalrms)
         weights[i] = weights[i] / (sig[i] ** 2)
     observation = scarlet.Observation(
@@ -146,16 +140,16 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
 
 
 for file_num in range(num_repetations):
-    LOG.info("Processing file " + str(file_num))
-    blend = hickle.load(
-        os.path.join(
-            simulation_path,
-            str(file_num) + ".hkl",
-        )
+    LOG.info(f"\n\n######### Processing file: {file_num} #########")
+    file_name = os.path.join(
+        simulation_path,
+        str(file_num) + ".pkl",
     )
+    with open(file_name, "rb") as f:
+        blend = pickle.load(f)
 
-    field_images = blend["blend_images"]
-    isolated_images = blend["isolated_images"]
+    field_images = blend.blend_images
+    isolated_images = blend.isolated_images
 
     psf = np.array(
         [
@@ -163,25 +157,25 @@ for file_num in range(num_repetations):
                 galsim.Image(field_images[0].shape[1], field_images[0].shape[2]),
                 scale=survey.pixel_scale.to_value("arcsec"),
             ).array
-            for p in blend["psf"]
+            for p in blend.psf
         ]
     )
     bands = [f for f in survey._filters]
-    wcs = blend["wcs"]
+    wcs = blend.wcs
 
-    x_pos = blend["blend_list"][0]["y_peak"]
-    y_pos = blend["blend_list"][0]["x_peak"]
+    x_pos = blend.catalog_list[0]["y_peak"]
+    y_pos = blend.catalog_list[0]["x_peak"]
 
     scarlet_results = []
     scarlet_photometry = []
 
     # Get Scarlet Predictions
 
-    for field_num in range(len(blend["blend_list"])):
+    for field_num in range(len(blend.catalog_list)):
         scarlet_current_predictions = []
         image = field_images[field_num]
-        x_pos = blend["blend_list"][field_num]["y_peak"]
-        y_pos = blend["blend_list"][field_num]["x_peak"]
+        x_pos = blend.catalog_list[field_num]["y_peak"]
+        y_pos = blend.catalog_list[field_num]["x_peak"]
         scarlet_current_predictions = predict_with_scarlet(
             image,
             x_pos=x_pos,
@@ -191,67 +185,83 @@ for file_num in range(num_repetations):
             filters=bands,
         )
 
-        num_galaxies = len(blend["blend_list"][field_num])
+        num_galaxies = len(blend.catalog_list[field_num])
 
-        isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
+        isolated_images = blend.isolated_images[field_num][0:num_galaxies]
 
         scarlet_current_res = compute_pixel_cosdist(
             scarlet_current_predictions,
             isolated_images,
-            blend["blend_images"][field_num],
+            blend.blend_images[field_num],
+            survey=survey,
         )
 
         # scarlet_current_res["images"] = scarlet_current_predictions
 
-        size = blend["blend_list"][field_num]["btk_size"]
+        size = blend.catalog_list[field_num]["btk_size"]
 
         scarlet_current_res["size"] = size
         scarlet_current_res["field_num"] = [field_num] * num_galaxies
         scarlet_current_res["file_num"] = [file_num] * num_galaxies
-        scarlet_current_res["r_band_snr"] = blend["blend_list"][field_num]["r_band_snr"]
+        if "r_band_snr" not in blend.catalog_list[field_num].columns:
+            scarlet_current_res["r_band_snr"] = 0
+        else:
+            scarlet_current_res["r_band_snr"] = blend.catalog_list[field_num][
+                "r_band_snr"
+            ]
         # make this a table
 
         # scarlet_results.append(scarlet_current_res)
 
         bkg_rms = {}
-        for band in range(6):
+        for band in range(len(survey.available_filters)):
             bkg_rms[band] = sep.Background(
-                blend["blend_images"][field_num][band]
+                blend.blend_images[field_num][band]
             ).globalrms
 
-        a = blend["blend_list"][field_num]["a_d"].value
-        b = blend["blend_list"][field_num]["b_d"].value
-        theta = blend["blend_list"][field_num]["pa_disk"].value
+        if survey_name == "LSST":
 
-        cond = (
-            blend["blend_list"][field_num]["a_d"]
-            < blend["blend_list"][field_num]["a_b"]
-        )
-        a = np.where(cond, blend["blend_list"][field_num]["a_b"].value, a)
-        b = np.where(cond, blend["blend_list"][field_num]["b_b"].value, b)
-        theta = np.where(cond, blend["blend_list"][field_num]["pa_bulge"].value, theta)
+            a = blend.catalog_list[field_num]["a_d"].value
+            b = blend.catalog_list[field_num]["b_d"].value
+            theta = blend.catalog_list[field_num]["pa_disk"].value
 
-        theta = theta % 180
-        theta = theta * math.pi / 180
+            cond = (
+                blend.catalog_list[field_num]["a_d"]
+                < blend.catalog_list[field_num]["a_b"]
+            )
+            a = np.where(cond, blend.catalog_list[field_num]["a_b"].value, a)
+            b = np.where(cond, blend.catalog_list[field_num]["b_b"].value, b)
+            theta = np.where(
+                cond, blend.catalog_list[field_num]["pa_bulge"].value, theta
+            )
 
-        theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
+            theta = theta % 180
+            theta = theta * math.pi / 180
+
+            theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
+
+        if survey_name == "HSC":
+            a = blend.catalog_list[field_num]["btk_size"]
+            b = blend.catalog_list[field_num]["btk_size"]
+            theta = [0] * len(blend.catalog_list[field_num]["btk_size"])
 
         scarlet_photometry_current = compute_aperture_photometry(
-            field_image=blend["blend_images"][field_num],
+            field_image=blend.blend_images[field_num],
             predictions=scarlet_current_predictions,
-            xpos=blend["blend_list"][field_num]["x_peak"],
-            ypos=blend["blend_list"][field_num]["y_peak"],
+            xpos=blend.catalog_list[field_num]["x_peak"],
+            ypos=blend.catalog_list[field_num]["y_peak"],
             a=a / survey.pixel_scale.value,
             b=b / survey.pixel_scale.value,
             theta=theta,
             psf_fwhm=np.array(psf_fwhm) / survey.pixel_scale.value,
             bkg_rms=bkg_rms,
+            survey=survey,
         )
         scarlet_current_res.update(scarlet_photometry_current)
         scarlet_current_res = pd.DataFrame.from_dict(scarlet_current_res)
         scarlet_results.append(scarlet_current_res)
     # scarlet_results = vstack(scarlet_results)
-    # scarlet_results = hstack([scarlet_results, vstack(blend["blend_list"])])
+    # scarlet_results = hstack([scarlet_results, vstack(blend.catalog_list)])
     # scarlet_results = hstack(scarlet_results,vstack(scarlet_photometry))
 
     scarlet_results = pd.concat(scarlet_results)
