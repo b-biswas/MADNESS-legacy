@@ -1,6 +1,5 @@
 """Metrics for comparison."""
 
-import galcheat
 import numpy as np
 import sep
 from numba import jit
@@ -11,8 +10,8 @@ def compute_pixel_cosdist(
     predicted_galaxies,
     simulated_galaxies,
     field_image,
+    survey,
     get_blendedness=True,
-    survey=galcheat.get_survey("LSST"),
 ):
     """Calculate pixel covariances and fluxes.
 
@@ -24,10 +23,10 @@ def compute_pixel_cosdist(
         simulated ground truth of the model.
     field_image: np array
         the entire simulated field.
-    get_blendedness: bool
-        to return the blendedness metric
     survey: galcheat.survey object
         galcheat survey object to fetch survey details
+    get_blendedness: bool
+        to return the blendedness metric
 
     Returns
     -------
@@ -88,6 +87,7 @@ def compute_pixel_cosdist(
                     simulated_galaxy[band_number]
                     / np.amax(simulated_galaxy[band_number])
                 ),
+                data_range=1.0,
             )
 
             results[band + "_cosd"].append(pixel_covariance)
@@ -179,9 +179,9 @@ def compute_aperture_photometry(
     a,
     b,
     theta,
+    survey,
     psf_fwhm=None,
     r=2,
-    survey=galcheat.get_survey("LSST"),
 ):
     """Calculate aperture photometry.
 
@@ -203,12 +203,12 @@ def compute_aperture_photometry(
         hlr semi minor axis of galaxy in pixels
     theta: float
         orientation of the galaxy in degrees
+    survey: galcheat.survey object
+        galcheat survey object to fetch survey details
     psf_fwhm: float
         fwhm of PSF in pixels
     r: int
         factor by which the major-minor-axis is multiplied
-    survey: galcheat.survey object
-        galcheat survey object to fetch survey details
 
     Returns
     -------
@@ -222,7 +222,7 @@ def compute_aperture_photometry(
             results[band + column] = []
 
     if psf_fwhm is None:
-        psf_fwhm = [0] * 6
+        psf_fwhm = [0] * len(survey.available_filters)
 
     results["galaxy_num"] = []
 
