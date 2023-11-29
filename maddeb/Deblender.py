@@ -205,6 +205,7 @@ class Deblend:
             kernels_decoder=kernels_decoder,
             dense_layer_units=dense_layer_units,
             num_nf_layers=num_nf_layers,
+            survey=survey,
         )
 
         if load_weights:
