@@ -11,6 +11,8 @@ CAT_PATH:
     "/sps/lsst/users/bbiswas/HSC_catalog/real_galaxy_catalog_26_extension_detrefined_fits.fits",
   ]
   LSST: /sps/lsst/users/bbiswas/OneDegSq_snr_10.fits
+
+# Training and validation parameters
 TRAIN_DATA_SAVE_PATH:
   HSC: /sps/lsst/users/bbiswas/simulations/HSC/
   LSST: /sps/lsst/users/bbiswas/simulations/LSST/
@@ -31,9 +33,10 @@ TRAIN_VAL_PARAMS:
     index_range: [0, 100000]
     num_batches: 1000
   validation:
-    index_range: [100000, 140000]
-    num_batches: 400
+    index_range: [100000, 150000]
+    num_batches: 500
 
+# Test parameters
 TEST_DATA_SAVE_PATH:
   HSC: /sps/lsst/users/bbiswas/simulations/HSC/test_data/
   LSST: /sps/lsst/users/bbiswas/simulations/LSST/test_data/
@@ -43,11 +46,11 @@ TEST_PARAMS:
     maxshift: 15
     btk_batch_size: 20
     high_density:
-      max_number: 12
-      min_number: 20
+      min_number: 12
+      max_number: 20
     low_density:
-      max_number: 8
-      min_number: 15
+      min_number: 8
+      max_number: 15
     unique_galaxies: false
-    index_start: 175000
+    index_start: 150000
     num_files: 300

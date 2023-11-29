@@ -4,15 +4,15 @@ import logging
 import os
 import sys
 
-import btk
 import btk.catalog
 import btk.draw_blends
-import btk.plot_utils
 import btk.sampling_functions
 import btk.survey
+import btk.utils
 import numpy as np
 import pandas as pd
 import yaml
+from astropy.table import Table
 
 from btksims.sampling import CustomSampling
 from btksims.utils import get_btksims_config_path
@@ -51,7 +51,10 @@ else:
     catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
     generator = btk.draw_blends.CatsimGenerator
 
-survey = btk.survey.get_surveys(sim_config["survey_name"])
+catalog.table = Table.from_pandas(
+    catalog.table.to_pandas().sample(frac=1, random_state=0).reset_index(drop=True)
+)
+survey = btk.survey.get_surveys(btksims_config["survey_name"])
 
 sampling_function = CustomSampling(
     index_range=sim_config[dataset]["index_range"],
@@ -69,7 +72,7 @@ draw_generator = generator(
     survey,
     batch_size=sim_config["btk_batch_size"],
     stamp_size=sim_config["stamp_size"],
-    cpus=4,
+    njobs=25,
     add_noise="all",
     verbose=False,
     seed=sim_config["btk_seed"],
@@ -84,18 +87,18 @@ for batch_num in range(sim_config[dataset]["num_batches"]):
 
     batch = next(draw_generator)
 
-    for blended_image_num in range(len(batch["blend_images"])):
+    for blended_image_num in range(len(batch.blend_images)):
 
-        blended_image = batch["blend_images"][blended_image_num]
+        blended_image = batch.blend_images[blended_image_num]
 
-        for galaxy_num in range(len(batch["blend_list"][blended_image_num]["x_peak"])):
+        for galaxy_num in range(len(batch.catalog_list[blended_image_num]["x_peak"])):
 
             postage_stamps = {}
             # print("Image number "+ str(blended_image_num))
             # print("Galaxy number " + str(galaxy_num))
-            isolated_image = batch["isolated_images"][blended_image_num][galaxy_num]
-            x_pos = batch["blend_list"][blended_image_num]["y_peak"][galaxy_num]
-            y_pos = batch["blend_list"][blended_image_num]["x_peak"][galaxy_num]
+            isolated_image = batch.isolated_images[blended_image_num][galaxy_num]
+            x_pos = batch.catalog_list[blended_image_num]["y_peak"][galaxy_num]
+            y_pos = batch.catalog_list[blended_image_num]["x_peak"][galaxy_num]
 
             # x_shift = shift_rng.random() - 0.5
             # y_shift = shift_rng.random() - 0.5
@@ -120,16 +123,16 @@ for batch_num in range(sim_config[dataset]["num_batches"]):
             )[0][0]
             postage_stamps["isolated_gal_stamps"] = [gal_isolated]
             postage_stamps["gal_locations_y_peak"] = [
-                batch["blend_list"][blended_image_num]["y_peak"] - pos[0]
+                batch.catalog_list[blended_image_num]["y_peak"] - pos[0]
             ]
             postage_stamps["gal_locations_x_peak"] = [
-                batch["blend_list"][blended_image_num]["x_peak"] - pos[1]
+                batch.catalog_list[blended_image_num]["x_peak"] - pos[1]
             ]
-            if "r_band_snr" not in batch["blend_list"][blended_image_num].columns:
+            if "r_band_snr" not in batch.catalog_list[blended_image_num].columns:
                 postage_stamps["r_band_snr"] = 0
             else:
                 postage_stamps["r_band_snr"] = [
-                    batch["blend_list"][blended_image_num]["r_band_snr"]
+                    batch.catalog_list[blended_image_num]["r_band_snr"]
                 ]
 
             postage_stamps = pd.DataFrame(postage_stamps)

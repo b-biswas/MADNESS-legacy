@@ -2,11 +2,12 @@
 
 import logging
 import os
+import pickle
 import sys
 
 import btk
-import hickle
 import yaml
+from astropy.table import Table
 
 from btksims.sampling import CustomSampling
 from btksims.utils import get_btksims_config_path
@@ -28,10 +29,20 @@ survey = btk.survey.get_surveys(btksims_config["survey_name"])
 simulation_path = btksims_config["TEST_DATA_SAVE_PATH"][btksims_config["survey_name"]]
 CATALOG_PATH = btksims_config["CAT_PATH"][btksims_config["survey_name"]]
 
+print(CATALOG_PATH)
+
 if density == "high":
     sim_config = btksims_config["TEST_PARAMS"]
 
-catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
+if type(CATALOG_PATH) == list:
+    catalog = btk.catalog.CosmosCatalog.from_file(CATALOG_PATH, exclusion_level="none")
+    catalog.table = Table.from_pandas(
+        catalog.table.to_pandas().sample(frac=1, random_state=0).reset_index(drop=True)
+    )
+    generator = btk.draw_blends.CosmosGenerator
+else:
+    catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
+    generator = btk.draw_blends.CatsimGenerator
 
 index_range = [sim_config["index_start"], len(catalog.table)]
 sampling_function = CustomSampling(
@@ -44,27 +55,27 @@ sampling_function = CustomSampling(
     unique=sim_config["unique_galaxies"],
 )
 
-draw_generator = btk.draw_blends.CatsimGenerator(
+draw_generator = generator(
     catalog,
     sampling_function,
     survey,
-    batch_size=sim_config["batch_size"],
+    batch_size=sim_config["btk_batch_size"],
     stamp_size=sim_config["stamp_size"],
-    cpus=1,
+    njobs=16,
     add_noise="all",
     verbose=False,
     seed=sim_config["btk_seed"],
-    augment_data=False,
 )
 
-for file_num in range(sim_config["num_repetations"]):
+for file_num in range(sim_config["num_files"]):
     print("Processing file " + str(file_num))
     blend = next(draw_generator)
 
     save_file_name = os.path.join(
         simulation_path,
         density,
-        str(file_num) + ".hkl",
+        str(file_num) + ".pkl",
     )
     print(save_file_name)
-    hickle.dump(blend, save_file_name, mode="w")
+    with open(save_file_name, "wb") as pickle_file:
+        pickle.dump(blend, pickle_file)

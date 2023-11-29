@@ -2,8 +2,8 @@
 import warnings
 
 import numpy as np
-from btk import DEFAULT_SEED
 from btk.sampling_functions import SamplingFunction, _get_random_center_shift
+from btk.utils import DEFAULT_SEED
 
 
 class CustomSampling(SamplingFunction):
