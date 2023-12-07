@@ -77,18 +77,22 @@ def compute_pixel_cosdist(
                 np.float32(simulated_galaxy[band_number]),
                 sig,
             )
-
-            ssim = structural_similarity(
-                np.float32(
-                    predicted_galaxy[band_number]
-                    / np.amax(predicted_galaxy[band_number])
-                ),
-                np.float32(
-                    simulated_galaxy[band_number]
-                    / np.amax(simulated_galaxy[band_number])
-                ),
-                data_range=1.0,
-            )
+            if np.amax(simulated_galaxy[band_number]) == 0:
+                ssim = -1
+            elif np.amax(predicted_galaxy[band_number]) == 0:
+                ssim = 0
+            else:
+                ssim = structural_similarity(
+                    np.float32(
+                        predicted_galaxy[band_number]
+                        / np.amax(predicted_galaxy[band_number])
+                    ),
+                    np.float32(
+                        simulated_galaxy[band_number]
+                        / np.amax(simulated_galaxy[band_number])
+                    ),
+                    data_range=1.0,
+                )
 
             results[band + "_cosd"].append(pixel_covariance)
 
@@ -129,15 +133,15 @@ def cosdist_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
     ground_truth_pixels = simulated_band_galaxy.flatten()
     predicted_pixels = predicted_band_galaxy.flatten()
 
-    if np.sum(ground_truth_pixels) == 0:
+    dinominator1 = np.sqrt(np.sum(np.square(predicted_pixels)))
+    dinominator2 = np.sqrt(np.sum(np.square(ground_truth_pixels)))
+    if dinominator1 == 0:
+        return 0
+    if dinominator2 == 0:
         return -1
 
-    if np.sum(predicted_pixels) == 0:
-        return 0
-
     pixel_covariance = np.sum(np.multiply(predicted_pixels, ground_truth_pixels)) / (
-        np.sqrt(np.sum(np.square(predicted_pixels)))
-        * np.sqrt(np.sum(np.square(ground_truth_pixels)))
+        dinominator1 * dinominator2
     )
 
     return pixel_covariance
@@ -162,9 +166,11 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     """
     isolated_pixels = isolated_galaxy_band.flatten()
     field_pixels = field_band.flatten()
-
-    blendedness = 1 - np.sum(np.multiply(isolated_pixels, isolated_pixels)) / np.sum(
-        np.multiply(field_pixels, isolated_pixels)
+    dinominator = np.sum(np.multiply(field_pixels, isolated_pixels))
+    if dinominator == 0:
+        return -1
+    blendedness = (
+        1 - np.sum(np.multiply(isolated_pixels, isolated_pixels)) / dinominator
     )
 
     return blendedness
