@@ -94,16 +94,36 @@ def deblender_loss_fn_wrapper(
         )
 
         if use_ssim:
-            band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
-            ssim = tf.image.ssim(
-                y / band_normalizer,
-                predicted_galaxy / band_normalizer,
-                max_val=1,
-            )
-            tf.stop_gradient(ch_alpha.alpha)
-            loss = loss * (1 - ch_alpha.alpha * ssim)
+            #     band_normalizer = tf.reduce_max(y+tf.math.exp(-10.0), axis=[1, 2], keepdims=True)
 
-        loss = tf.reduce_mean(loss)
+            #     ssim = tf.image.ssim(
+            #         y / band_normalizer,
+            #         predicted_galaxy / band_normalizer,
+            #         max_val=1,
+            #     )
+            #     tf.stop_gradient(ch_alpha.alpha)
+            #     loss = loss * (1 - tf.math.multiply_no_nan(ssim, ch_alpha.alpha))
+
+            # loss = tf.reduce_mean(loss)
+            if ch_alpha.alpha > 0:
+                band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
+                beta_factor = 2.5
+                tf.stop_gradient(ch_alpha.alpha)
+                loss2 = ch_alpha.alpha * tf.keras.metrics.binary_crossentropy(
+                    tf.math.tanh(
+                        tf.math.asinh(
+                            beta_factor * tf.math.divide_no_nan(y, band_normalizer)
+                        )
+                    ),
+                    tf.math.tanh(
+                        tf.math.asinh(
+                            beta_factor * tf.math.divide_no_nan(y, band_normalizer)
+                        )
+                    ),
+                    axis=0,
+                )  # computes the mean across axis 0
+                loss2 = tf.reduce_sum(loss2)
+                loss = tf.reduce_mean(loss) + 10 * ch_alpha.alpha * loss2
         # weight = tf.math.reduce_max(x, axis= [1, 2])
         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
