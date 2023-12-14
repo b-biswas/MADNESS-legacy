@@ -45,7 +45,7 @@ def vae_loss_fn_mse(x, predicted_distribution):
 
 
 def deblender_loss_fn_wrapper(
-    sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000
+    sigma_cutoff, use_non_linear_norm=False, ch_alpha=None, linear_norm_coeff=10000
 ):
     """Input field sigma into ssim loss function.
 
@@ -53,8 +53,9 @@ def deblender_loss_fn_wrapper(
     ----------
     sigma_cutoff: list
         list of sigma levels (normalized) in the bands.
-    use_ssim: bool
-        Flag to add the ssim loss function.
+    use_non_linear_norm: bool
+        Flag to add an extra term with non-linear normalization to the loss function.
+        This loss is supposed to force the network to learn information in noisy bands relatively earlier and is taken from the original VAE Deblender by Arcelin et al [https://arxiv.org/pdf/2005.12039.pdf](https://arxiv.org/pdf/2005.12039.pdf).
     ch_alpha: madness.callbacks.ChangeAlpha
         instance of ChangeAlpha to update the weight of SSIM over epochs.
     linear_norm_coeff: int
@@ -66,7 +67,7 @@ def deblender_loss_fn_wrapper(
         function to compute the loss using SSIM weight.
 
     """
-    if use_ssim and not isinstance(ch_alpha, changeAlpha):
+    if use_non_linear_norm and not isinstance(ch_alpha, changeAlpha):
         raise ValueError(
             "Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha"
         )
@@ -93,7 +94,7 @@ def deblender_loss_fn_wrapper(
             axis=[1, 2, 3],
         )
 
-        if use_ssim:
+        if use_non_linear_norm:
             #     band_normalizer = tf.reduce_max(y+tf.math.exp(-10.0), axis=[1, 2], keepdims=True)
 
             #     ssim = tf.image.ssim(
