@@ -24,8 +24,8 @@ class FlowVAEnet:
         self,
         stamp_shape=45,
         latent_dim=16,
-        filters_encoder=[32, 128, 256, 512],
-        filters_decoder=[64, 96, 128],
+        filters_encoder=[32, 64, 128, 256],
+        filters_decoder=[32, 64, 128],
         kernels_encoder=[5, 5, 5, 5],
         kernels_decoder=[5, 5, 5],
         dense_layer_units=512,
@@ -229,7 +229,7 @@ class FlowVAEnet:
             Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
 
         """
-        self.vae_model.summary()
+        self.encoder.summary()
         LOG.info("\n--- Training only encoder network ---")
 
         # LOG.info("Initial learning rate: " + str(lr))
