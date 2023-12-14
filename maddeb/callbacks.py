@@ -53,7 +53,7 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
             if (epoch + 1) % lr_scheduler_epochs != 0:
                 return lr
             else:
-                return lr * tf.math.exp(-1.0)
+                return lr * 0.1
 
         lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
@@ -91,5 +91,5 @@ class changeAlpha(Callback):
             logs
 
         """
-        K.set_value(self.alpha, max(0, 1 - epoch / self.max_epochs))
+        K.set_value(self.alpha, 1 * max(0, 1 - epoch / self.max_epochs))
         print("Setting alpha to =", str(self.alpha))
