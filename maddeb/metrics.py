@@ -92,6 +92,8 @@ def compute_pixel_cosdist(
                         / np.amax(simulated_galaxy[band_number])
                     ),
                     data_range=1.0,
+                    gaussian_weights=True,
+                    use_sample_covariance=False,
                 )
 
             results[band + "_cosd"].append(pixel_covariance)
