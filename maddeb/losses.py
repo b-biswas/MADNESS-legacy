@@ -45,7 +45,7 @@ def vae_loss_fn_mse(x, predicted_distribution):
 
 
 def deblender_loss_fn_wrapper(
-    sigma_cutoff, use_non_linear_norm=False, ch_alpha=None, linear_norm_coeff=10000
+    sigma_cutoff, use_ssim=False, ch_alpha=None, linear_norm_coeff=10000
 ):
     """Input field sigma into ssim loss function.
 
@@ -53,9 +53,9 @@ def deblender_loss_fn_wrapper(
     ----------
     sigma_cutoff: list
         list of sigma levels (normalized) in the bands.
-    use_non_linear_norm: bool
-        Flag to add an extra term with non-linear normalization to the loss function.
-        This loss is supposed to force the network to learn information in noisy bands relatively earlier and is taken from the original VAE Deblender by Arcelin et al [https://arxiv.org/pdf/2005.12039.pdf](https://arxiv.org/pdf/2005.12039.pdf).
+    use_ssim: bool
+        Flag to add an extra ssim term to the loss function.
+        This loss is supposed to force the network to learn information in noisy bands relatively earlier.
     ch_alpha: madness.callbacks.ChangeAlpha
         instance of ChangeAlpha to update the weight of SSIM over epochs.
     linear_norm_coeff: int
@@ -67,7 +67,7 @@ def deblender_loss_fn_wrapper(
         function to compute the loss using SSIM weight.
 
     """
-    if use_non_linear_norm and not isinstance(ch_alpha, changeAlpha):
+    if use_ssim and not isinstance(ch_alpha, changeAlpha):
         raise ValueError(
             "Inappropriate value for changeAlpha. Must been an instance of maddeb.callbacks.changeAlpha"
         )
@@ -94,37 +94,17 @@ def deblender_loss_fn_wrapper(
             axis=[1, 2, 3],
         )
 
-        if use_non_linear_norm:
-            #     band_normalizer = tf.reduce_max(y+tf.math.exp(-10.0), axis=[1, 2], keepdims=True)
+        if use_ssim:
+            band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
+            ssim = tf.image.ssim(
+                y / band_normalizer,
+                predicted_galaxy / band_normalizer,
+                max_val=1,
+            )
+            tf.stop_gradient(ch_alpha.alpha)
+            loss = loss * (1 - ch_alpha.alpha * ssim)
 
-            #     ssim = tf.image.ssim(
-            #         y / band_normalizer,
-            #         predicted_galaxy / band_normalizer,
-            #         max_val=1,
-            #     )
-            #     tf.stop_gradient(ch_alpha.alpha)
-            #     loss = loss * (1 - tf.math.multiply_no_nan(ssim, ch_alpha.alpha))
-
-            # loss = tf.reduce_mean(loss)
-            if ch_alpha.alpha > 0:
-                band_normalizer = tf.reduce_max(y, axis=[1, 2], keepdims=True)
-                beta_factor = 2.5
-                tf.stop_gradient(ch_alpha.alpha)
-                loss2 = ch_alpha.alpha * tf.keras.metrics.binary_crossentropy(
-                    tf.math.tanh(
-                        tf.math.asinh(
-                            beta_factor * tf.math.divide_no_nan(y, band_normalizer)
-                        )
-                    ),
-                    tf.math.tanh(
-                        tf.math.asinh(
-                            beta_factor * tf.math.divide_no_nan(y, band_normalizer)
-                        )
-                    ),
-                    axis=0,
-                )  # computes the mean across axis 0
-                loss2 = tf.reduce_sum(loss2)
-                loss = tf.reduce_mean(loss) + 10 * ch_alpha.alpha * loss2
+            loss = tf.reduce_mean(loss)
         # weight = tf.math.reduce_max(x, axis= [1, 2])
         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
@@ -139,7 +119,7 @@ def deblender_encoder_loss_wrapper(
     noise_sigma,
     latent_dim=16,
 ):
-    """AI is creating summary for deblender_encoder_loss_wrapper.
+    """loss function wrapper.
 
     Parameters
     ----------
