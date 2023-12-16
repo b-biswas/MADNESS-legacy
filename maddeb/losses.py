@@ -104,7 +104,7 @@ def deblender_loss_fn_wrapper(
             tf.stop_gradient(ch_alpha.alpha)
             loss = loss * (1 - ch_alpha.alpha * ssim)
 
-            loss = tf.reduce_mean(loss)
+        loss = tf.reduce_mean(loss)
             #if ch_alpha.alpha > 0:
             # band_normalizer = tf.reduce_max(y+1e-9, axis=[1, 2], keepdims=True)
             # beta_factor = 2.5
