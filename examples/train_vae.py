@@ -29,10 +29,10 @@ batch_size = 100
 vae_epochs = 200
 flow_epochs = 200
 deblender_epochs = 150
-lr_scheduler_epochs = 40
+lr_scheduler_epochs = 30
 latent_dim = 16
 linear_norm_coeff = 10000
-patience = 25
+patience = 30
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
@@ -93,7 +93,7 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
 
 if train_models.lower() == "all" or "vae" in train_models:
 
-    ssim_fraction = 0.3
+    ssim_fraction = 0.25
     # Define all used callbacks
     callbacks = define_callbacks(
         os.path.join(path_weights, "ssim"),
@@ -111,7 +111,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.1),
+        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
             sigma_cutoff=noise_sigma,
             use_ssim=True,
@@ -140,7 +140,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=0.1),
+        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
             sigma_cutoff=noise_sigma,
             use_ssim=False,

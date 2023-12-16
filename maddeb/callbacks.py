@@ -53,7 +53,7 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
             if (epoch + 1) % lr_scheduler_epochs != 0:
                 return lr
             else:
-                return lr * 0.1
+                return lr / 2.5
 
         lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
