@@ -29,10 +29,10 @@ batch_size = 100
 vae_epochs = 200
 flow_epochs = 200
 deblender_epochs = 150
-lr_scheduler_epochs = 30
+lr_scheduler_epochs = 40
 latent_dim = 16
 linear_norm_coeff = 10000
-patience = 30
+patience = 25
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
@@ -76,7 +76,7 @@ f_net = FlowVAEnet(
 data_path = get_data_dir_path()
 
 # path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
-path_weights = os.path.join(data_path, survey.name)
+path_weights = os.path.join(data_path, survey.name + str(kl_weight) + "_b")
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
@@ -93,7 +93,7 @@ ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
 
 if train_models.lower() == "all" or "vae" in train_models:
 
-    ssim_fraction = 0.25
+    ssim_fraction = 0.3
     # Define all used callbacks
     callbacks = define_callbacks(
         os.path.join(path_weights, "ssim"),
@@ -111,7 +111,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
+        optimizer=tf.keras.optimizers.Adam(1e-4, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
             sigma_cutoff=noise_sigma,
             use_ssim=True,
@@ -136,13 +136,14 @@ if train_models.lower() == "all" or "vae" in train_models:
         ds_isolated_train,
         ds_isolated_val,
         callbacks=callbacks,
-        epochs=int((1 - ssim_fraction) * vae_epochs),
+        epochs=int((1-ssim_fraction) * vae_epochs),
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
-        optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
+        optimizer=tf.keras.optimizers.Adam(1e-6, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
             sigma_cutoff=noise_sigma,
+            use_ssim=False,
             linear_norm_coeff=linear_norm_coeff,
         ),
         verbose=2,
@@ -167,7 +168,7 @@ if train_models.lower() == "all" or "nf" in train_models:
 
     # Define all used callbacks
     callbacks = define_callbacks(
-        os.path.join(path_weights, f"flow{num_nf_layers}"),
+        os.path.join(path_weights, "flow"),
         lr_scheduler_epochs=lr_scheduler_epochs,
         patience=patience,
     )
