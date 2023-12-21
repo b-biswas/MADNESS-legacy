@@ -190,15 +190,18 @@ for file_num in range(num_repetations):
             theta = theta * math.pi / 180
 
             theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
+            madness_current_res["size"] = (a * b) ** 0.5
+
         if survey_name == "HSC":
             madness_current_res["r_band_snr"] = 0
             for band_name in survey.available_filters:
-                madness_current_res[band_name + "_ab"] = blend["catalog_list"][
-                    field_num
-                ]["HSC_" + band_name]
-            a = blend["catalog_list"][field_num]["btk_size"]
-            b = blend["catalog_list"][field_num]["btk_size"]
-            theta = [0] * len(blend["catalog_list"][field_num]["btk_size"])
+            a = (
+                blend.catalog_list[field_num]["flux_radius"]
+                * blend.catalog_list[field_num]["PIXEL_SCALE"]
+            )
+            b = a
+            theta = [0] * len(blend.catalog_list[field_num])
+            madness_current_res["size"] = a
         # make this a table
 
         # madness_results.append(madness_current_res)

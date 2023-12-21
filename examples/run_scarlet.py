@@ -32,6 +32,8 @@ if survey_name not in ["LSST", "HSC"]:
     raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
 survey = galcheat.get_survey(survey_name)
 
+LOG.info(f"Running tests with scarlet for {survey_name}")
+
 density = sys.argv[1]
 if density not in ["high", "low"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
@@ -45,6 +47,7 @@ psf_fwhm = []
 for band in survey.available_filters:
     filt = survey.get_filter(band)
     psf_fwhm.append(filt.psf_fwhm.value)
+
 
 # Define function to make predictions with scarlet
 def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters):
@@ -197,10 +200,6 @@ for file_num in range(num_repetations):
         )
 
         # scarlet_current_res["images"] = scarlet_current_predictions
-
-        size = blend.catalog_list[field_num]["btk_size"]
-
-        scarlet_current_res["size"] = size
         scarlet_current_res["field_num"] = [field_num] * num_galaxies
         scarlet_current_res["file_num"] = [file_num] * num_galaxies
         if "r_band_snr" not in blend.catalog_list[field_num].columns:
@@ -239,11 +238,16 @@ for file_num in range(num_repetations):
             theta = theta * math.pi / 180
 
             theta = np.where(theta > math.pi / 2, theta - math.pi, theta)
+            scarlet_current_res["size"] = (a * b) ** 0.5
 
         if survey_name == "HSC":
-            a = blend.catalog_list[field_num]["btk_size"]
-            b = blend.catalog_list[field_num]["btk_size"]
-            theta = [0] * len(blend.catalog_list[field_num]["btk_size"])
+            a = (
+                blend.catalog_list[field_num]["flux_radius"]
+                * blend.catalog_list[field_num]["PIXEL_SCALE"]
+            )
+            b = a
+            theta = [0] * len(blend.catalog_list[field_num])
+            scarlet_current_res["size"] = a
 
         scarlet_photometry_current = compute_aperture_photometry(
             field_image=blend.blend_images[field_num],
