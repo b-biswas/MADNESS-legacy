@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 density = sys.argv[1]
 
 if density not in ["high", "low"]:
-    raise ValueError("The first arguemnt should be either high or low")
+    raise ValueError("The first argument should be either high or low")
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
@@ -43,7 +43,7 @@ else:
     catalog = btk.catalog.CatsimCatalog.from_file(CATALOG_PATH)
     generator = btk.draw_blends.CatsimGenerator
 
-# For the suffle to make sure distributions are consistent across train, test and validation sets.
+# Shuffle to make sure distributions are consistent across train, test, and validation sets.
 # Be careful with the random state, it should be the same in the validation set.
 catalog.table = Table.from_pandas(
     catalog.table.to_pandas().sample(frac=1, random_state=0).reset_index(drop=True)
