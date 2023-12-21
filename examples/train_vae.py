@@ -136,7 +136,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         ds_isolated_train,
         ds_isolated_val,
         callbacks=callbacks,
-        epochs=int((1-ssim_fraction) * vae_epochs),
+        epochs=int((1 - ssim_fraction) * vae_epochs),
         train_encoder=True,
         train_decoder=True,
         track_kl=True,
