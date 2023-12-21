@@ -46,7 +46,7 @@ if survey_name not in ["LSST", "HSC"]:
 
 train_models = sys.argv[
     1
-]  # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
+]  # either "all" or a list containing: ["GenerativeModel","NormalizingFlow","Deblender"]
 
 kl_weight_exp = int(sys.argv[2])
 kl_weight = 10**-kl_weight_exp
@@ -173,7 +173,7 @@ if train_models.lower() == "all" or "nf" in train_models:
         patience=patience,
     )
 
-    # now train the model
+    # Now train the model
     hist_flow = f_net.train_flow(
         ds_isolated_train,
         ds_isolated_val,
