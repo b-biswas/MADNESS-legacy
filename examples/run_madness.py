@@ -32,8 +32,12 @@ if survey_name not in ["LSST", "HSC"]:
     )  # other surveys to be added soon!
 survey = galcheat.get_survey(survey_name)
 
+LOG.info(f"Running tests with MADNESS for {survey_name}")
+
+
 density = sys.argv[1]
-run_name = sys.argv[2]
+kl_weight_exp = int(sys.argv[2])
+run_name = f"kl{kl_weight_exp}b"
 map_solution = sys.argv[3].lower() == "true"
 
 if density not in ["high", "low"]:
@@ -41,11 +45,19 @@ if density not in ["high", "low"]:
 
 num_repetations = 300
 max_number = 20
+
+kl_weight = 10**-kl_weight_exp
+weights_path = os.path.join(get_data_dir_path(), survey_name + str(kl_weight))
+LOG.info(f"Loading Model weights from {weights_path}")
+
 simulation_path = os.path.join(maddeb_config["TEST_DATA_PATH"][survey_name], density)
 results_path = maddeb_config["RESULTS_PATH"][survey_name]
 density_level = density + "_density"
 
-weights_path = os.path.join(get_data_dir_path(), survey_name)
+LOG.info(f"Saving results to: {results_path}")
+LOG.info(f"Density level: {density_level}")
+LOG.info(f"Run name: {run_name}")
+
 deb = Deblend(latent_dim=16, weights_path=weights_path, survey=survey)
 
 psf_fwhm = []
@@ -62,8 +74,8 @@ for file_num in range(num_repetations):
     with open(file_name, "rb") as f:
         blend = pickle.load(f)
 
-    field_images = blend["blend_images"]
-    isolated_images = blend["isolated_images"]
+    field_images = blend.blend_images
+    isolated_images = blend.isolated_images
 
     # get MADNESS predictions
     madness_predictions = []
@@ -77,17 +89,17 @@ for file_num in range(num_repetations):
     madness_photometry = []
     blended_photometry = []
 
-    detected_positions = np.zeros((len(blend["catalog_list"]), max_number, 2))
+    detected_positions = np.zeros((len(blend.catalog_list), max_number, 2))
     num_components = []
-    for field_num in range(len(blend["catalog_list"])):
-        for gal_num in range(len(blend["catalog_list"][field_num])):
-            detected_positions[field_num][gal_num][0] = blend["catalog_list"][
-                field_num
-            ]["y_peak"][gal_num]
-            detected_positions[field_num][gal_num][1] = blend["catalog_list"][
-                field_num
-            ]["x_peak"][gal_num]
-        num_components.append(len(blend["catalog_list"][field_num]))
+    for field_num in range(len(blend.catalog_list)):
+        for gal_num in range(len(blend.catalog_list[field_num])):
+            detected_positions[field_num][gal_num][0] = blend.catalog_list[field_num][
+                "y_peak"
+            ][gal_num]
+            detected_positions[field_num][gal_num][1] = blend.catalog_list[field_num][
+                "x_peak"
+            ][gal_num]
+        num_components.append(len(blend.catalog_list[field_num]))
 
     convergence_criterion = tfp.optimizer.convergence_criteria.LossNotDecreasing(
         rtol=0.05,
@@ -120,13 +132,13 @@ for file_num in range(num_repetations):
     )
     padding_infos_all_fields = deb.get_padding_infos()
 
-    for field_num in range(len(blend["catalog_list"])):
+    for field_num in range(len(blend.catalog_list)):
         # LOG.info(field_num)
 
         current_field_predictions = []
         current_madness_models = {"images": [], "field_num": [], "galaxy_num": []}
 
-        current_blend = blend["catalog_list"][field_num]
+        current_blend = blend.catalog_list[field_num]
 
         padding_infos = padding_infos_all_fields[field_num]
         for component_num in range(deb.num_components[field_num]):
@@ -141,49 +153,48 @@ for file_num in range(num_repetations):
 
         # madness_predictions.append(current_field_predictions)
 
-        num_galaxies = len(blend["catalog_list"][field_num])
+        num_galaxies = len(blend.catalog_list[field_num])
 
-        isolated_images = blend["isolated_images"][field_num][0:num_galaxies]
+        isolated_images = blend.isolated_images[field_num][0:num_galaxies]
 
         madness_current_res = compute_pixel_cosdist(
             current_field_predictions,
             isolated_images,
-            blend["blend_images"][field_num],
+            blend.blend_images[field_num],
             survey=survey,
         )
 
         bkg_rms = {}
         for band in range(len(survey.available_filters)):
             bkg_rms[band] = sep.Background(
-                blend["blend_images"][field_num][band]
+                blend.blend_images[field_num][band]
             ).globalrms
 
         # madness_current_res["images"] = current_field_predictions
-        madness_current_res["size"] = blend["catalog_list"][field_num]["btk_size"]
         madness_current_res["field_num"] = [field_num] * num_galaxies
         madness_current_res["file_num"] = [file_num] * num_galaxies
-        madness_current_res["ref_mag"] = blend["catalog_list"][field_num]["ref_mag"]
+
         if survey_name == "LSST":
-            madness_current_res["r_band_snr"] = blend["catalog_list"][field_num][
+            madness_current_res["r_band_snr"] = blend.catalog_list[field_num][
                 "r_band_snr"
             ]
             for band_name in survey.available_filters:
-                madness_current_res[band_name + "_ab"] = blend["catalog_list"][
-                    field_num
-                ][band_name + "_ab"]
+                madness_current_res[band_name + "_ab"] = blend.catalog_list[field_num][
+                    band_name + "_ab"
+                ]
 
-            a = blend["catalog_list"][field_num]["a_d"].value
-            b = blend["catalog_list"][field_num]["b_d"].value
-            theta = blend["catalog_list"][field_num]["pa_disk"].value
+            a = blend.catalog_list[field_num]["a_d"].value
+            b = blend.catalog_list[field_num]["b_d"].value
+            theta = blend.catalog_list[field_num]["pa_disk"].value
 
             cond = (
-                blend["catalog_list"][field_num]["a_d"]
-                < blend["catalog_list"][field_num]["a_b"]
+                blend.catalog_list[field_num]["a_d"]
+                < blend.catalog_list[field_num]["a_b"]
             )
-            a = np.where(cond, blend["catalog_list"][field_num]["a_b"].value, a)
-            b = np.where(cond, blend["catalog_list"][field_num]["b_b"].value, b)
+            a = np.where(cond, blend.catalog_list[field_num]["a_b"].value, a)
+            b = np.where(cond, blend.catalog_list[field_num]["b_b"].value, b)
             theta = np.where(
-                cond, blend["catalog_list"][field_num]["pa_bulge"].value, theta
+                cond, blend.catalog_list[field_num]["pa_bulge"].value, theta
             )
 
             theta = theta % 180
@@ -195,6 +206,9 @@ for file_num in range(num_repetations):
         if survey_name == "HSC":
             madness_current_res["r_band_snr"] = 0
             for band_name in survey.available_filters:
+                madness_current_res[band_name + "_ab"] = blend.catalog_list[field_num][
+                    "HSC_" + band_name
+                ]
             a = (
                 blend.catalog_list[field_num]["flux_radius"]
                 * blend.catalog_list[field_num]["PIXEL_SCALE"]
@@ -207,10 +221,10 @@ for file_num in range(num_repetations):
         # madness_results.append(madness_current_res)
 
         madness_photometry_current = compute_aperture_photometry(
-            field_image=blend["blend_images"][field_num],
+            field_image=blend.blend_images[field_num],
             predictions=current_field_predictions,
-            xpos=blend["catalog_list"][field_num]["x_peak"],
-            ypos=blend["catalog_list"][field_num]["y_peak"],
+            xpos=blend.catalog_list[field_num]["x_peak"],
+            ypos=blend.catalog_list[field_num]["y_peak"],
             a=a / survey.pixel_scale.value,
             b=b / survey.pixel_scale.value,
             theta=theta,
@@ -223,10 +237,10 @@ for file_num in range(num_repetations):
         madness_results.append(madness_current_res)
 
         actual_results_current = compute_aperture_photometry(
-            field_image=blend["blend_images"][field_num],
-            predictions=blend["isolated_images"][field_num],
-            xpos=blend["catalog_list"][field_num]["x_peak"],
-            ypos=blend["catalog_list"][field_num]["y_peak"],
+            field_image=blend.blend_images[field_num],
+            predictions=blend.isolated_images[field_num],
+            xpos=blend.catalog_list[field_num]["x_peak"],
+            ypos=blend.catalog_list[field_num]["y_peak"],
             a=a / survey.pixel_scale.value,
             b=b / survey.pixel_scale.value,
             theta=theta,
@@ -241,10 +255,10 @@ for file_num in range(num_repetations):
         actual_photometry.append(actual_results_current)
 
         blended_results_current = compute_aperture_photometry(
-            field_image=blend["blend_images"][field_num],
+            field_image=blend.blend_images[field_num],
             predictions=None,
-            xpos=blend["catalog_list"][field_num]["x_peak"],
-            ypos=blend["catalog_list"][field_num]["y_peak"],
+            xpos=blend.catalog_list[field_num]["x_peak"],
+            ypos=blend.catalog_list[field_num]["y_peak"],
             a=a / survey.pixel_scale.value,
             b=b / survey.pixel_scale.value,
             theta=theta,
@@ -259,10 +273,10 @@ for file_num in range(num_repetations):
         blended_photometry.append(blended_results_current)
 
     madness_results = pd.concat(madness_results, ignore_index=True)
-    # madness_results = hstack([madness_results, vstack(blend["catalog_list"])])
+    # madness_results = hstack([madness_results, vstack(blend.catalog_list"])])
     # madness_results = hstack([madness_results,vstack(madness_photometry)])
 
-    # madness_results = hstack([madness_results, vstack(blend["catalog_list"])])
+    # madness_results = hstack([madness_results, vstack(blend.catalog_list"])])
 
     actual_photometry = pd.concat(actual_photometry, ignore_index=True)
     blended_photometry = pd.concat(blended_photometry, ignore_index=True)
