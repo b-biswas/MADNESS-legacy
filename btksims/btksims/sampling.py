@@ -32,10 +32,10 @@ class CustomSampling(SamplingFunction):
         index_range: tuple
             range to indexes to sample galaxies from the catalog.
         maxshift: float
-            Magnitude of maximum value of shift. If None then it
+            Magnitude of the maximum value of shift. If None then it
             is set as one-tenth the stamp size. (in arcseconds)
         unique: bool
-            whether to hae unique galaxies in differnet stamps.
+            whether to have unique galaxies in different stamps.
             If true, galaxies are sampled sequentially from the catalog.
         seed: int
             Seed to initialize randomness for reproducibility.
@@ -59,7 +59,7 @@ class CustomSampling(SamplingFunction):
         Returns an astropy table with entries corresponding to a blend centered close to postage
         stamp center.
 
-        Function selects entries from input table that are brighter than 25.3 mag
+        Function selects entries from the input table that are brighter than 25.3 mag
         in the i band. Number of objects per blend is set at a random integer
         between 1 and ``self.max_number``. The blend table is then randomly sampled
         entries from the table after selection cuts. The centers are randomly
@@ -70,8 +70,7 @@ class CustomSampling(SamplingFunction):
         Parameters
         ----------
         table: astropy.Table
-            Table containing entries corresponding to galaxies
-            rom which to sample.
+            Table containing entries corresponding to galaxies from which to sample.
         shifts: list
             Contains arbitrary shifts to be applied instead of random ones.
             Should of the form [x_peak,y_peak] where x_peak and y_peak are the lists
@@ -136,7 +135,7 @@ class CustomSampling(SamplingFunction):
 #         Args:
 #             max_number (int): Defined in parent class
 #             stamp_size (float): Size of the desired stamp.
-#             maxshift (float): Magnitude of maximum value of shift. If None then it
+#             maxshift (float): Magnitude of the maximum value of shift. If None then it
 #                              is set as one-tenth the stamp size. (in arcseconds)
 #             seed (int): Seed to initialize randomness for reproducibility.
 #         """
