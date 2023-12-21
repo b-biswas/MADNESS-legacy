@@ -23,17 +23,17 @@ LOG = logging.getLogger(__name__)
 
 
 def vectorized_compute_reconst_loss(args):
-    """Compute reconstuction loss after being passed to tf.map_fn.
+    """Compute reconstruction loss after being passed to tf.map_fn.
 
     Parameters
     ----------
     args: nested tensor
         (blended_field, reconstructions, index_pos_to_sub, num_components, sig_sq).
-        passees all parameters to compute_residual function.
+        passes all parameters to the compute_residual function.
 
     Returns
     -------
-    reconstuction loss: tensor
+    reconstruction loss: tensor
         reconstruction loss term of the loss function.
 
     """
@@ -74,19 +74,19 @@ def compute_residual(
     reconstructions: tf tensor
         reconstructions to be subtracted
     use_scatter_and_sub: bool
-        uses tf.scatter_and_sub for substraction instead of padding.
+        uses tf.scatter_and_sub for subtraction instead of padding.
     index_pos_to_sub:
-        index position for substraction is `use_scatter_and_sub` is True
+        index position for subtraction is `use_scatter_and_sub` is True
     num_components: int
-        numer of components/galaxies in the field
+        number of components/galaxies in the field
     padding_infos:
-        padding parameters for reconstructions to that they can be subtracted from the field.
+        padding parameters for reconstructions so that they can be subtracted from the field.
         Used when `use_scatter_and_sub` is False.
 
     Returns
     -------
     residual_field: tf tensor
-        residual of the field after subtracting the reconsturctions.
+        residual of the field after subtracting the reconstructions.
 
     """
     residual_field = tf.convert_to_tensor(blended_field, dtype=tf.float32)
@@ -172,13 +172,13 @@ class Deblend:
         latent_dim: int
             size of latent space.
         filters_encoder: list
-            filters used for the convolutional layers in encoder
+            filters used for the convolutional layers in the encoder
         filters_decoder: list
-            filters used for the convolutional layers in decoder
+            filters used for the convolutional layers in the decoder
         kernels_encoder: list
-            kernels used for the convolutional layers in encoder
+            kernels used for the convolutional layers in the encoder
         kernels_decoder: list
-            kernels used for the convolutional layers in decoder
+            kernels used for the convolutional layers in the decoder
         num_nf_layers: int
             number of layers in the flow network
         dense_layer_units: int
@@ -272,25 +272,25 @@ class Deblend:
         num_components: list
             list of number of galaxies present in the image.
         noise_sigma: list of float
-            backgound noise-level in each band
+            background noise-level in each band
         max_iter: int
             number of iterations in the deblending step
         use_log_prob: bool
             decides whether or not to use the log_prob output of the flow deblender in the optimization.
         channel_last: bool
-            if channel is the last column of the blended_fields
+            if the channels/filters are the last column of the blended_fields
         linear_norm_coeff: int/list
             list stores the bandwise linear normalizing/scaling factor.
-            if int is passed, same scaling factor is used for all.
+            if int is passed, the same scaling factor is used for all.
         convergence_criterion: tfp.optimizer.convergence_criteria
             For termination of the optimization loop
         use_debvader: bool
-            Use encoder as a deblender to set initial position for deblending.
+            Use the encoder as a deblender to set the initial position for deblending.
         optimizer: tf.keras.optimizers
-            Optimizer ot use used for gradient descent.
+            Optimizer to use used for gradient descent.
         map_solution: bool
             To obtain the map solution (MADNESS) or debvader solution.
-            Both `map_solution` and `use_debvader` cannot be False at the same time.
+            Both `map_solution` and `use_debvader` cannot be False simultaneously.
 
         """
         # tf.config.run_functions_eagerly(False)
@@ -330,7 +330,7 @@ class Deblend:
     def get_components(self):
         """Return the predicted components.
 
-        The final returned image has same value of channel_last as input image.
+        The final returned image has the same value of channel_last as the input image.
         """
         if self.channel_last:
             return self.components
@@ -349,16 +349,16 @@ class Deblend:
         z: tf tensor
             latent space representations of the reconstructions.
         sig_sq: tf tensor
-            Factor for division to convert the MSE to Gaussian approx to poisson noise.
+            Factor for division to convert the MSE to Gaussian approx to Poisson noise.
         index_pos_to_sub:
-            index position for substraction is `use_scatter_and_sub` is True
+            index position for subtraction is `use_scatter_and_sub` is True
 
         Returns
         -------
         final_loss: tf float
             Final loss to be minimized
         reconstruction_loss: tf float
-            Loss form residuals in the field
+            Loss from residuals in the field
         log_prob: tf float
             log prob evaluated by normalizing flow
         residual_field: tf tensor
@@ -533,9 +533,9 @@ class Deblend:
         convergence_criterion: tfp.optimizer.convergence_criteria
             For termination of the optimization loop
         use_debvader: bool
-            Use encoder as a deblender to set initial position for deblending.
+            Use the encoder as a deblender to set the initial position for deblending.
         optimizer: tf.keras.optimizers
-            Optimizer ot use used for gradient descent.
+            Optimizer to use used for gradient descent.
         map_solution: bool
             To obtain the map solution or debvader solution.
             Both `map_solution` and `use_debvader` cannot be False at the same time.
@@ -628,9 +628,9 @@ class Deblend:
                 noise_level,
                 dtype=tf.float32,
             )
-            # Calculate sigma^2 with gaussian approximation to poisson noise.
+            # Calculate sigma^2 with Gaussian approximation to Poisson noise.
             # Note here that self.postage stamp is normalized but it must be divided again
-            # to ensure that the loglikelihood does not change due to scaling/normalizing
+            # to ensure that the log likelihood does not change due to scaling/normalizing
 
             sig_sq = self.blended_fields / self.linear_norm_coeff + noise_level**2
             # sig_sq[sig_sq <= (5 * noise_level)] = 0
@@ -685,9 +685,9 @@ class Deblend:
         z: tf tensor
             latent space representations of the reconstructions.
         sig_sq: tf tensor
-            Factor for division to convert the MSE to Gaussian approx to poisson noise.
+            Factor for the division to convert the MSE to Gaussian approx to Poisson noise.
         index_pos_to_sub:
-            index position for substraction is `use_scatter_and_sub` is True
+            index position for subtraction is `use_scatter_and_sub` is True
 
         Returns
         -------
