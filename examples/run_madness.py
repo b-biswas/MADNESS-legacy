@@ -41,7 +41,7 @@ run_name = f"kl{kl_weight_exp}b"
 map_solution = sys.argv[3].lower() == "true"
 
 if density not in ["high", "low"]:
-    raise ValueError("The second arguemnt should be either isolated or blended")
+    raise ValueError("The second argument should be either isolated or blended")
 
 num_repetations = 300
 max_number = 20
@@ -273,10 +273,10 @@ for file_num in range(num_repetations):
         blended_photometry.append(blended_results_current)
 
     madness_results = pd.concat(madness_results, ignore_index=True)
-    # madness_results = hstack([madness_results, vstack(blend.catalog_list"])])
+    # madness_results = hstack([madness_results, vstack(blend.catalog_list)])
     # madness_results = hstack([madness_results,vstack(madness_photometry)])
 
-    # madness_results = hstack([madness_results, vstack(blend.catalog_list"])])
+    # madness_results = hstack([madness_results, vstack(blend.catalog_list)])
 
     actual_photometry = pd.concat(actual_photometry, ignore_index=True)
     blended_photometry = pd.concat(blended_photometry, ignore_index=True)
