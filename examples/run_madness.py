@@ -95,8 +95,11 @@ for file_num in range(num_repetations):
         window_size=15,
     )
     # convergence_criterion = None
+    initial_lr = 0.025
+    if survey_name == "LSST":
+        initial_lr = 0.05
     lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.075,
+        initial_learning_rate=initial_lr,
         decay_steps=30,
         decay_rate=0.8,
         staircase=True,
