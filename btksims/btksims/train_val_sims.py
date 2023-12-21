@@ -15,8 +15,8 @@ import yaml
 from astropy.table import Table
 
 from btksims.sampling import CustomSampling
-from btksims.utils import get_btksims_config_path
 from maddeb.extraction import extract_cutouts
+from maddeb.utils import get_maddeb_config_path
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
@@ -34,14 +34,17 @@ blend_type = sys.argv[2]  # set to 4 to generate blended scenes
 if blend_type not in ["isolated", "blended"]:
     raise ValueError("The second arguemnt should be either isolated or blended")
 
-with open(get_btksims_config_path()) as f:
-    btksims_config = yaml.safe_load(f)
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
+
+survey_name = maddeb_config["survey_name"]
+btksims_config = maddeb_config["btksims"]
 
 sim_config = btksims_config["TRAIN_VAL_PARAMS"]
 
-survey = btk.survey.get_surveys(btksims_config["survey_name"])
-SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"][btksims_config["survey_name"]]
-CATALOG_PATH = btksims_config["CAT_PATH"][btksims_config["survey_name"]]
+survey = btk.survey.get_surveys(survey_name)
+SAVE_PATH = btksims_config["TRAIN_DATA_SAVE_PATH"][survey_name]
+CATALOG_PATH = btksims_config["CAT_PATH"][survey_name]
 print("saving data at " + SAVE_PATH)
 
 if type(CATALOG_PATH) == list:
@@ -54,10 +57,10 @@ else:
 catalog.table = Table.from_pandas(
     catalog.table.to_pandas().sample(frac=1, random_state=0).reset_index(drop=True)
 )
-survey = btk.survey.get_surveys(btksims_config["survey_name"])
+survey = btk.survey.get_surveys(survey_name)
 
 sampling_function = CustomSampling(
-    index_range=sim_config[dataset]["index_range"],
+    index_range=sim_config[dataset][survey_name]["index_range"],
     min_number=sim_config[blend_type + "_params"]["min_number"],
     max_number=sim_config[blend_type + "_params"]["max_number"],
     maxshift=sim_config["maxshift"],
@@ -78,10 +81,12 @@ draw_generator = generator(
     seed=sim_config["btk_seed"],
 )
 
-total_galaxy_stamps = sim_config[dataset]["num_batches"] * sim_config["btk_batch_size"]
+total_galaxy_stamps = (
+    sim_config[dataset][survey_name]["num_batches"] * sim_config["btk_batch_size"]
+)
 stamp_counter = 0
 # shift_rng = np.random.default_rng(12345)
-for batch_num in range(sim_config[dataset]["num_batches"]):
+for batch_num in range(sim_config[dataset][survey_name]["num_batches"]):
 
     print("simulating file number:" + str(batch_num))
 

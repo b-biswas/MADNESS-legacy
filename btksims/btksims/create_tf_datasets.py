@@ -3,19 +3,13 @@ import os
 
 import yaml
 
-from btksims.utils import get_btksims_config_path
 from maddeb.dataset_generator import loadCATSIMDataset
 from maddeb.utils import get_maddeb_config_path
-
-with open(get_btksims_config_path()) as f:
-    btksims_config = yaml.safe_load(f)
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
 
-if maddeb_config["survey_name"] != btksims_config["survey_name"]:
-    raise ValueError("survey_name in config files of maddeb and btksims must match")
-
+btksims_config = maddeb_config["btksims"]
 survey_name = maddeb_config["survey_name"]
 
 loadCATSIMDataset(
