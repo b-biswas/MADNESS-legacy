@@ -29,14 +29,14 @@ with open(get_maddeb_config_path()) as f:
 
 survey_name = maddeb_config["survey_name"]
 if survey_name not in ["LSST", "HSC"]:
-    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+    raise ValueError("survey should be one of: LSST or HSC")  # other surveys to be added soon!
 survey = galcheat.get_survey(survey_name)
 
 LOG.info(f"Running tests with scarlet for {survey_name}")
 
 density = sys.argv[1]
 if density not in ["high", "low"]:
-    raise ValueError("The second arguemnt should be either isolated or blended")
+    raise ValueError("The second argument should be either isolated or blended")
 
 num_repetations = 300
 simulation_path = os.path.join(maddeb_config["TEST_DATA_PATH"][survey_name], density)
@@ -60,7 +60,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     x_pos: array
         x positions of detections.
     y_pos: array
-        y position of detetions.
+        y position of detection.
     show_scene: bool
         To run scarlet.display.show_scene or not.
     show_sources: bool
@@ -71,7 +71,7 @@ def predict_with_scarlet(image, x_pos, y_pos, show_scene, show_sources, filters)
     Returns
     -------
     predicted_sources:
-        array with reconsturctions predicted by SCARLET
+        array with reconstructions predicted by SCARLET
 
     """
     sig = []
