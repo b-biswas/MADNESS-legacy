@@ -75,7 +75,7 @@ draw_generator = generator(
     survey,
     batch_size=sim_config["btk_batch_size"],
     stamp_size=sim_config["stamp_size"],
-    njobs=25,
+    njobs=8,
     add_noise="all",
     verbose=False,
     seed=sim_config["btk_seed"],
