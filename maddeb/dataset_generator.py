@@ -47,7 +47,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         "1.0.0": "Initial release.",
     }
     MANUAL_DOWNLOAD_INSTRUCTIONS = (
-        "Nothing to download. Dataset was generated at first call."
+        "Nothing to download. The dataset was generated at the first call."
     )
 
     def __init__(self, train_data_dir, val_data_dir, **kwargs):
@@ -71,7 +71,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         Parameters
         ----------
         data_folder: string
-            Path to folder with .npy files
+            Path to the folder with .npy files
 
         Returns
         -------
@@ -160,8 +160,8 @@ def loadCATSIMDataset(
 ):
     """Load/Generate CATSIM Dataset.
 
-    If the TFDataset has already been generated (first call) it is realoaded.
-    If CATSIM tf dataset is already generated train_data_dir and val_data_dir are ignored.
+    If the TFDataset has already been generated (first call) it is reloaded.
+    If the CATSIM tf dataset is already generated train_data_dir and val_data_dir are ignored.
 
     Parameters
     ----------
@@ -176,7 +176,7 @@ def loadCATSIMDataset(
 
     Returns
     -------
-    ds: dictionary tf datsets.
+    ds: dictionary tf datasets.
         refer to CatsimDataset._split_generators.
 
     """
