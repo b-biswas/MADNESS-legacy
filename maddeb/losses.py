@@ -54,9 +54,10 @@ def deblender_loss_fn_wrapper(
     sigma_cutoff: list
         list of sigma levels (normalized) in the bands.
     use_ssim: bool
-        Flag to add the ssim loss function.
+        Flag to add an extra ssim term to the loss function.
+        This loss is supposed to force the network to learn information in noisy bands relatively earlier.
     ch_alpha: madness.callbacks.ChangeAlpha
-        instance of ChangeAlpha to update the weight of SSIM over epochs.
+        an instance of ChangeAlpha to update the weight of SSIM over epochs.
     linear_norm_coeff: int
         linear norm coefficient used for normalizing.
 
@@ -80,7 +81,7 @@ def deblender_loss_fn_wrapper(
         y: array/tensor
             Galaxy ground truth.
         predicted_galaxy: tf tensor
-            pixel wise prediction of the flux.
+            pixel-wise prediction of the flux.
 
         Returns
         -------
@@ -104,6 +105,24 @@ def deblender_loss_fn_wrapper(
             loss = loss * (1 - ch_alpha.alpha * ssim)
 
         loss = tf.reduce_mean(loss)
+        # if ch_alpha.alpha > 0:
+        # band_normalizer = tf.reduce_max(y+1e-9, axis=[1, 2], keepdims=True)
+        # beta_factor = 2.5
+        # tf.stop_gradient(ch_alpha.alpha)
+        # loss2 = tf.keras.backend.binary_crossentropy(
+        #     tf.math.tanh(
+        #         tf.math.asinh(
+        #             beta_factor * (predicted_galaxy / band_normalizer)
+        #         )
+        #     ),
+        #     tf.math.tanh(
+        #         tf.math.asinh(
+        #             beta_factor * (y / band_normalizer)
+        #         )
+        #     ),
+        # )  # computes the mean across axis 0
+        # loss2 = tf.reduce_sum(loss2)
+        # loss = loss2
         # weight = tf.math.reduce_max(x, axis= [1, 2])
         # objective = tf.math.reduce_sum(loss, axis=[1, 2])
         # weighted_objective = -tf.math.reduce_mean(tf.divide(objective, weight))
@@ -118,14 +137,14 @@ def deblender_encoder_loss_wrapper(
     noise_sigma,
     latent_dim=16,
 ):
-    """AI is creating summary for deblender_encoder_loss_wrapper.
+    """Loss function wrapper.
 
     Parameters
     ----------
     original_encoder:
-        original trained encoder (VAE as generative model).
+        Original trained encoder (VAE as a generative model).
     noise_sigma: list/array
-        noise level in the bands.
+        Noise level in the bands.
     latent_dim: int
         Number of latent dimensions. Defaults to 16.
 

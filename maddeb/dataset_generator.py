@@ -1,9 +1,18 @@
 """TF Dataset generator."""
 import os
 
+import galcheat
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import yaml
+
+from maddeb.utils import get_maddeb_config_path
+
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
+
+survey = galcheat.get_survey(maddeb_config["survey_name"])
 
 _DESCRIPTION = """
 #Galaxies from CATSIM WL Deblending catalogue
@@ -38,7 +47,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         "1.0.0": "Initial release.",
     }
     MANUAL_DOWNLOAD_INSTRUCTIONS = (
-        "Nothing to download. Dataset was generated at first call."
+        "Nothing to download. The dataset was generated at the first call."
     )
 
     def __init__(self, train_data_dir, val_data_dir, **kwargs):
@@ -62,7 +71,7 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
         Parameters
         ----------
         data_folder: string
-            Path to folder with .npy files
+            Path to the folder with .npy files
 
         Returns
         -------
@@ -94,10 +103,11 @@ class CatsimDataset(tfds.core.GeneratorBasedBuilder):
             features=tfds.features.FeaturesDict(
                 {
                     "isolated_gal_stamps": tfds.features.Tensor(
-                        shape=(45, 45, 6), dtype=tf.float32
+                        shape=(45, 45, len(survey.available_filters)), dtype=tf.float32
                     ),
                     "blended_gal_stamps": tfds.features.Tensor(
-                        shape=(45, 45, 6), dtype=tf.dtypes.float32
+                        shape=(45, 45, len(survey.available_filters)),
+                        dtype=tf.dtypes.float32,
                     ),
                 }
             ),
@@ -150,8 +160,8 @@ def loadCATSIMDataset(
 ):
     """Load/Generate CATSIM Dataset.
 
-    If the TFDataset has already been generated (first call) it is realoaded.
-    If CATSIM tf dataset is already generated train_data_dir and val_data_dir are ignored.
+    If the TFDataset has already been generated (first call) it is reloaded.
+    If the CATSIM tf dataset is already generated train_data_dir and val_data_dir are ignored.
 
     Parameters
     ----------
@@ -166,7 +176,7 @@ def loadCATSIMDataset(
 
     Returns
     -------
-    ds: dictionary tf datsets.
+    ds: dictionary tf datasets.
         refer to CatsimDataset._split_generators.
 
     """

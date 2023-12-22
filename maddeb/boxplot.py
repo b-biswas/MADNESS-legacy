@@ -275,7 +275,7 @@ def boxplot_func(
 
     mpl.rcdefaults()
     mpl.rcParams["text.usetex"] = True
-    mpl.rcParams["text.latex.preamble"] = [r"\usepackage{amsmath}"]
+    plt.rcParams["text.latex.preamble"] = r"\usepackage{bm} \usepackage{amsmath}"
 
     # Drop error if necessary
     if errors is not None:
