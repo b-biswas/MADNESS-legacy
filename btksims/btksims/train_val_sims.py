@@ -26,13 +26,13 @@ LOG.info(sys.argv)
 dataset = sys.argv[1]  # should be either training or validation
 if dataset not in ["training", "validation"]:
     raise ValueError(
-        "The first arguement (dataset) should be either training or validation"
+        "The first argument (dataset) should be either training or validation"
     )
 
 
 blend_type = sys.argv[2]  # set to 4 to generate blended scenes
 if blend_type not in ["isolated", "blended"]:
-    raise ValueError("The second arguemnt should be either isolated or blended")
+    raise ValueError("The second argument should be either isolated or blended")
 
 with open(get_maddeb_config_path()) as f:
     maddeb_config = yaml.safe_load(f)
