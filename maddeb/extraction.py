@@ -79,7 +79,7 @@ def extract_cutouts(
     if flag:
 
         LOG.warning(
-            "Some galaxies are too close from the border of the field to be considered here."
+            "Some galaxies are too close to the border of the field to be considered here."
         )
 
     return cutout_images, list_idx
