@@ -57,7 +57,7 @@ def deblender_loss_fn_wrapper(
         Flag to add an extra ssim term to the loss function.
         This loss is supposed to force the network to learn information in noisy bands relatively earlier.
     ch_alpha: madness.callbacks.ChangeAlpha
-        instance of ChangeAlpha to update the weight of SSIM over epochs.
+        an instance of ChangeAlpha to update the weight of SSIM over epochs.
     linear_norm_coeff: int
         linear norm coefficient used for normalizing.
 
@@ -81,7 +81,7 @@ def deblender_loss_fn_wrapper(
         y: array/tensor
             Galaxy ground truth.
         predicted_galaxy: tf tensor
-            pixel wise prediction of the flux.
+            pixel-wise prediction of the flux.
 
         Returns
         -------
@@ -142,9 +142,9 @@ def deblender_encoder_loss_wrapper(
     Parameters
     ----------
     original_encoder:
-        original trained encoder (VAE as generative model).
+        Original trained encoder (VAE as a generative model).
     noise_sigma: list/array
-        noise level in the bands.
+        Noise level in the bands.
     latent_dim: int
         Number of latent dimensions. Defaults to 16.
 
