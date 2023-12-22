@@ -13,7 +13,7 @@ def test_cutouts_border():
     # create image
     image = np.random.rand(field_size, field_size, nb_of_bands)
 
-    # test when cutout is not close to the edge
+    # test when the cutout is not close to the edge
     galaxy_distances_to_center = [[-4, -3]]
     cutout_size = 5
     cutout, list_idx = extract_cutouts(
@@ -53,7 +53,7 @@ def test_cutouts_border():
     np.testing.assert_array_equal(cutout[0], image[:5, :5])
     assert len(list_idx) == 1
 
-    # test when cutout is too large
+    # test when the cutout is too large
     galaxy_distances_to_center = [[6, 6]]
     cutout_size = 5
     cutout, list_idx = extract_cutouts(
