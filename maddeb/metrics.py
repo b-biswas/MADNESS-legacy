@@ -117,7 +117,7 @@ def cosdist_helper(predicted_band_galaxy, simulated_band_galaxy, sig):
     Parameters
     ----------
     predicted_band_galaxy: np array
-        A specific band a predicted galaxy.
+        A specific band of the predicted galaxy.
     simulated_band_galaxy: np array
         simulated ground truth of the same band.
     sig: float
@@ -156,9 +156,9 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     Parameters
     ----------
     isolated_galaxy_band: np array
-        simulated ground truth of a specific band an isolated galaxy.
+        simulated ground truth of a specific band of an isolated galaxy.
     field_band: np array
-        simulated ground truth of the same region of band.
+        simulated ground truth of the same region of the band.
 
     Returns
     -------
@@ -168,11 +168,11 @@ def compute_blendedness(isolated_galaxy_band, field_band):
     """
     isolated_pixels = isolated_galaxy_band.flatten()
     field_pixels = field_band.flatten()
-    dinominator = np.sum(np.multiply(field_pixels, isolated_pixels))
-    if dinominator == 0:
+    denominator = np.sum(np.multiply(field_pixels, isolated_pixels))
+    if denominator == 0:
         return -1
     blendedness = (
-        1 - np.sum(np.multiply(isolated_pixels, isolated_pixels)) / dinominator
+        1 - np.sum(np.multiply(isolated_pixels, isolated_pixels)) / denominator
     )
 
     return blendedness
@@ -206,9 +206,9 @@ def compute_aperture_photometry(
     bkg_rms: list
         list with the rms background in each band.
     a: float
-        hlr semi major axis of galaxy in pixels
+        hlr semi-major axis of galaxy in pixels
     b: float
-        hlr semi minor axis of galaxy in pixels
+        hlr semi-minor axis of galaxy in pixels
     theta: float
         orientation of the galaxy in degrees
     survey: galcheat.survey object
