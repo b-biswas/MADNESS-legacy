@@ -43,17 +43,17 @@ class FlowVAEnet:
         latent_dim: int
             size of the latent space
         filters_encoder: list
-            filters used for the convolutional layers in encoder
+            filters used for the convolutional layers in the encoder
         filters_decoder: list
-            filters used for the convolutional layers in decoder
+            filters used for the convolutional layers in the decoder
         kernels_encoder: list
-            kernels used for the convolutional layers in encoder
+            kernels used for the convolutional layers in the encoder
         kernels_decoder: list
-            kernels used for the convolutional layers in decoder
+            kernels used for the convolutional layers in the decoder
         num_nf_layers: int
             number of layers in the flow network
         kl_prior: tf distribution
-            KL prior to be applied on the latent space.
+            KL prior to be applied to the latent space.
         kl_weight: float
             Weight to be multiplied tot he kl_prior
         survey: galcheat.survey object
@@ -110,7 +110,7 @@ class FlowVAEnet:
         epochs=35,
         verbose=1,
     ):
-        """Train only the the components of VAE model (encoder and/or decoder).
+        """Train only the the components of VAE model (the encoder and/or decoder).
 
         Parameters
         ----------
@@ -127,20 +127,21 @@ class FlowVAEnet:
         loss_function: python function
             function that can compute the loss.
         train_encoder: bool
-            Flag to decide if encoder is to be trained.
+            Flag to decide if the encoder is to be trained.
         train_decoder: bool
-            Flag to decide if decoder is to be trained.
+            Flag to decide if the decoder is to be trained.
         optimizer: str or tf.keras.optimizers
             String (name of optimizer) or optimizer instance. See tf.keras.optimizers.
         track_kl:bool
-            To decide if the kl loss is to be tracked through the iterations.
+            To decide if the KL loss is to be tracked through the iterations.
         epochs: int
             number of epochs for which the model is going to be trained
         verbose: int
             verbose option for training.
             'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
             'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy.
-            Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
+            Note that the progress bar is not particularly useful when logged to a file, 
+            so verbose=2 is recommended when not running interactively (eg, in a production environment).
 
         """
         if (not train_decoder) and (not train_encoder):
@@ -202,7 +203,7 @@ class FlowVAEnet:
         epochs=35,
         verbose=1,
     ):
-        """Train only the the components of VAE model (encoder and/or decoder).
+        """Train only the the components of VAE model (the encoder and/or decoder).
 
         Parameters
         ----------
@@ -229,7 +230,7 @@ class FlowVAEnet:
             Note that the progress bar is not particularly useful when logged to a file, so verbose=2 is recommended when not running interactively (eg, in a production environment).
 
         """
-        self.vae_model.summary()
+        self.encoder.summary()
         LOG.info("\n--- Training only encoder network ---")
 
         # LOG.info("Initial learning rate: " + str(lr))
@@ -324,7 +325,7 @@ class FlowVAEnet:
         return hist
 
     def load_vae_weights(self, weights_path, is_folder=True):
-        """Load the trained weights of VAE model (encoder and decoder).
+        """Load the trained weights of the VAE model (encoder and decoder).
 
         Parameters
         ----------
@@ -378,7 +379,7 @@ class FlowVAEnet:
         self.encoder.load_weights(weights_path).expect_partial()
 
     def randomize_encoder(self):
-        """Randomize the weights of encoder to restart training."""
+        """Randomize the weights of the encoder to restart training."""
         new_encoder = create_encoder(
             input_shape=self.input_shape,
             latent_dim=self.latent_dim,

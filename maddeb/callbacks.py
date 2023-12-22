@@ -17,9 +17,9 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
         By default, it saves weights in the data folder.
     lr_scheduler_epochs: int
         number of iterations after which the learning rate is decreased by a factor of $e$.
-        Default is None, and a constant learning rate is used
+        The default is None, and a constant learning rate is used
     patience: int
-        number of iterations after which training is stopped if loss does not decrease.
+        number of iterations after which training is stopped if the loss does not decrease.
 
     """
     checkpointer_val_mse = tf.keras.callbacks.ModelCheckpoint(
@@ -53,7 +53,7 @@ def define_callbacks(weights_save_path, lr_scheduler_epochs=None, patience=40):
             if (epoch + 1) % lr_scheduler_epochs != 0:
                 return lr
             else:
-                return lr * tf.math.exp(-1.0)
+                return lr / 2.5
 
         lr_scheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 

@@ -34,23 +34,25 @@ latent_dim = 16
 linear_norm_coeff = 10000
 patience = 30
 
-survey_name = sys.argv[1]
+with open(get_maddeb_config_path()) as f:
+    maddeb_config = yaml.safe_load(f)
 
-if survey_name not in ["LSST"]:
-    raise ValueError("survey should be one of: LSST")  # other surveys to be added soon!
+survey_name = maddeb_config["survey_name"]
+
+if survey_name not in ["LSST", "HSC"]:
+    raise ValueError(
+        "survey should be one of: LSST or HSC"
+    )  # other surveys to be added soon!
 
 train_models = sys.argv[
-    2
-]  # either "all" or a list contraining: ["GenerativeModel","NormalizingFlow","Deblender"]
+    1
+]  # either "all" or a list containing: ["GenerativeModel","NormalizingFlow","Deblender"]
 
-kl_weight_exp = int(sys.argv[3])
+kl_weight_exp = int(sys.argv[2])
 kl_weight = 10**-kl_weight_exp
 LOG.info(f"KL weight{kl_weight}")
 
-survey = galcheat.get_survey("LSST")
-
-with open(get_maddeb_config_path()) as f:
-    maddeb_config = yaml.safe_load(f)
+survey = galcheat.get_survey(survey_name)
 
 noise_sigma = []
 for b, name in enumerate(survey.available_filters):
@@ -74,13 +76,15 @@ f_net = FlowVAEnet(
 data_path = get_data_dir_path()
 
 # path_weights = os.path.join(data_path, f"catsim_kl{kl_weight_exp}{latent_dim}d")
-path_weights = os.path.join(data_path, survey.name + "_")
+path_weights = os.path.join(data_path, survey.name + str(kl_weight))
 
 # Define the generators
 ds_isolated_train, ds_isolated_val = batched_CATSIMDataset(
     train_data_dir=None,
     val_data_dir=None,
-    tf_dataset_dir=os.path.join(maddeb_config["TF_DATASET_PATH"], "isolated_tfDataset"),
+    tf_dataset_dir=os.path.join(
+        maddeb_config["TF_DATASET_PATH"][survey_name], "isolated_tfDataset"
+    ),
     linear_norm_coeff=linear_norm_coeff,
     batch_size=batch_size,
     x_col_name="blended_gal_stamps",
@@ -139,6 +143,7 @@ if train_models.lower() == "all" or "vae" in train_models:
         optimizer=tf.keras.optimizers.Adam(1e-5, clipvalue=0.1),
         loss_function=deblender_loss_fn_wrapper(
             sigma_cutoff=noise_sigma,
+            use_ssim=False,
             linear_norm_coeff=linear_norm_coeff,
         ),
         verbose=2,
@@ -163,12 +168,12 @@ if train_models.lower() == "all" or "nf" in train_models:
 
     # Define all used callbacks
     callbacks = define_callbacks(
-        os.path.join(path_weights, f"flow{num_nf_layers}"),
+        os.path.join(path_weights, "flow"),
         lr_scheduler_epochs=lr_scheduler_epochs,
         patience=patience,
     )
 
-    # now train the model
+    # Now train the model
     hist_flow = f_net.train_flow(
         ds_isolated_train,
         ds_isolated_val,
@@ -217,7 +222,9 @@ if train_models.lower() == "all" or "deblender" in train_models:
     ds_blended_train, ds_blended_val = batched_CATSIMDataset(
         train_data_dir=None,
         val_data_dir=None,
-        tf_dataset_dir=os.path.join(maddeb_config.TF_DATASET_PATH, "blended_tfDataset"),
+        tf_dataset_dir=os.path.join(
+            maddeb_config["TF_DATASET_PATH"][survey_name], "blended_tfDataset"
+        ),
         linear_norm_coeff=linear_norm_coeff,
         batch_size=batch_size,
         x_col_name="blended_gal_stamps",
