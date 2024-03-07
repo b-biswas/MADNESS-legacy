@@ -29,7 +29,9 @@ with open(get_maddeb_config_path()) as f:
 
 survey_name = maddeb_config["survey_name"]
 if survey_name not in ["LSST", "HSC"]:
-    raise ValueError("survey should be one of: LSST or HSC")  # other surveys to be added soon!
+    raise ValueError(
+        "survey should be one of: LSST or HSC"
+    )  # other surveys to be added soon!
 survey = galcheat.get_survey(survey_name)
 
 LOG.info(f"Running tests with scarlet for {survey_name}")
