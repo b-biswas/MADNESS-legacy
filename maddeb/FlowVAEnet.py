@@ -140,7 +140,7 @@ class FlowVAEnet:
             verbose option for training.
             'auto', 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
             'auto' defaults to 1 for most cases, but 2 when used with ParameterServerStrategy.
-            Note that the progress bar is not particularly useful when logged to a file, 
+            Note that the progress bar is not particularly useful when logged to a file,
             so verbose=2 is recommended when not running interactively (eg, in a production environment).
 
         """
