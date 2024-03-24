@@ -231,8 +231,6 @@ def batched_CATSIMDataset(
         prefetched validation dataset
 
     """
-
-    # normalized train and val dataset generator
     def preprocess_batch(ds):
         """Preprocessing function.
 
