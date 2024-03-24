@@ -231,6 +231,7 @@ def batched_CATSIMDataset(
         prefetched validation dataset
 
     """
+
     def preprocess_batch(ds):
         """Preprocessing function.
 
