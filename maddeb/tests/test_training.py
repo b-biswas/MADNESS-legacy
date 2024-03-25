@@ -1,4 +1,5 @@
 """Test training."""
+
 import os
 
 import numpy as np

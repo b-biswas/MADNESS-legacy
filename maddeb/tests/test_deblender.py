@@ -1,4 +1,5 @@
 """Test Deblending."""
+
 import numpy as np
 
 from maddeb.Deblender import Deblend, compute_residual

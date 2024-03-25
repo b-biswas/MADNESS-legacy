@@ -1,4 +1,5 @@
 """Test extract cutouts."""
+
 import numpy as np
 
 from maddeb.extraction import extract_cutouts

@@ -179,9 +179,11 @@ class FlowVAEnet:
         )
 
         hist = self.vae_model.fit(
-            x=train_generator[0]
-            if isinstance(train_generator, tuple)
-            else train_generator,
+            x=(
+                train_generator[0]
+                if isinstance(train_generator, tuple)
+                else train_generator
+            ),
             y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
@@ -245,9 +247,11 @@ class FlowVAEnet:
             experimental_run_tf_function=False,
         )
         hist = self.encoder.fit(
-            x=train_generator[0]
-            if isinstance(train_generator, tuple)
-            else train_generator,
+            x=(
+                train_generator[0]
+                if isinstance(train_generator, tuple)
+                else train_generator
+            ),
             y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
@@ -309,9 +313,11 @@ class FlowVAEnet:
         LOG.info("Number of epochs: " + str(epochs))
 
         hist = self.flow_model.fit(
-            x=train_generator[0]
-            if isinstance(train_generator, tuple)
-            else train_generator,
+            x=(
+                train_generator[0]
+                if isinstance(train_generator, tuple)
+                else train_generator
+            ),
             y=train_generator[1] if isinstance(train_generator, tuple) else None,
             epochs=epochs,
             verbose=verbose,
