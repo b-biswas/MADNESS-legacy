@@ -165,7 +165,7 @@ for file_num in range(num_repetations):
             for p in blend.psf
         ]
     )
-    bands = [f for f in survey._filters]
+    bands = [*survey._filters]
     wcs = blend.wcs
 
     x_pos = blend.catalog_list[0]["y_peak"]
